@@ -1,10 +1,8 @@
 # Umamusume Auto Training Bot (ADB/Android Version)
-[![Discord](https://img.shields.io/badge/Discord-Join%20our%20community-7289DA?style=for-the-badge&logo=discord&logoColor=white)](http://discord.gg/PhVmBtfsKp)
+<a href="http://discord.gg/PhVmBtfsKp" target="_blank"><img src="https://img.shields.io/discord/1399387259245166674?color=5865F2&label=Join%20our%20Discord&logo=discord&logoColor=white&style=for-the-badge" alt="Join our Discord server"></a>
 
-[![GitHub Stars](https://img.shields.io/github/stars/Kisegami/umamusume-auto-train?style=for-the-badge&logo=github)](https://github.com/Kisegami/umamusume-auto-train/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/Kisegami/umamusume-auto-train?style=for-the-badge&logo=github)](https://github.com/Kisegami/umamusume-auto-train/issues)
-[![GitHub Forks](https://img.shields.io/github/forks/Kisegami/umamusume-auto-train?style=for-the-badge&logo=github)](https://github.com/Kisegami/umamusume-auto-train/network)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/Kisegami/umamusume-auto-train?style=for-the-badge&logo=github)](https://github.com/Kisegami/umamusume-auto-train/commits)
+<a href="https://www.buymeacoffee.com/kisegami" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+ 
  
 
 An automated training bot for Umamusume that works with **Android emulators** using ADB (Android Debug Bridge).
