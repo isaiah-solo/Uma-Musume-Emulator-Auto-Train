@@ -33,7 +33,8 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Stat caps to prevent overtraining specific stats
 - Improved training logic with better support card handling
 - Minimum support card requirements for training (Read Logic)
-- **Intelligent Event Choice Selection**: Automatically analyzes event options and selects the best choice based on configured priorities
+- Intelligent Event Choice Selection: Automatically analyzes event options and selects the best choice based on configured priorities
+- Automated Claw Machine: Automatically detects and handles claw machine mini-games with randomized timing (99% Failure rate bruh)
 
 ## Getting Started
 
@@ -367,13 +368,13 @@ adb shell wm size  # Should show 1080x1920
 - Add Race Stragety option (right now the only option is manually changing it)
 - Do race that doesn't have trophy yet
 - Auto-purchase skills (Partially implemented with skill point management)
-- Automate Claw Machine event
 - Improve Tesseract OCR accuracy for failure chance detection
 - Add consecutive races limit
 - Add auto retry for failed races
 - Add fans tracking/goal for Senior year (Valentine day, Fan Fest and Holiday Season)
 - Add option to do race in Summer (July - August)
-- ~Add better event options handling~ (✅ **COMPLETED** - Intelligent event choice selection implemented)
+- ~Add better event options handling~
+- ~Automate Claw Machine event~
 
 
 

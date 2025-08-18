@@ -1,10 +1,11 @@
 import time
 import json
 import os
+import random
 from PIL import ImageStat
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template
-from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up
+from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
     MOOD_LIST, EVENT_REGION, RACE_CARD_REGION
@@ -52,6 +53,33 @@ def is_infirmary_active_adb(button_location):
     except Exception as e:
         print(f"[ERROR] Failed to check infirmary button brightness: {e}")
         return False
+
+
+def claw_machine():
+    """Handle claw machine interaction"""
+    print("[INFO] Claw machine detected, starting interaction...")
+    
+    # Wait 2 seconds before interacting
+    time.sleep(2)
+    
+    # Find the claw button location
+    claw_location = locate_on_screen("assets/buttons/claw.png", confidence=0.8)
+    if not claw_location:
+        print("[WARNING] Claw button not found for interaction")
+        return False
+    
+    # Get center coordinates (locate_on_screen returns center coordinates)
+    center_x, center_y = claw_location
+    
+    # Generate random hold duration between 3-4 seconds (in milliseconds)
+    hold_duration = random.randint(1000, 3000)
+    print(f"[INFO] Holding claw button for {hold_duration}ms...")
+    
+    # Use ADB long press to hold the claw button
+    long_press(center_x, center_y, hold_duration)
+    
+    print("[INFO] Claw machine interaction completed")
+    return True
 
 
 def count_event_choices():
@@ -1057,7 +1085,18 @@ def career_lobby():
     while True:
         debug_print("\n[DEBUG] ===== Starting new loop iteration =====")
         
-        # First check, event - use intelligent event handling (same as original PC version)
+        # First check, claw machine
+        debug_print("[DEBUG] Checking for claw machine...")
+        if locate_on_screen("assets/buttons/claw.png", confidence=0.8):
+            claw_machine()
+            continue
+        
+        # Second check, OK button
+        debug_print("[DEBUG] Checking for OK button...")
+        if click("assets/buttons/ok_btn.png", confidence=0.7, minSearch=1, text="[INFO] OK button found, clicking it."):
+            continue
+        
+        # Third check, event - use intelligent event handling (same as original PC version)
         debug_print("[DEBUG] Checking for events...")
         try:
             # Use the same logic as original PC version: detect event first, then analyze
@@ -1094,7 +1133,7 @@ def career_lobby():
             if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
                 continue
 
-        # Second check, inspiration
+        # Fourth check, inspiration
         debug_print("[DEBUG] Checking for inspiration...")
         if click("assets/buttons/inspiration_btn.png", confidence=0.5, minSearch=1, text="[INFO] Inspiration found."):
             continue
