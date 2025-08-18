@@ -138,7 +138,7 @@ You can edit your configuration in `config.json`
   "prioritize_g1_race": false,
   "skill_point_cap": 400,
   "skill_purchase": "auto",
-  "skill_file": "skills.json",
+  "skill_file": "skills_example.json",
   "enable_skill_point_check": true,
   "min_support": 3,
   "do_race_when_bad_training": true,
@@ -229,7 +229,7 @@ Make sure the values match exactly as expected, typos might cause errors.
 
 ### 🆕 **Skill Configuration**
 
-The bot now includes a comprehensive skill management system controlled by `skills.json`:
+The bot now includes a comprehensive skill management system controlled by a json file:
 
 ```json
 {
