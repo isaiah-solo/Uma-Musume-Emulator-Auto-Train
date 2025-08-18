@@ -28,5 +28,5 @@
     "input_delay": 0.5,
     "connection_timeout": 10
   },
-  "debug_mode": true
+  "debug_mode": false
 }

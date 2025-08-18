@@ -857,7 +857,7 @@ def do_race(prioritize_g1=False):
     debug_print(f"[DEBUG] Performing race action (G1 priority: {prioritize_g1})...")
     click("assets/buttons/races_btn.png", minSearch=10)
     time.sleep(1.2)
-    click("assets/buttons/ok_btn.png", minSearch=1)
+    click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=1)
 
     found = race_select(prioritize_g1=prioritize_g1)
     if found:
@@ -890,7 +890,7 @@ def race_day():
     if click("assets/buttons/race_day_btn.png", minSearch=10):
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
-        click("assets/buttons/ok_btn.png", minSearch=1)
+        click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=2)
         time.sleep(0.5)
         
         debug_print("[DEBUG] Selecting race using match_track.png...")
