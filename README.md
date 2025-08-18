@@ -29,7 +29,7 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Checks mood and handles debuffs automatically
 - Rest and recreation management
 - Prioritizes G1 races if available for fan farming
-- Skill point check for manually skill purchasing
+- **Auto Skill Purchase**: Automatically purchases skills when skill points exceed cap
 - Stat caps to prevent overtraining specific stats
 - Improved training logic with better support card handling
 - Minimum support card requirements for training (Read Logic)
@@ -136,7 +136,8 @@ You can edit your configuration in `config.json`
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
   "prioritize_g1_race": false,
-  "skill_point_cap": 500,
+  "skill_point_cap": 400,
+  "skill_purchase": "auto",
   "enable_skill_point_check": true,
   "min_support": 3,
   "do_race_when_bad_training": true,
@@ -154,7 +155,7 @@ You can edit your configuration in `config.json`
     "input_delay": 0.5,
     "connection_timeout": 10
   },
-  "debug_mode": true
+  "debug_mode": false
 }
 ```
 
@@ -178,8 +179,14 @@ You can edit your configuration in `config.json`
 - Useful for fan farming.
 
 `skill_point_cap` (integer) - 
-- Maximum skill points before the bot prompts you to spend them.
-- The bot will pause on race days and show a prompt if skill points exceed this cap.
+- Maximum skill points before the bot automatically purchases skills or prompts you to spend them.
+- The bot will pause on race days and either auto-purchase skills or show a prompt if skill points exceed this cap.
+
+`skill_purchase` (string) - **🆕 NEW**
+- Controls how skill points are handled when they exceed the cap.
+- **`"auto"`**: Automatically enters skill shop, purchases optimal skills, and returns to lobby
+- **`"manual"`**: Shows a prompt for manual skill purchasing
+- **Default**: `"auto"`
 
 `enable_skill_point_check` (boolean) - 
 - Enables/disables the skill point cap checking feature.
@@ -212,6 +219,43 @@ You can edit your configuration in `config.json`
 - `connection_timeout` (integer) - Maximum seconds to wait for ADB connection (default: 10)
 
 Make sure the values match exactly as expected, typos might cause errors.
+
+### 🆕 **Skill Configuration**
+
+The bot now includes a comprehensive skill management system controlled by `skills.json`:
+
+```json
+{
+    "skill_priority": [
+        "Professor of Curvature",
+        "Swinging Maestro",
+        "Rushing Gale!",
+        "Unrestrained",
+        "Killer Tunes"
+    ],
+    "gold_skill_upgrades": {
+        "Professor of Curvature": "Corner Adept",
+        "Swinging Maestro": "Corner Recovery",
+        "Rushing Gale!": "Straightaway Acceleration",
+        "Unrestrained": "Final Push",
+        "Killer Tunes": "Up-Tempo"
+    }
+}
+```
+
+#### Skill Priority Configuration
+
+`skill_priority` (array of strings)
+- **Order matters**: Skills listed first have higher priority
+- **Gold skills or normal skills only**: List the gold skill or normal skill (the one with no upgrade) names (e.g., "Professor of Curvature") unless you only want to buy the base skill.
+
+`gold_skill_upgrades` (object)
+- Maps base skill names to their gold upgrade versions
+- **Key**: Gold skill name (must match exactly with `skill_priority`)
+- **Value**: Base skill name 
+- The bot will purchase base skill if gold skill is not available
+
+**Example**:`** "Professor of Curvature": "Corner Adept"`
 
 ### Event Choice Configuration
 
@@ -324,7 +368,7 @@ The bot uses an improved training logic system:
 When `prioritize_g1_race` is enabled:
 - The bot will prioritize racing over training when G1 races are available
 - Automatically skips July and August (summer break) for racing
-- Checks skill points before race days and prompts if they exceed the cap
+- Auto Skill Management: Checks skill points before race days and either auto-purchases skills or prompts based on `skill_purchase` setting
 
 ### Troubleshooting
 
@@ -367,16 +411,14 @@ adb shell wm size  # Should show 1080x1920
 
 - Add Race Stragety option (right now the only option is manually changing it)
 - Do race that doesn't have trophy yet
-- Auto-purchase skills (Partially implemented with skill point management)
 - Improve Tesseract OCR accuracy for failure chance detection
 - Add consecutive races limit
 - Add auto retry for failed races
 - Add fans tracking/goal for Senior year (Valentine day, Fan Fest and Holiday Season)
 - Add option to do race in Summer (July - August)
-- ~Add better event options handling~
-- ~Automate Claw Machine event~
-
-
+- ~~Add better event options handling~~
+- ~~Automate Claw Machine event~~
+- ~~Auto-purchase skills~~
 
 ### Contribute
 
