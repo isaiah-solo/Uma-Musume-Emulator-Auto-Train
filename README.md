@@ -188,6 +188,12 @@ You can edit your configuration in `config.json`
 - **`"manual"`**: Shows a prompt for manual skill purchasing
 - **Default**: `"auto"`
 
+`skill_file` (string) - **🆕 NEW**
+- Specifies which skill configuration file to use for auto skill purchase.
+- **Default**: `"skills.json"`
+- **Example**: `"skills_speed_focus.json"` for a speed-focused build
+- **Multiple templates**: Create different skill files for different builds and switch between them
+
 `enable_skill_point_check` (boolean) - 
 - Enables/disables the skill point cap checking feature.
 
@@ -256,6 +262,83 @@ The bot now includes a comprehensive skill management system controlled by `skil
 - The bot will purchase base skill if gold skill is not available
 
 **Example**:`** "Professor of Curvature": "Corner Adept"`
+
+### 🆕 **Multiple Skill File Templates**
+
+The bot now supports multiple skill configuration files, allowing you to create different skill builds and switch between them easily:
+
+#### Creating Skill Templates
+
+1. **Create different skill files** with descriptive names:
+   - `skills_speed_focus.json` - Speed-focused build
+   - `skills_balanced.json` - Balanced skill distribution
+   - `skills_gold_priority.json` - Gold skill priority build
+
+2. **Switch between templates** by changing the `skill_file` setting in `config.json`:
+   ```json
+   {
+     "skill_file": "skills_speed_focus.json"
+   }
+   ```
+
+#### Example Skill Templates
+
+**Speed-Focused Build** (`skills_speed_focus.json`):
+```json
+{
+    "skill_priority": [
+        "Professor of Curvature",
+        "Swinging Maestro",
+        "Rushing Gale!",
+        "Unrestrained",
+        "Killer Tunes"
+    ],
+    "gold_skill_upgrades": {
+        "Professor of Curvature": "Corner Adept",
+        "Swinging Maestro": "Corner Recovery",
+        "Rushing Gale!": "Straightaway Acceleration",
+        "Unrestrained": "Final Push",
+        "Killer Tunes": "Up-Tempo"
+    }
+}
+```
+
+**Balanced Build** (`skills_balanced.json`):
+```json
+{
+    "skill_priority": [
+        "Rushing Gale!",
+        "Unrestrained",
+        "Professor of Curvature",
+        "Swinging Maestro",
+        "Killer Tunes"
+    ],
+    "gold_skill_upgrades": {
+        "Professor of Curvature": "Corner Adept",
+        "Swinging Maestro": "Corner Recovery",
+        "Rushing Gale!": "Straightaway Acceleration",
+        "Unrestrained": "Final Push",
+        "Killer Tunes": "Up-Tempo"
+    }
+}
+```
+
+#### Benefits of Multiple Templates
+
+- **Build Variety**: Create different skill builds for different Uma types
+- **Easy Switching**: Change builds by editing one line in `config.json`
+- **Template Sharing**: Share skill builds with other players
+- **Testing**: Try different skill priorities without losing your main configuration
+
+#### Testing Your Templates
+
+Run the test script to create and test multiple skill templates:
+```bash
+python test_multiple_skill_files.py
+```
+
+This will create sample templates and show you how to use them in your configuration.
+
 
 ### Event Choice Configuration
 
@@ -411,6 +494,7 @@ adb shell wm size  # Should show 1080x1920
 
 - Add Race Stragety option (right now the only option is manually changing it)
 - Do race that doesn't have trophy yet
+- ~~Multiple skill file templates~~ ✅ **COMPLETED**
 - Improve Tesseract OCR accuracy for failure chance detection
 - Add consecutive races limit
 - Add auto retry for failed races

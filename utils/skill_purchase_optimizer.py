@@ -15,16 +15,32 @@ def debug_print(message):
     if DEBUG_MODE:
         print(message)
 
-def load_skill_config(config_path="skills.json"):
+def load_skill_config(config_path=None):
     """
     Load skill configuration from JSON file.
+    
+    Args:
+        config_path: Path to skills config file. If None, loads from config.json's skill_file setting.
     
     Returns:
         dict: Configuration with skill_priority and gold_skill_upgrades
     """
+    # If no config_path provided, try to load from config.json
+    if config_path is None:
+        try:
+            with open("config.json", 'r', encoding='utf-8') as f:
+                main_config = json.load(f)
+                config_path = main_config.get("skill_file", "skills.json")
+                debug_print(f"[DEBUG] Loading skills from config file: {config_path}")
+        except Exception as e:
+            debug_print(f"[DEBUG] Could not read config.json, using default skills.json: {e}")
+            config_path = "skills.json"
+    
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            config = json.load(f)
+            debug_print(f"[DEBUG] Successfully loaded skills config from: {config_path}")
+            return config
     except FileNotFoundError:
         print(f"[ERROR] {config_path} not found. Creating default config")
         default_config = {

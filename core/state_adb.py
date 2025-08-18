@@ -488,7 +488,9 @@ def check_skill_points_cap():
                 print(f"[INFO] Detected available skill points: {available_points}")
 
                 # Build purchase plan from config priorities
-                cfg = load_skill_config()
+                skill_file = config.get("skill_file", "skills.json")
+                print(f"[INFO] Loading skills from: {skill_file}")
+                cfg = load_skill_config(skill_file)
                 purchase_plan = create_purchase_plan(all_skills, cfg)
                 if not purchase_plan:
                     print("[INFO] No skills from priority list are currently available")
