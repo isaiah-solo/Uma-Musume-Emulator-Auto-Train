@@ -1066,10 +1066,25 @@ def race_prep():
 def after_race():
     """Handle post-race actions"""
     debug_print("[DEBUG] Handling post-race actions...")
-    # Click next buttons using template matching
-    click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+    
+    # Try to click first next button with fallback mechanism
+    if not click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10):
+        debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
+        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+        time.sleep(1)
+        debug_print("[DEBUG] Retrying next button search after screen tap...")
+        click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+    
     time.sleep(4)
-    click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
+    
+    # Try to click second next button with fallback mechanism
+    if not click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10):
+        debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
+        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+        time.sleep(1)
+        debug_print("[DEBUG] Retrying next2 button search after screen tap...")
+        click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
+    
     debug_print("[DEBUG] Post-race actions complete")
 
 def career_lobby():
@@ -1263,7 +1278,7 @@ def career_lobby():
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
-            if click("assets/buttons/races_btn.png", minSearch=10):
+            if click("assets/buttons/race_ura.png", minSearch=10):
                 time.sleep(0.5)
                 # Click race button 2 times after entering race menu
                 for i in range(2):
