@@ -157,6 +157,50 @@ def create_purchase_plan(available_skills, config):
     
     return purchase_plan
 
+def filter_affordable_skills(purchase_plan, available_points):
+    """
+    Filter purchase plan to only include skills that can be afforded.
+    
+    Args:
+        purchase_plan: List of skills to purchase
+        available_points: Available skill points
+    
+    Returns:
+        tuple: (affordable_skills, total_cost, remaining_points)
+    """
+    affordable_skills = []
+    total_cost = 0
+    
+    print(f"\n[INFO] Filtering skills by available points ({available_points})")
+    print("=" * 60)
+    
+    for skill in purchase_plan:
+        try:
+            skill_cost = int(skill['price']) if skill['price'].isdigit() else 0
+            
+            if total_cost + skill_cost <= available_points:
+                affordable_skills.append(skill)
+                total_cost += skill_cost
+                remaining_points = available_points - total_cost
+                print(f"✅ {skill['name']:<30} | Cost: {skill_cost:<4} | Remaining: {remaining_points}")
+            else:
+                needed_points = skill_cost - (available_points - total_cost)
+                print(f"❌ {skill['name']:<30} | Cost: {skill_cost:<4} | Need {needed_points} more points")
+                
+        except ValueError:
+            print(f"⚠️  {skill['name']:<30} | Invalid price: {skill['price']}")
+    
+    remaining_points = available_points - total_cost
+    
+    print("=" * 60)
+    print(f"[INFO] Budget Summary:")
+    print(f"   Available points: {available_points}")
+    print(f"   Total cost: {total_cost}")
+    print(f"   Remaining points: {remaining_points}")
+    print(f"   Affordable skills: {len(affordable_skills)}/{len(purchase_plan)}")
+    
+    return affordable_skills, total_cost, remaining_points
+
 def calculate_total_cost(purchase_plan):
     """Calculate total skill points needed for purchase plan."""
     total = sum(int(skill['price']) for skill in purchase_plan if skill['price'].isdigit())

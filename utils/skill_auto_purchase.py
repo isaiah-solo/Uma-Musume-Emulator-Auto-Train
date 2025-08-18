@@ -18,6 +18,105 @@ def debug_print(message):
     if DEBUG_MODE:
         print(message)
 
+def extract_skill_points(screenshot=None):
+    """
+    Extract available skill points from the screen using OCR with enhanced preprocessing.
+    
+    Args:
+        screenshot: PIL Image (optional, will take new screenshot if not provided)
+    
+    Returns:
+        int: Available skill points, or 0 if extraction fails
+    """
+    try:
+        if screenshot is None:
+            from utils.adb_screenshot import take_screenshot
+            screenshot = take_screenshot()
+        
+        # Skill points region: 825, 605, 936, 656 (width: 111, height: 51)
+        skill_points_region = (825, 605, 936, 656)
+        
+        # Crop the skill points region
+        points_crop = screenshot.crop(skill_points_region)
+        
+        # Save original debug image
+        points_crop.save("debug_skill_points.png")
+        debug_print("[DEBUG] Saved skill points debug image: debug_skill_points.png")
+        
+        # Optimized OCR - precise region makes simple approach work perfectly
+        import pytesseract
+        skill_points_raw = pytesseract.image_to_string(points_crop, lang='eng').strip()
+        debug_print(f"[DEBUG] OCR result: '{skill_points_raw}'")
+        
+        # Fallback with digits-only if simple OCR fails (rare with current precision)
+        if not skill_points_raw:
+            debug_print("[DEBUG] Fallback: Using enhanced OCR with digits-only filter")
+            enhanced_crop = enhance_image_for_ocr(points_crop)
+            skill_points_raw = pytesseract.image_to_string(enhanced_crop, config='--psm 8 -c tessedit_char_whitelist=0123456789').strip()
+            debug_print(f"[DEBUG] Fallback result: '{skill_points_raw}'")
+        
+        # Clean and extract numbers
+        skill_points = clean_skill_points(skill_points_raw)
+        print(f"[INFO] Available skill points: {skill_points}")
+        
+        return skill_points
+        
+    except Exception as e:
+        print(f"[ERROR] Error extracting skill points: {e}")
+        return 0
+
+def clean_skill_points(text):
+    """
+    Clean and extract skill points from OCR text.
+    
+    Args:
+        text: Raw OCR text
+    
+    Returns:
+        int: Extracted skill points
+    """
+    if not text:
+        return 0
+    
+    import re
+    # Remove extra whitespace and newlines
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Extract all numbers
+    numbers = re.findall(r'\d+', text)
+    
+    if numbers:
+        # Return the largest number found (skill points are usually the biggest number)
+        skill_points = max(int(num) for num in numbers)
+        return skill_points
+    
+    return 0
+
+def enhance_image_for_ocr(image):
+    """
+    Simple image enhancement for OCR fallback (rarely needed with precise region).
+    
+    Args:
+        image: PIL Image
+    
+    Returns:
+        PIL Image: Enhanced image
+    """
+    try:
+        from PIL import ImageEnhance
+        # Convert to grayscale and resize for better OCR
+        if image.mode != 'L':
+            image = image.convert('L')
+        
+        width, height = image.size
+        image = image.resize((width * 3, height * 3), Image.LANCZOS)
+        
+        return image
+        
+    except Exception as e:
+        print(f"Error enhancing image: {e}")
+        return image
+
 def click_skill_up_button(x, y):
     """
     Click on a skill_up button at the specified coordinates.
@@ -295,11 +394,6 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             print(f"\n[INFO] Purchased skills:")
             for skill in purchased_skills:
                 print(f"   • {skill['name']} - {skill['price']} points")
-            print(f"\n[INFO] Button sequence executed:")
-            print(f"   1. Skill_up buttons clicked")
-            print(f"   2. Confirm button clicked (10 attempts max)")
-            print(f"   3. Learn button clicked (10 attempts max)")
-            print(f"   4. Close button clicked (10 attempts max, 2s wait)")
         
         if failed_skills:
             print(f"\n[WARNING] Failed to purchase:")

@@ -138,6 +138,7 @@ You can edit your configuration in `config.json`
   "prioritize_g1_race": false,
   "skill_point_cap": 400,
   "skill_purchase": "auto",
+  "skill_file": "skills.json",
   "enable_skill_point_check": true,
   "min_support": 3,
   "do_race_when_bad_training": true,
@@ -269,77 +270,21 @@ The bot now supports multiple skill configuration files, allowing you to create 
 
 #### Creating Skill Templates
 
-1. **Create different skill files** with descriptive names:
-   - `skills_speed_focus.json` - Speed-focused build
-   - `skills_balanced.json` - Balanced skill distribution
-   - `skills_gold_priority.json` - Gold skill priority build
+1. **Create different skill files** with descriptive names (Example: `skills_Oguri.json` )
 
 2. **Switch between templates** by changing the `skill_file` setting in `config.json`:
    ```json
    {
-     "skill_file": "skills_speed_focus.json"
+     "skill_file": "skills_Oguri.json"
    }
    ```
 
-#### Example Skill Templates
-
-**Speed-Focused Build** (`skills_speed_focus.json`):
-```json
-{
-    "skill_priority": [
-        "Professor of Curvature",
-        "Swinging Maestro",
-        "Rushing Gale!",
-        "Unrestrained",
-        "Killer Tunes"
-    ],
-    "gold_skill_upgrades": {
-        "Professor of Curvature": "Corner Adept",
-        "Swinging Maestro": "Corner Recovery",
-        "Rushing Gale!": "Straightaway Acceleration",
-        "Unrestrained": "Final Push",
-        "Killer Tunes": "Up-Tempo"
-    }
-}
-```
-
-**Balanced Build** (`skills_balanced.json`):
-```json
-{
-    "skill_priority": [
-        "Rushing Gale!",
-        "Unrestrained",
-        "Professor of Curvature",
-        "Swinging Maestro",
-        "Killer Tunes"
-    ],
-    "gold_skill_upgrades": {
-        "Professor of Curvature": "Corner Adept",
-        "Swinging Maestro": "Corner Recovery",
-        "Rushing Gale!": "Straightaway Acceleration",
-        "Unrestrained": "Final Push",
-        "Killer Tunes": "Up-Tempo"
-    }
-}
-```
-
 #### Benefits of Multiple Templates
 
-- **Build Variety**: Create different skill builds for different Uma types
+- **Build Variety**: Create different skill builds for different Uma
 - **Easy Switching**: Change builds by editing one line in `config.json`
 - **Template Sharing**: Share skill builds with other players
 - **Testing**: Try different skill priorities without losing your main configuration
-
-#### Testing Your Templates
-
-Run the test script to create and test multiple skill templates:
-```bash
-python test_multiple_skill_files.py
-```
-
-This will create sample templates and show you how to use them in your configuration.
-
-
 ### Event Choice Configuration
 
 The bot now includes intelligent event choice selection. You can configure which choices are considered "good" or "bad" in `event_priority.json`:
@@ -494,7 +439,7 @@ adb shell wm size  # Should show 1080x1920
 
 - Add Race Stragety option (right now the only option is manually changing it)
 - Do race that doesn't have trophy yet
-- ~~Multiple skill file templates~~ ✅ **COMPLETED**
+- ~~Multiple skill file templates~~
 - Improve Tesseract OCR accuracy for failure chance detection
 - Add consecutive races limit
 - Add auto retry for failed races

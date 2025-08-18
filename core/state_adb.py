@@ -6,10 +6,9 @@ from PIL import Image, ImageEnhance
 from utils.adb_screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
 from core.ocr import extract_text, extract_number, extract_turn_number, extract_mood_text, extract_failure_text, extract_failure_text_with_confidence
 from utils.adb_recognizer import match_template
-from utils.skill_auto_purchase import execute_skill_purchases, click_image_button
+from utils.skill_auto_purchase import execute_skill_purchases, click_image_button, extract_skill_points
 from utils.skill_recognizer import scan_all_skills_with_scroll
-from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan
-from test_integrated_skill_purchase import extract_skill_points, filter_affordable_skills
+from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
 
 from utils.constants_phone import (
     SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, FAILURE_REGION, YEAR_REGION, 
