@@ -235,8 +235,8 @@ def clean_skill_name(text):
     if text.lower() in ['umastan', 'uma stan', 'umestan']:
         text = 'Uma Stan'
     
-    # Capitalize properly
-    text = text.title()
+    # Keep original capitalization (don't force title case)
+    # This preserves natural capitalization like "Professor of Curvature"
     
     return text if text else "Unknown Skill"
 
@@ -706,29 +706,34 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
                 break
             
             current_skills = result.get('skills', [])
+            new_skills_found = 0
+            
             if not current_skills:
                 print("  No skills found on this screen")
-                break
-            
-            # Check for duplicates and add new skills
-            new_skills_found = 0
-            for skill in current_skills:
-                skill_name = skill['name']
-                
-                if skill_name in seen_skill_names:
-                    print(f"  🔄 Duplicate found: '{skill_name}' - end of list reached")
-                    duplicate_found = skill_name
-                    print(f"  🛑 Stopping scan - we've looped back to already seen skills")
+                # Don't break here - continue scrolling to find skills
+                # Only break if we've tried several empty screens in a row
+                if scrolls_performed >= 3 and len(all_skills) == 0:
+                    print("  🛑 No skills found after 3 scrolls - may not be on skill screen")
                     break
-                else:
-                    seen_skill_names.add(skill_name)
-                    all_skills.append(skill)
-                    new_skills_found += 1
-                    print(f"  ✅ {len(all_skills)}. {skill_name} - {skill['price']}")
-            
-            # Stop if duplicate found
-            if duplicate_found:
-                break
+            else:
+                # Check for duplicates and add new skills
+                for skill in current_skills:
+                    skill_name = skill['name']
+                    
+                    if skill_name in seen_skill_names:
+                        print(f"  🔄 Duplicate found: '{skill_name}' - end of list reached")
+                        duplicate_found = skill_name
+                        print(f"  🛑 Stopping scan - we've looped back to already seen skills")
+                        break
+                    else:
+                        seen_skill_names.add(skill_name)
+                        all_skills.append(skill)
+                        new_skills_found += 1
+                        print(f"  ✅ {len(all_skills)}. {skill_name} - {skill['price']}")
+                
+                # Stop if duplicate found
+                if duplicate_found:
+                    break
             
             print(f"  📊 Found {new_skills_found} new skills (Total: {len(all_skills)})")
             

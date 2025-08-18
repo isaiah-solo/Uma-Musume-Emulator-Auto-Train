@@ -1,0 +1,14 @@
+{
+    "skill_priority": [
+        "Professor of Curvature",
+        "Swinging Maestro",
+        "Pressure",
+        "Lay Low",
+        "After-School Stroll"
+    ],
+    "gold_skill_upgrades": {
+        "The Coast Is Clear!": "I Can See Right Through You",
+        "Professor of Curvature": "Corner Adept",
+        "Swinging Maestro": "Corner Recovery"
+    }
+}
