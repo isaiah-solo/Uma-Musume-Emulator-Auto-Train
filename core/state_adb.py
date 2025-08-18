@@ -227,6 +227,58 @@ def check_failure(train_type):
     debug_print(f"[DEBUG] No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
     return (100, 0.0)  # 100% failure rate when detection completely fails (prevents choosing unknown training)
 
+def fuzzy_match_mood(text):
+    """
+    Perform fuzzy matching for mood detection using pattern-based approach.
+    
+    Args:
+        text (str): The OCR text to match (should be uppercase)
+    
+    Returns:
+        str: The matched mood or "UNKNOWN" if no match found
+    """
+    # First, try exact match
+    if text in MOOD_LIST:
+        return text
+    
+    # Clean common OCR errors
+    cleaned_text = text.replace('0', 'O').replace('1', 'I').replace('5', 'S')
+    
+    # Fuzzy pattern matching with priority order (most restrictive first)
+    # AWFUL patterns - check first since it's most likely to be misread
+    if any(pattern in cleaned_text for pattern in ['AWF', 'AWFUL', 'AWFU', 'VAWF', 'WAWF']):
+        debug_print(f"[DEBUG] AWFUL pattern match in: '{text}'")
+        return "AWFUL"
+    
+    # GREAT patterns - check before GOOD to avoid conflicts
+    if any(pattern in cleaned_text for pattern in ['GREAT', 'GREA', 'REAT', 'EA']):
+        debug_print(f"[DEBUG] GREAT pattern match in: '{text}'")
+        return "GREAT"
+    
+    # GOOD patterns
+    if any(pattern in cleaned_text for pattern in ['GOOD', 'GOO', 'OOD', 'OO']):
+        debug_print(f"[DEBUG] GOOD pattern match in: '{text}'")
+        return "GOOD"
+    
+    # NORMAL patterns
+    if any(pattern in cleaned_text for pattern in ['NORMAL', 'NORMA', 'ORMA', 'RMAL']):
+        debug_print(f"[DEBUG] NORMAL pattern match in: '{text}'")
+        return "NORMAL"
+    
+    # BAD patterns - check last since it's short and might false positive
+    if any(pattern in cleaned_text for pattern in ['BAD']) and 'AWF' not in cleaned_text:
+        debug_print(f"[DEBUG] BAD pattern match in: '{text}'")
+        return "BAD"
+    
+    # Final fallback: check for partial substring matches
+    for mood in MOOD_LIST:
+        if mood in cleaned_text:
+            debug_print(f"[DEBUG] Substring match: '{mood}' in '{text}'")
+            return mood
+    
+    debug_print(f"[DEBUG] No fuzzy match found for: '{text}'")
+    return "UNKNOWN"
+
 def check_mood():
     # Try up to 3 times to detect mood
     max_attempts = 3
@@ -235,31 +287,14 @@ def check_mood():
         mood_img = enhanced_screenshot(MOOD_REGION)
         mood_text = extract_mood_text(mood_img)
         
-        # Apply character replacements to fix common OCR errors
-        mood_text_corrected = mood_text.upper()
-        # Fix AWFUL misreads
-        mood_text_corrected = mood_text_corrected.replace('VAWFUD', 'AWFUL')
-        mood_text_corrected = mood_text_corrected.replace('WAWFUD', 'AWFUL')
-        mood_text_corrected = mood_text_corrected.replace('VAWFUL', 'AWFUL')
-        mood_text_corrected = mood_text_corrected.replace('AWFUD', 'AWFUL')
-        mood_text_corrected = mood_text_corrected.replace('AWFUI', 'AWFUL')
-        # Fix other common OCR errors
-        mood_text_corrected = mood_text_corrected.replace('0', 'O')
-        mood_text_corrected = mood_text_corrected.replace('1', 'I')
+        # Apply fuzzy matching for mood detection
+        mood_text_upper = mood_text.upper()
+        detected_mood = fuzzy_match_mood(mood_text_upper)
         
-        # Check if corrected mood is recognized (exact match)
-        if mood_text_corrected in MOOD_LIST:
-            if mood_text != mood_text_corrected:
-                debug_print(f"[DEBUG] OCR correction: '{mood_text}' -> '{mood_text_corrected}'")
-            return mood_text_corrected
-        
-        # Check for partial matches (e.g., "TIGREAT" contains "GREAT")
-        for mood in MOOD_LIST:
-            if mood in mood_text_corrected:
-                if mood_text != mood_text_corrected:
-                    debug_print(f"[DEBUG] OCR correction: '{mood_text}' -> '{mood_text_corrected}'")
-                debug_print(f"[DEBUG] Partial match found: '{mood}' in '{mood_text_corrected}'")
-                return mood
+        if detected_mood != "UNKNOWN":
+            if mood_text != detected_mood:
+                debug_print(f"[DEBUG] Fuzzy mood match: '{mood_text}' -> '{detected_mood}'")
+            return detected_mood
         
         print(f"[WARNING] Mood not recognized on attempt {attempt}/{max_attempts}: {mood_text}")
         
@@ -375,9 +410,29 @@ def check_criteria():
 
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)
-    skill_text = extract_number(skill_img)
+    
+    # Apply sharpening for better OCR accuracy
+    sharpener = ImageEnhance.Sharpness(skill_img)
+    skill_img_sharp = sharpener.enhance(2.5)  # Increase sharpness by 2.5x
+    
+    # Save debug images for skill points OCR troubleshooting
+    skill_img.save("debug_skill_points_original.png")
+    skill_img_sharp.save("debug_skill_points_sharpened.png")
+    debug_print(f"[DEBUG] Saved original skill points image to debug_skill_points_original.png")
+    debug_print(f"[DEBUG] Saved sharpened skill points image to debug_skill_points_sharpened.png")
+    debug_print(f"[DEBUG] Skill points region: {SKILL_PTS_REGION}")
+    
+    # Use sharpened image for OCR
+    skill_text = extract_number(skill_img_sharp)
     digits = ''.join(filter(str.isdigit, skill_text))
-    return int(digits) if digits.isdigit() else 0
+    
+    debug_print(f"[DEBUG] Skill points OCR raw result: '{skill_text}'")
+    debug_print(f"[DEBUG] Extracted digits: '{digits}'")
+    
+    result = int(digits) if digits.isdigit() else 0
+    debug_print(f"[DEBUG] Final skill points value: {result}")
+    
+    return result
 
 def check_skill_points_cap():
     """Check skill points and handle cap logic (same as PC version)"""

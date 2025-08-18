@@ -1,10 +1,11 @@
 import time
 import json
 import os
+import random
 from PIL import ImageStat
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template
-from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up
+from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
     MOOD_LIST, EVENT_REGION, RACE_CARD_REGION
@@ -52,6 +53,33 @@ def is_infirmary_active_adb(button_location):
     except Exception as e:
         print(f"[ERROR] Failed to check infirmary button brightness: {e}")
         return False
+
+
+def claw_machine():
+    """Handle claw machine interaction"""
+    print("[INFO] Claw machine detected, starting interaction...")
+    
+    # Wait 2 seconds before interacting
+    time.sleep(2)
+    
+    # Find the claw button location
+    claw_location = locate_on_screen("assets/buttons/claw.png", confidence=0.8)
+    if not claw_location:
+        print("[WARNING] Claw button not found for interaction")
+        return False
+    
+    # Get center coordinates (locate_on_screen returns center coordinates)
+    center_x, center_y = claw_location
+    
+    # Generate random hold duration between 3-4 seconds (in milliseconds)
+    hold_duration = random.randint(1000, 3000)
+    print(f"[INFO] Holding claw button for {hold_duration}ms...")
+    
+    # Use ADB long press to hold the claw button
+    long_press(center_x, center_y, hold_duration)
+    
+    print("[INFO] Claw machine interaction completed")
+    return True
 
 
 def count_event_choices():
@@ -672,6 +700,9 @@ def is_racing_available(year):
     # No races in Pre-Debut
     if "Pre-Debut" in year:
         return False
+    # No races in Finale Season (final training period before URA)
+    if "Finale Season" in year:
+        return False
     year_parts = year.split(" ")
     # No races in July and August (summer break)
     if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
@@ -698,7 +729,8 @@ def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
 def go_to_training():
     """Go to training screen"""
     debug_print("[DEBUG] Going to training screen...")
-    return click("assets/buttons/training_btn.png")
+    time.sleep(1)
+    return click("assets/buttons/training_btn.png", minSearch=10)
 
 def check_training():
     """Check training results with support cards and failure rates using fixed coordinates"""
@@ -1034,10 +1066,25 @@ def race_prep():
 def after_race():
     """Handle post-race actions"""
     debug_print("[DEBUG] Handling post-race actions...")
-    # Click next buttons using template matching
-    click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+    
+    # Try to click first next button with fallback mechanism
+    if not click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10):
+        debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
+        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+        time.sleep(1)
+        debug_print("[DEBUG] Retrying next button search after screen tap...")
+        click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+    
     time.sleep(4)
-    click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
+    
+    # Try to click second next button with fallback mechanism
+    if not click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10):
+        debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
+        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+        time.sleep(1)
+        debug_print("[DEBUG] Retrying next2 button search after screen tap...")
+        click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
+    
     debug_print("[DEBUG] Post-race actions complete")
 
 def career_lobby():
@@ -1057,14 +1104,34 @@ def career_lobby():
     while True:
         debug_print("\n[DEBUG] ===== Starting new loop iteration =====")
         
-        # First check, event - use intelligent event handling (same as original PC version)
+        # Batch UI check - take one screenshot and check multiple elements
+        debug_print("[DEBUG] Performing batch UI element check...")
+        screenshot = take_screenshot()
+        
+        # Check claw machine first (highest priority)
+        debug_print("[DEBUG] Checking for claw machine...")
+        claw_matches = match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
+        if claw_matches:
+            claw_machine()
+            continue
+        
+        # Check OK button
+        debug_print("[DEBUG] Checking for OK button...")
+        ok_matches = match_template(screenshot, "assets/buttons/ok_btn.png", confidence=0.7)
+        if ok_matches:
+            x, y, w, h = ok_matches[0]
+            center = (x + w//2, y + h//2)
+            print("[INFO] OK button found, clicking it.")
+            tap(center[0], center[1])
+            continue
+        
+        # Check for events
         debug_print("[DEBUG] Checking for events...")
         try:
-            # Use the same logic as original PC version: detect event first, then analyze
             event_choice_region = (6, 450, 126, 1776)
-            event_icon = locate_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, "assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
             
-            if event_icon:
+            if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
                 choice_number, success, choice_locations = handle_event_choice()
                 if success:
@@ -1075,36 +1142,51 @@ def career_lobby():
                         continue
                     else:
                         print("[WARNING] Failed to click event choice, falling back to top choice")
-                        # Fallback to original method
-                        event_choice_region = (6, 450, 126, 1776)
-                        if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                            continue
+                        # Fallback using existing match
+                        x, y, w, h = event_matches[0]
+                        center = (x + w//2, y + h//2)
+                        tap(center[0], center[1])
+                        continue
                 else:
                     print("[WARNING] Event analysis failed, falling back to top choice")
-                    # Fallback to original method
-                    event_choice_region = (6, 450, 126, 1776)
-                    if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                        continue
+                    # Fallback using existing match
+                    x, y, w, h = event_matches[0]
+                    center = (x + w//2, y + h//2)
+                    tap(center[0], center[1])
+                    continue
             else:
                 debug_print("[DEBUG] No events found")
         except Exception as e:
-            print(f"[ERROR] Event handling error: {e}, falling back to original method")
-            # Fallback to original method
-            event_choice_region = (6, 450, 126, 1776)
-            if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                continue
+            print(f"[ERROR] Event handling error: {e}")
 
-        # Second check, inspiration
+        # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        if click("assets/buttons/inspiration_btn.png", confidence=0.5, minSearch=1, text="[INFO] Inspiration found."):
+        inspiration_matches = match_template(screenshot, "assets/buttons/inspiration_btn.png", confidence=0.5)
+        if inspiration_matches:
+            x, y, w, h = inspiration_matches[0]
+            center = (x + w//2, y + h//2)
+            print("[INFO] Inspiration found.")
+            tap(center[0], center[1])
             continue
 
+        # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        if click("assets/buttons/next_btn.png", minSearch=1):
+        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.8)
+        if next_matches:
+            x, y, w, h = next_matches[0]
+            center = (x + w//2, y + h//2)
+            debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
+            tap(center[0], center[1])
             continue
 
+        # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        if click("assets/buttons/cancel_btn.png", minSearch=1):
+        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.8)
+        if cancel_matches:
+            x, y, w, h = cancel_matches[0]
+            center = (x + w//2, y + h//2)
+            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
+            tap(center[0], center[1])
             continue
 
         # Check if current menu is in career lobby
@@ -1196,7 +1278,7 @@ def career_lobby():
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
-            if click("assets/buttons/races_btn.png", minSearch=10):
+            if click("assets/buttons/race_ura.png", minSearch=10):
                 time.sleep(0.5)
                 # Click race button 2 times after entering race menu
                 for i in range(2):
