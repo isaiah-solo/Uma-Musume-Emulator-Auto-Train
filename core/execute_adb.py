@@ -726,7 +726,8 @@ def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
 def go_to_training():
     """Go to training screen"""
     debug_print("[DEBUG] Going to training screen...")
-    return click("assets/buttons/training_btn.png")
+    time.sleep(1)
+    return click("assets/buttons/training_btn.png", minSearch=10)
 
 def check_training():
     """Check training results with support cards and failure rates using fixed coordinates"""
