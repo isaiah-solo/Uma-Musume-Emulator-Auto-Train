@@ -1,8 +1,22 @@
 import time
 import os
+import json
 from utils.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
 from utils.skill_purchase_optimizer import fuzzy_match_skill_name
 from utils.adb_screenshot import run_adb_command
+
+# Load config for debug mode
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    DEBUG_MODE = config.get("debug_mode", False)
+except:
+    DEBUG_MODE = False
+
+def debug_print(message):
+    """Print debug message only if DEBUG_MODE is enabled"""
+    if DEBUG_MODE:
+        print(message)
 
 def click_skill_up_button(x, y):
     """
@@ -18,13 +32,13 @@ def click_skill_up_button(x, y):
         click_command = ['shell', 'input', 'tap', str(x), str(y)]
         result = run_adb_command(click_command)
         if result is not None:
-            print(f"   👆 Clicked skill_up button at ({x}, {y})")
+            debug_print(f"[DEBUG] Clicked skill_up button at ({x}, {y})")
             return True
         else:
-            print(f"   ❌ Failed to click at ({x}, {y})")
+            print(f"[ERROR] Failed to click at ({x}, {y})")
             return False
     except Exception as e:
-        print(f"   ❌ Error clicking button: {e}")
+        print(f"[ERROR] Error clicking button: {e}")
         return False
 
 def click_image_button(image_path, description="button", max_attempts=10, wait_between_attempts=0.5):
@@ -45,16 +59,16 @@ def click_image_button(image_path, description="button", max_attempts=10, wait_b
         import numpy as np
         
         if not os.path.exists(image_path):
-            print(f"   ❌ {description} template not found: {image_path}")
+            print(f"[ERROR] {description} template not found: {image_path}")
             return False
         
         # Load template once
         template = cv2.imread(image_path, cv2.IMREAD_COLOR)
         if template is None:
-            print(f"   ❌ Failed to load {description} template: {image_path}")
+            print(f"[ERROR] Failed to load {description} template: {image_path}")
             return False
         
-        print(f"   🔍 Looking for {description} (max {max_attempts} attempts)...")
+        debug_print(f"[DEBUG] Looking for {description} (max {max_attempts} attempts)")
         
         for attempt in range(max_attempts):
             try:
@@ -77,44 +91,44 @@ def click_image_button(image_path, description="button", max_attempts=10, wait_b
                     # Click the button
                     success = click_skill_up_button(center_x, center_y)
                     if success:
-                        print(f"   ✅ {description} clicked successfully (attempt {attempt + 1})")
+                        print(f"[INFO] {description} clicked successfully (attempt {attempt + 1})")
                         return True
                     else:
-                        print(f"   ❌ Failed to click {description} (attempt {attempt + 1})")
+                        print(f"[ERROR] Failed to click {description} (attempt {attempt + 1})")
                 else:
-                    print(f"   🔍 {description} not found (attempt {attempt + 1}/{max_attempts}, confidence: {max_val:.3f})")
+                    debug_print(f"[DEBUG] {description} not found (attempt {attempt + 1}/{max_attempts}, confidence: {max_val:.3f})")
                 
                 # Wait before next attempt (except on last attempt)
                 if attempt < max_attempts - 1:
                     time.sleep(wait_between_attempts)
                     
             except Exception as e:
-                print(f"   ⚠️  Error in attempt {attempt + 1}: {e}")
+                print(f"[WARNING] Error in attempt {attempt + 1}: {e}")
                 if attempt < max_attempts - 1:
                     time.sleep(wait_between_attempts)
         
-        print(f"   ❌ {description} not found after {max_attempts} attempts")
+        print(f"[ERROR] {description} not found after {max_attempts} attempts")
         return False
             
     except Exception as e:
-        print(f"   ❌ Error finding {description}: {e}")
+        print(f"[ERROR] Error finding {description}: {e}")
         return False
 
 def fast_swipe_to_top():
     """
     Perform fast swipes to get to the top of the skill list.
     """
-    print("🚀 Fast scrolling to top of skill list...")
+    print("[INFO] Fast scrolling to top of skill list")
     
-    for i in range(3):
-        print(f"   📱 Fast swipe {i+1}/3")
-        success = perform_swipe(504, 1400, 504, 800, duration=300)  # Fast swipe UP (start low, end high)
+    for i in range(8):
+        debug_print(f"[DEBUG] Fast swipe {i+1}/8")
+        success = perform_swipe(504, 800, 504, 1400, duration=300)  # Swipe DOWN on screen to scroll UP in list
         if success:
             time.sleep(0.3)  # Short wait between fast swipes
         else:
-            print(f"   ⚠️  Fast swipe {i+1} failed")
+            print(f"[WARNING] Fast swipe {i+1} failed")
     
-    print("   ⏱️  Waiting for UI to settle...")
+    debug_print("[DEBUG] Waiting for UI to settle")
     time.sleep(1.5)  # Reduced wait time
 
 def execute_skill_purchases(purchase_plan, max_scrolls=20):
@@ -133,11 +147,11 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             'scrolls_performed': int
         }
     """
-    print("🛒 EXECUTING AUTOMATED SKILL PURCHASES")
+    print("[INFO] EXECUTING AUTOMATED SKILL PURCHASES")
     print("=" * 60)
     
     if not purchase_plan:
-        print("❌ No skills to purchase!")
+        print("[ERROR] No skills to purchase!")
         return {
             'success': False,
             'purchased_skills': [],
@@ -146,7 +160,7 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             'error': 'No skills in purchase plan'
         }
     
-    print(f"📋 Skills to purchase: {len(purchase_plan)}")
+    print(f"[INFO] Skills to purchase: {len(purchase_plan)}")
     for i, skill in enumerate(purchase_plan, 1):
         print(f"   {i}. {skill['name']} - {skill['price']} points")
     print()
@@ -161,12 +175,12 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
         fast_swipe_to_top()
         
         # Step 2: Scroll down slowly to find and purchase skills
-        print("🔍 Searching for skills to purchase...")
+        print("[INFO] Searching for skills to purchase")
         
         while remaining_skills and scrolls_performed < max_scrolls:
             scrolls_performed += 1
-            print(f"\n📄 Scroll {scrolls_performed}/{max_scrolls}")
-            print(f"   Looking for: {[s['name'] for s in remaining_skills]}")
+            print(f"\n[INFO] Scroll {scrolls_performed}/{max_scrolls}")
+            debug_print(f"[DEBUG] Looking for: {[s['name'] for s in remaining_skills]}")
             
             # Scan current screen for available skills
             result = recognize_skill_up_locations(
@@ -178,14 +192,14 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             )
             
             if 'error' in result:
-                print(f"   ❌ Error during skill detection: {result['error']}")
+                print(f"[ERROR] Error during skill detection: {result['error']}")
                 break
             
             current_skills = result.get('skills', [])
             if not current_skills:
-                print("   No skills found on this screen")
+                debug_print("[DEBUG] No skills found on this screen")
             else:
-                print(f"   Found {len(current_skills)} available skills on screen")
+                debug_print(f"[DEBUG] Found {len(current_skills)} available skills on screen")
                 
                 # Check if any of our target skills are on this screen
                 skills_found_on_screen = []
@@ -198,7 +212,7 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
                                 'target': target_skill,
                                 'screen': screen_skill
                             })
-                            print(f"   🎯 Found target skill: {screen_skill['name']} (matches {target_skill['name']})")
+                            print(f"[INFO] Found target skill: {screen_skill['name']} (matches {target_skill['name']})")
                             break
                 
                 # Purchase found skills
@@ -211,18 +225,18 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
                     button_center_x = x + w // 2
                     button_center_y = y + h // 2
                     
-                    print(f"   🛒 Purchasing: {screen_skill['name']}")
+                    print(f"[INFO] Purchasing: {screen_skill['name']}")
                     
                     # Click the skill_up button
                     if click_skill_up_button(button_center_x, button_center_y):
                         purchased_skills.append(target_skill)
                         remaining_skills.remove(target_skill)
-                        print(f"   ✅ Successfully purchased: {screen_skill['name']}")
+                        print(f"[INFO] Successfully purchased: {screen_skill['name']}")
                         
                         # Short wait after purchase
                         time.sleep(1)
                     else:
-                        print(f"   ❌ Failed to purchase: {screen_skill['name']}")
+                        print(f"[ERROR] Failed to purchase: {screen_skill['name']}")
                 
                 # If we found and purchased skills, wait a bit longer
                 if skills_found_on_screen:
@@ -230,65 +244,65 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             
             # Continue scrolling if we haven't found all skills
             if remaining_skills and scrolls_performed < max_scrolls:
-                print("   📱 Scrolling down to find more skills...")
+                debug_print("[DEBUG] Scrolling down to find more skills")
                 success = perform_swipe(504, 1492, 504, 926, duration=1000)  # Slow scroll like recognizer
                 if not success:
-                    print("   ❌ Failed to scroll, stopping search")
+                    print("[ERROR] Failed to scroll, stopping search")
                     break
                 
                 time.sleep(1.5)  # Wait for scroll animation
         
         # Step 3: Click confirm button
         if purchased_skills:
-            print(f"\n🎯 Purchased {len(purchased_skills)} skills, looking for confirm button...")
+            print(f"\n[INFO] Purchased {len(purchased_skills)} skills, looking for confirm button")
             
             confirm_success = click_image_button("assets/buttons/confirm.png", "confirm button", max_attempts=10)
             if confirm_success:
-                print("   ⏱️  Waiting for confirmation...")
+                debug_print("[DEBUG] Waiting for confirmation")
                 time.sleep(2)  # Reduced wait time
                 
                 # Step 4: Click learn button
-                print("   🎓 Looking for learn button...")
+                debug_print("[DEBUG] Looking for learn button")
                 learn_success = click_image_button("assets/buttons/learn.png", "learn button", max_attempts=10)
                 if learn_success:
-                    print("   ⏱️  Waiting for learning to complete...")
+                    debug_print("[DEBUG] Waiting for learning to complete")
                     time.sleep(1.5)  # Reduced wait time
                     
                     # Step 5: Click close button (wait before it appears)
-                    print("   🚪 Waiting for close button to appear...")
+                    debug_print("[DEBUG] Waiting for close button to appear")
                     time.sleep(1.5)  # Reduced wait time
                     close_success = click_image_button("assets/buttons/close.png", "close button", max_attempts=10)
                     if close_success:
-                        print("   ✅ Skill purchase sequence completed successfully!")
+                        print("[INFO] Skill purchase sequence completed successfully")
                     else:
-                        print("   ⚠️  Close button not found - manual intervention may be needed")
+                        print("[WARNING] Close button not found - manual intervention may be needed")
                 else:
-                    print("   ⚠️  Learn button not found or failed to click")
+                    print("[WARNING] Learn button not found or failed to click")
             else:
-                print("   ⚠️  Confirm button not found or failed to click")
+                print("[WARNING] Confirm button not found or failed to click")
         
         # Add any remaining skills to failed list
         failed_skills.extend(remaining_skills)
         
         # Summary
         print(f"\n" + "=" * 60)
-        print(f"🎉 PURCHASE EXECUTION COMPLETE!")
-        print(f"   ✅ Successfully purchased: {len(purchased_skills)} skills")
-        print(f"   ❌ Failed to find/purchase: {len(failed_skills)} skills")
-        print(f"   📱 Scrolls performed: {scrolls_performed}")
+        print(f"[INFO] PURCHASE EXECUTION COMPLETE")
+        print(f"   Successfully purchased: {len(purchased_skills)} skills")
+        print(f"   Failed to find/purchase: {len(failed_skills)} skills")
+        print(f"   Scrolls performed: {scrolls_performed}")
         
         if purchased_skills:
-            print(f"\n✅ Purchased skills:")
+            print(f"\n[INFO] Purchased skills:")
             for skill in purchased_skills:
                 print(f"   • {skill['name']} - {skill['price']} points")
-            print(f"\n🔄 Button sequence executed:")
-            print(f"   1. ✅ Skill_up buttons clicked")
-            print(f"   2. ✅ Confirm button clicked (10 attempts max)")
-            print(f"   3. ✅ Learn button clicked (10 attempts max)")
-            print(f"   4. ✅ Close button clicked (10 attempts max, 2s wait)")
+            print(f"\n[INFO] Button sequence executed:")
+            print(f"   1. Skill_up buttons clicked")
+            print(f"   2. Confirm button clicked (10 attempts max)")
+            print(f"   3. Learn button clicked (10 attempts max)")
+            print(f"   4. Close button clicked (10 attempts max, 2s wait)")
         
         if failed_skills:
-            print(f"\n❌ Failed to purchase:")
+            print(f"\n[WARNING] Failed to purchase:")
             for skill in failed_skills:
                 print(f"   • {skill['name']} - {skill['price']} points")
         
@@ -300,7 +314,7 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
         }
         
     except Exception as e:
-        print(f"❌ Error during skill purchase execution: {e}")
+        print(f"[ERROR] Error during skill purchase execution: {e}")
         import traceback
         traceback.print_exc()
         
@@ -316,9 +330,9 @@ def test_skill_auto_purchase():
     """
     Test function for the automated skill purchase system.
     """
-    print("🧪 TESTING AUTOMATED SKILL PURCHASE")
+    print("[INFO] TESTING AUTOMATED SKILL PURCHASE")
     print("=" * 60)
-    print("⚠️  WARNING: This will actually purchase skills!")
+    print("[WARNING] This will actually purchase skills!")
     print("   Make sure you're on the skill purchase screen.")
     print()
     
@@ -328,20 +342,20 @@ def test_skill_auto_purchase():
         {"name": "Pressure", "price": "160"}
     ]
     
-    print("📋 Test purchase plan:")
+    print("[INFO] Test purchase plan:")
     for i, skill in enumerate(test_purchase_plan, 1):
         print(f"   {i}. {skill['name']} - {skill['price']} points")
     print()
     
     confirm = input("Do you want to proceed with the test purchase? (y/n): ").lower().startswith('y')
     if not confirm:
-        print("❌ Test cancelled.")
+        print("[INFO] Test cancelled.")
         return
     
     # Execute the purchase
     result = execute_skill_purchases(test_purchase_plan)
     
-    print(f"\n📊 Test Results:")
+    print(f"\n[INFO] Test Results:")
     print(f"   Success: {result['success']}")
     print(f"   Purchased: {len(result['purchased_skills'])}")
     print(f"   Failed: {len(result['failed_skills'])}")

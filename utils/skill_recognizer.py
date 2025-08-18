@@ -4,7 +4,21 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 import time
 import re
+import json
 from utils.adb_screenshot import take_screenshot, run_adb_command
+
+# Load config for debug mode
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    DEBUG_MODE = config.get("debug_mode", False)
+except:
+    DEBUG_MODE = False
+
+def debug_print(message):
+    """Print debug message only if DEBUG_MODE is enabled"""
+    if DEBUG_MODE:
+        print(message)
 
 try:
     import pytesseract
@@ -680,7 +694,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
             'duplicate_found': str or None
         }
     """
-    print("🔍 Scanning all available skills with scrolling...")
+    print("[INFO] Scanning all available skills with scrolling")
     print("=" * 60)
     
     all_skills = []
@@ -690,7 +704,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
     
     try:
         while scrolls_performed < max_scrolls:
-            print(f"\n📄 Scroll {scrolls_performed + 1}/{max_scrolls}")
+            print(f"\n[INFO] Scroll {scrolls_performed + 1}/{max_scrolls}")
             
             # Take screenshot and detect skills
             result = recognize_skill_up_locations(
@@ -702,7 +716,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
             )
             
             if 'error' in result:
-                print(f"❌ Error during skill detection: {result['error']}")
+                print(f"[ERROR] Error during skill detection: {result['error']}")
                 break
             
             current_skills = result.get('skills', [])
@@ -713,7 +727,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
                 # Don't break here - continue scrolling to find skills
                 # Only break if we've tried several empty screens in a row
                 if scrolls_performed >= 3 and len(all_skills) == 0:
-                    print("  🛑 No skills found after 3 scrolls - may not be on skill screen")
+                    print("[WARNING] No skills found after 3 scrolls - may not be on skill screen")
                     break
             else:
                 # Check for duplicates and add new skills
@@ -721,30 +735,30 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
                     skill_name = skill['name']
                     
                     if skill_name in seen_skill_names:
-                        print(f"  🔄 Duplicate found: '{skill_name}' - end of list reached")
+                        debug_print(f"[DEBUG] Duplicate found: '{skill_name}' - end of list reached")
                         duplicate_found = skill_name
-                        print(f"  🛑 Stopping scan - we've looped back to already seen skills")
+                        print("[INFO] Stopping scan - we've looped back to already seen skills")
                         break
                     else:
                         seen_skill_names.add(skill_name)
                         all_skills.append(skill)
                         new_skills_found += 1
-                        print(f"  ✅ {len(all_skills)}. {skill_name} - {skill['price']}")
+                        print(f"  {len(all_skills)}. {skill_name} - {skill['price']}")
                 
                 # Stop if duplicate found
                 if duplicate_found:
                     break
             
-            print(f"  📊 Found {new_skills_found} new skills (Total: {len(all_skills)})")
+            debug_print(f"[DEBUG] Found {new_skills_found} new skills (Total: {len(all_skills)})")
             
             # Perform swipe to scroll down
             scrolls_performed += 1
             if scrolls_performed < max_scrolls:
-                print(f"  📱 Scrolling...")
+                debug_print("[DEBUG] Scrolling")
                 success = perform_swipe(swipe_start_x, swipe_start_y, swipe_end_x, swipe_end_y)
                 
                 if not success:
-                    print("  ❌ Failed to perform swipe, stopping scan")
+                    print("[ERROR] Failed to perform swipe, stopping scan")
                     break
                 
                 # Wait for scroll animation to complete
@@ -752,15 +766,15 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
         
         # Summary
         print(f"\n" + "=" * 60)
-        print(f"📊 Skill Scan Complete!")
+        print(f"[INFO] Skill Scan Complete")
         print(f"   Total unique skills found: {len(all_skills)}")
         print(f"   Scrolls performed: {scrolls_performed}")
         if duplicate_found:
-            print(f"   Stopped due to duplicate: {duplicate_found}")
+            debug_print(f"[DEBUG] Stopped due to duplicate: {duplicate_found}")
         elif scrolls_performed >= max_scrolls:
-            print(f"   Stopped due to max scroll limit reached")
+            print(f"[WARNING] Stopped due to max scroll limit reached")
         else:
-            print(f"   Scan completed - reached end of list")
+            print(f"[INFO] Scan completed - reached end of list")
         
         return {
             'all_skills': all_skills,
@@ -770,7 +784,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
         }
         
     except Exception as e:
-        print(f"❌ Error during skill scanning: {e}")
+        print(f"[ERROR] Error during skill scanning: {e}")
         return {
             'all_skills': all_skills,
             'total_unique_skills': len(all_skills),

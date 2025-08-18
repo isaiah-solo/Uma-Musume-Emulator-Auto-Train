@@ -2,6 +2,19 @@ import json
 import os
 from difflib import SequenceMatcher
 
+# Load config for debug mode
+try:
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    DEBUG_MODE = config.get("debug_mode", False)
+except:
+    DEBUG_MODE = False
+
+def debug_print(message):
+    """Print debug message only if DEBUG_MODE is enabled"""
+    if DEBUG_MODE:
+        print(message)
+
 def load_skill_config(config_path="skills.json"):
     """
     Load skill configuration from JSON file.
@@ -13,7 +26,7 @@ def load_skill_config(config_path="skills.json"):
         with open(config_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"❌ {config_path} not found. Creating default config...")
+        print(f"[ERROR] {config_path} not found. Creating default config")
         default_config = {
             "skill_priority": [],
             "gold_skill_upgrades": {}
@@ -22,7 +35,7 @@ def load_skill_config(config_path="skills.json"):
             json.dump(default_config, f, indent=4)
         return default_config
     except Exception as e:
-        print(f"❌ Error loading {config_path}: {e}")
+        print(f"[ERROR] Error loading {config_path}: {e}")
         return {"skill_priority": [], "gold_skill_upgrades": {}}
 
 def fuzzy_match_skill_name(skill_name, target_name, threshold=0.8):
@@ -68,7 +81,7 @@ def find_matching_skill(skill_name, available_skills):
     # Try fuzzy matching
     for skill in available_skills:
         if fuzzy_match_skill_name(skill['name'], skill_name):
-            print(f"   🔍 Fuzzy match: '{skill['name']}' matches '{skill_name}'")
+            debug_print(f"[DEBUG] Fuzzy match: '{skill['name']}' matches '{skill_name}'")
             return skill
     
     return None
@@ -96,10 +109,10 @@ def create_purchase_plan(available_skills, config):
     
     purchase_plan = []
     
-    print("🎯 Creating purchase plan...")
-    print(f"   Priority list: {len(skill_priority)} skills")
-    print(f"   Gold upgrades: {len(gold_upgrades)} relationships")
-    print(f"   Available skills: {len(available_skills)} skills")
+    print("[INFO] Creating purchase plan")
+    debug_print(f"[DEBUG] Priority list: {len(skill_priority)} skills")
+    debug_print(f"[DEBUG] Gold upgrades: {len(gold_upgrades)} relationships")
+    debug_print(f"[DEBUG] Available skills: {len(available_skills)} skills")
     
     for priority_skill in skill_priority:
         # Check if this is a gold skill (key in gold_upgrades)
@@ -110,21 +123,21 @@ def create_purchase_plan(available_skills, config):
             skill = available_by_name.get(priority_skill) or find_matching_skill(priority_skill, available_skills)
             if skill:
                 purchase_plan.append(skill)
-                print(f"   ✨ Gold skill found: {skill['name']} - {skill['price']}")
+                print(f"[INFO] Gold skill found: {skill['name']} - {skill['price']}")
                 
             # Rule 2: If gold not available but base skill appears → buy base
             else:
                 base_skill = available_by_name.get(base_skill_name) or find_matching_skill(base_skill_name, available_skills)
                 if base_skill:
                     purchase_plan.append(base_skill)
-                    print(f"   📦 Base skill found: {base_skill['name']} - {base_skill['price']} (for {priority_skill})")
+                    print(f"[INFO] Base skill found: {base_skill['name']} - {base_skill['price']} (for {priority_skill})")
                 
         else:
             # Regular skill - just buy if available (try exact then fuzzy match)
             skill = available_by_name.get(priority_skill) or find_matching_skill(priority_skill, available_skills)
             if skill:
                 purchase_plan.append(skill)
-                print(f"   ⚡ Regular skill: {skill['name']} - {skill['price']}")
+                print(f"[INFO] Regular skill: {skill['name']} - {skill['price']}")
     
     return purchase_plan
 
