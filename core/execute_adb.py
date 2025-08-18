@@ -700,6 +700,9 @@ def is_racing_available(year):
     # No races in Pre-Debut
     if "Pre-Debut" in year:
         return False
+    # No races in Finale Season (final training period before URA)
+    if "Finale Season" in year:
+        return False
     year_parts = year.split(" ")
     # No races in July and August (summer break)
     if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
@@ -1086,25 +1089,34 @@ def career_lobby():
     while True:
         debug_print("\n[DEBUG] ===== Starting new loop iteration =====")
         
-        # First check, claw machine
+        # Batch UI check - take one screenshot and check multiple elements
+        debug_print("[DEBUG] Performing batch UI element check...")
+        screenshot = take_screenshot()
+        
+        # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
-        if locate_on_screen("assets/buttons/claw.png", confidence=0.8):
+        claw_matches = match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
+        if claw_matches:
             claw_machine()
             continue
         
-        # Second check, OK button
+        # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        if click("assets/buttons/ok_btn.png", confidence=0.7, minSearch=1, text="[INFO] OK button found, clicking it."):
+        ok_matches = match_template(screenshot, "assets/buttons/ok_btn.png", confidence=0.7)
+        if ok_matches:
+            x, y, w, h = ok_matches[0]
+            center = (x + w//2, y + h//2)
+            print("[INFO] OK button found, clicking it.")
+            tap(center[0], center[1])
             continue
         
-        # Third check, event - use intelligent event handling (same as original PC version)
+        # Check for events
         debug_print("[DEBUG] Checking for events...")
         try:
-            # Use the same logic as original PC version: detect event first, then analyze
             event_choice_region = (6, 450, 126, 1776)
-            event_icon = locate_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, "assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
             
-            if event_icon:
+            if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
                 choice_number, success, choice_locations = handle_event_choice()
                 if success:
@@ -1115,36 +1127,51 @@ def career_lobby():
                         continue
                     else:
                         print("[WARNING] Failed to click event choice, falling back to top choice")
-                        # Fallback to original method
-                        event_choice_region = (6, 450, 126, 1776)
-                        if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                            continue
+                        # Fallback using existing match
+                        x, y, w, h = event_matches[0]
+                        center = (x + w//2, y + h//2)
+                        tap(center[0], center[1])
+                        continue
                 else:
                     print("[WARNING] Event analysis failed, falling back to top choice")
-                    # Fallback to original method
-                    event_choice_region = (6, 450, 126, 1776)
-                    if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                        continue
+                    # Fallback using existing match
+                    x, y, w, h = event_matches[0]
+                    center = (x + w//2, y + h//2)
+                    tap(center[0], center[1])
+                    continue
             else:
                 debug_print("[DEBUG] No events found")
         except Exception as e:
-            print(f"[ERROR] Event handling error: {e}, falling back to original method")
-            # Fallback to original method
-            event_choice_region = (6, 450, 126, 1776)
-            if click("assets/icons/event_choice_1.png", minSearch=2, text="[INFO] Event found, automatically select top choice.", region=event_choice_region):
-                continue
+            print(f"[ERROR] Event handling error: {e}")
 
-        # Fourth check, inspiration
+        # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        if click("assets/buttons/inspiration_btn.png", confidence=0.5, minSearch=1, text="[INFO] Inspiration found."):
+        inspiration_matches = match_template(screenshot, "assets/buttons/inspiration_btn.png", confidence=0.5)
+        if inspiration_matches:
+            x, y, w, h = inspiration_matches[0]
+            center = (x + w//2, y + h//2)
+            print("[INFO] Inspiration found.")
+            tap(center[0], center[1])
             continue
 
+        # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        if click("assets/buttons/next_btn.png", minSearch=1):
+        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.8)
+        if next_matches:
+            x, y, w, h = next_matches[0]
+            center = (x + w//2, y + h//2)
+            debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
+            tap(center[0], center[1])
             continue
 
+        # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        if click("assets/buttons/cancel_btn.png", minSearch=1):
+        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.8)
+        if cancel_matches:
+            x, y, w, h = cancel_matches[0]
+            center = (x + w//2, y + h//2)
+            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
+            tap(center[0], center[1])
             continue
 
         # Check if current menu is in career lobby

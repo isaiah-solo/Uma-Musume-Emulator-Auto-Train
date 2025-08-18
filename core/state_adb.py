@@ -406,9 +406,29 @@ def check_criteria():
 
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)
-    skill_text = extract_number(skill_img)
+    
+    # Apply sharpening for better OCR accuracy
+    sharpener = ImageEnhance.Sharpness(skill_img)
+    skill_img_sharp = sharpener.enhance(2.5)  # Increase sharpness by 2.5x
+    
+    # Save debug images for skill points OCR troubleshooting
+    skill_img.save("debug_skill_points_original.png")
+    skill_img_sharp.save("debug_skill_points_sharpened.png")
+    debug_print(f"[DEBUG] Saved original skill points image to debug_skill_points_original.png")
+    debug_print(f"[DEBUG] Saved sharpened skill points image to debug_skill_points_sharpened.png")
+    debug_print(f"[DEBUG] Skill points region: {SKILL_PTS_REGION}")
+    
+    # Use sharpened image for OCR
+    skill_text = extract_number(skill_img_sharp)
     digits = ''.join(filter(str.isdigit, skill_text))
-    return int(digits) if digits.isdigit() else 0
+    
+    debug_print(f"[DEBUG] Skill points OCR raw result: '{skill_text}'")
+    debug_print(f"[DEBUG] Extracted digits: '{digits}'")
+    
+    result = int(digits) if digits.isdigit() else 0
+    debug_print(f"[DEBUG] Final skill points value: {result}")
+    
+    return result
 
 def check_skill_points_cap():
     """Check skill points and handle cap logic (same as PC version)"""
