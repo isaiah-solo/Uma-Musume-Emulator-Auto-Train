@@ -6,6 +6,10 @@ from PIL import Image, ImageEnhance
 from utils.adb_screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
 from core.ocr import extract_text, extract_number, extract_turn_number, extract_mood_text, extract_failure_text, extract_failure_text_with_confidence
 from utils.adb_recognizer import match_template
+from utils.skill_auto_purchase import execute_skill_purchases, click_image_button
+from utils.skill_recognizer import scan_all_skills_with_scroll
+from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan
+from test_integrated_skill_purchase import extract_skill_points, filter_affordable_skills
 
 from utils.constants_phone import (
     SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, FAILURE_REGION, YEAR_REGION, 
@@ -389,7 +393,7 @@ def check_skill_points_cap():
         print(f"Error loading config: {e}")
         return True
     
-    skill_point_cap = config.get("skill_point_cap", 100)
+    skill_point_cap = config.get("skill_point_cap", 9999)
     current_skill_points = check_skill_points()
     
     print(f"[INFO] Current skill points: {current_skill_points}, Cap: {skill_point_cap}")
@@ -397,7 +401,75 @@ def check_skill_points_cap():
     if current_skill_points > skill_point_cap:
         print(f"[WARNING] Skill points ({current_skill_points}) exceed cap ({skill_point_cap})")
         
-        # Show GUI popup (same as PC version)
+        # Decide flow based on config
+        skill_purchase_mode = config.get("skill_purchase", "manual").lower()
+        if skill_purchase_mode == "auto":
+            print("[INFO] Auto skill purchase enabled - starting automation")
+            try:
+                # 1) Enter skill screen
+                entered = click_image_button("assets/buttons/skills_btn.png", "skills button", max_attempts=5)
+                if not entered:
+                    print("[ERROR] Could not find/open skills screen")
+                    return True
+                time.sleep(2.0)
+
+                # 2) Scan skills and prepare purchase plan
+                scan_result = scan_all_skills_with_scroll()
+                if 'error' in scan_result:
+                    print(f"[ERROR] Skill scanning failed: {scan_result['error']}")
+                    # Attempt to go back anyway
+                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    time.sleep(1.5)
+                    return True
+                all_skills = scan_result.get('all_skills', [])
+                if not all_skills:
+                    print("[WARNING] No skills detected on skill screen")
+                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    time.sleep(1.5)
+                    return True
+
+                # Read current available skill points from the skill screen
+                available_points = extract_skill_points()
+                print(f"[INFO] Detected available skill points: {available_points}")
+
+                # Build purchase plan from config priorities
+                cfg = load_skill_config()
+                purchase_plan = create_purchase_plan(all_skills, cfg)
+                if not purchase_plan:
+                    print("[INFO] No skills from priority list are currently available")
+                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    time.sleep(1.5)
+                    return True
+
+                # Filter by budget if we have points
+                final_plan = purchase_plan
+                if isinstance(available_points, int) and available_points > 0:
+                    affordable_skills, total_cost, remaining_points = filter_affordable_skills(purchase_plan, available_points)
+                    final_plan = affordable_skills if affordable_skills else []
+                    print(f"[INFO] Affordable skills: {len(final_plan)}; Total cost: {total_cost}; Remaining: {remaining_points}")
+
+                if not final_plan:
+                    print("[INFO] Nothing affordable to purchase at the moment")
+                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    time.sleep(1.5)
+                    return True
+
+                # Execute automated purchases
+                exec_result = execute_skill_purchases(final_plan)
+                if not exec_result.get('success'):
+                    print(f"[WARNING] Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
+
+                # 3) Return to lobby
+                back = click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                if not back:
+                    print("[WARNING] Could not find back button after purchases; ensure you return to lobby manually")
+                time.sleep(1.5)
+            except Exception as e:
+                print(f"[ERROR] Auto skill purchase failed: {e}")
+            
+            return True
+        
+        # Manual mode (original prompt)
         try:
             # Create a hidden root window
             root = tk.Tk()
