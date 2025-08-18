@@ -102,20 +102,20 @@ def click_image_button(image_path, description="button", max_attempts=10, wait_b
 
 def fast_swipe_to_top():
     """
-    Perform 3 fast swipes to get to the top of the skill list.
+    Perform fast swipes to get to the top of the skill list.
     """
     print("🚀 Fast scrolling to top of skill list...")
     
     for i in range(3):
         print(f"   📱 Fast swipe {i+1}/3")
-        success = perform_swipe(504, 800, 504, 1492, duration=300)  # Fast swipe up
+        success = perform_swipe(504, 1400, 504, 800, duration=300)  # Fast swipe UP (start low, end high)
         if success:
-            time.sleep(0.5)  # Short wait between fast swipes
+            time.sleep(0.3)  # Short wait between fast swipes
         else:
             print(f"   ⚠️  Fast swipe {i+1} failed")
     
     print("   ⏱️  Waiting for UI to settle...")
-    time.sleep(2)  # Wait for UI to settle after fast scrolling
+    time.sleep(1.5)  # Reduced wait time
 
 def execute_skill_purchases(purchase_plan, max_scrolls=20):
     """
@@ -245,18 +245,18 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             confirm_success = click_image_button("assets/buttons/confirm.png", "confirm button", max_attempts=10)
             if confirm_success:
                 print("   ⏱️  Waiting for confirmation...")
-                time.sleep(3)  # Wait for confirmation to process
+                time.sleep(2)  # Reduced wait time
                 
                 # Step 4: Click learn button
                 print("   🎓 Looking for learn button...")
                 learn_success = click_image_button("assets/buttons/learn.png", "learn button", max_attempts=10)
                 if learn_success:
                     print("   ⏱️  Waiting for learning to complete...")
-                    time.sleep(2)
+                    time.sleep(1.5)  # Reduced wait time
                     
-                    # Step 5: Click close button (wait 2 seconds before it appears)
+                    # Step 5: Click close button (wait before it appears)
                     print("   🚪 Waiting for close button to appear...")
-                    time.sleep(2)  # Wait 2 seconds before looking for close button
+                    time.sleep(1.5)  # Reduced wait time
                     close_success = click_image_button("assets/buttons/close.png", "close button", max_attempts=10)
                     if close_success:
                         print("   ✅ Skill purchase sequence completed successfully!")

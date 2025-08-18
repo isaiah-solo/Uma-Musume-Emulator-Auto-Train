@@ -21,7 +21,7 @@
     "wit": 600
   },
   "adb_config": {
-    "device_address": "127.0.0.1:7555",
+    "device_address": "emulator-5558",
     "adb_path": "adb",
     "screenshot_timeout": 5,
     "input_delay": 0.5,
