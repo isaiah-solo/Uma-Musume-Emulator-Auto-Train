@@ -25,7 +25,7 @@ try:
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
-    print("Warning: pytesseract not available. OCR features will be disabled.")
+    debug_print("[DEBUG] Warning: pytesseract not available. OCR features will be disabled.")
 
 
 
@@ -102,13 +102,13 @@ def perform_swipe(start_x, start_y, end_x, end_y, duration=1000):
         swipe_command = ['shell', 'input', 'swipe', str(start_x), str(start_y), str(end_x), str(end_y), str(duration)]
         result = run_adb_command(swipe_command)
         if result is not None:
-            print(f"Swiped from ({start_x}, {start_y}) to ({end_x}, {end_y})")
+            debug_print(f"[DEBUG] Swiped from ({start_x}, {start_y}) to ({end_x}, {end_y})")
             return True
         else:
-            print(f"Failed to perform swipe")
+            debug_print(f"[DEBUG] Failed to perform swipe")
             return False
     except Exception as e:
-        print(f"Error performing swipe: {e}")
+        debug_print(f"[DEBUG] Error performing swipe: {e}")
         return False
 
 def extract_skill_info(screenshot, button_x, button_y, anchor_x=946, anchor_y=809):
@@ -158,7 +158,7 @@ def extract_skill_info(screenshot, button_x, button_y, anchor_x=946, anchor_y=80
             skill_name_raw = pytesseract.image_to_string(name_crop, lang='eng').strip()
             skill_name = clean_skill_name(skill_name_raw)
         except Exception as e:
-            print(f"    Name OCR error: {e}")
+            debug_print(f"[DEBUG] Name OCR error: {e}")
         
         # Extract skill price with simple OCR
         skill_price = "Price Error"
@@ -179,18 +179,18 @@ def extract_skill_info(screenshot, button_x, button_y, anchor_x=946, anchor_y=80
             if not skill_price_raw:
                 skill_price_raw = pytesseract.image_to_string(price_crop, config='--psm 7').strip()
             
-            print(f"    Raw price OCR: '{skill_price_raw}'")  # Debug
+            debug_print(f"[DEBUG] Raw price OCR: '{skill_price_raw}'")
             skill_price = clean_skill_price(skill_price_raw)
-            print(f"    Cleaned price: '{skill_price}'")  # Debug
+            debug_print(f"[DEBUG] Cleaned price: '{skill_price}'")
             
             # Save debug image if price OCR still fails
             if not skill_price_raw or skill_price == "0":
                 debug_filename = f"debug_price_{skill_name.replace(' ', '_')}.png"
                 price_crop.save(debug_filename)
-                print(f"    💾 Saved debug image: {debug_filename}")
+                debug_print(f"[DEBUG] Saved debug image: {debug_filename}")
                 
         except Exception as e:
-            print(f"    Price OCR error: {e}")
+            debug_print(f"[DEBUG] Price OCR error: {e}")
         
         result = {
             'name': skill_name,
@@ -201,8 +201,8 @@ def extract_skill_info(screenshot, button_x, button_y, anchor_x=946, anchor_y=80
         return result
         
     except Exception as e:
-        print(f"Error extracting skill info: {e}")
-        print(f"Error type: {type(e)}")
+        debug_print(f"[DEBUG] Error extracting skill info: {e}")
+        debug_print(f"[DEBUG] Error type: {type(e)}")
         import traceback
         traceback.print_exc()
         return {
@@ -308,7 +308,7 @@ def is_button_available(screenshot, x, y, width, height, brightness_threshold=15
         return is_available, avg_brightness
         
     except Exception as e:
-        print(f"Error checking button availability: {e}")
+        debug_print(f"[DEBUG] Error checking button availability: {e}")
         return True, 0  # Default to available if check fails
 
 def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_threshold=0.5, 
@@ -340,7 +340,7 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
         # Load skill_up template
         template_path = "assets/buttons/skill_up.png"
         if not os.path.exists(template_path):
-            print(f"Template not found: {template_path}")
+            debug_print(f"[DEBUG] Template not found: {template_path}")
             return {
                 'count': 0,
                 'locations': [],
@@ -350,7 +350,7 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
         
         template = cv2.imread(template_path, cv2.IMREAD_COLOR)
         if template is None:
-            print(f"Failed to load template: {template_path}")
+            debug_print(f"[DEBUG] Failed to load template: {template_path}")
             return {
                 'count': 0,
                 'locations': [],
@@ -383,7 +383,7 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
         brightness_info = []
         
         if filter_dark_buttons:
-            print(f"Filtering dark buttons (brightness threshold: {brightness_threshold})...")
+            debug_print(f"[DEBUG] Filtering dark buttons (brightness threshold: {brightness_threshold})...")
             for x, y, w, h in unique_matches:
                 is_available, avg_brightness = is_button_available(
                     screenshot, x, y, w, h, brightness_threshold
@@ -397,15 +397,15 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
                 if is_available:
                     available_matches.append((x, y, w, h))
                     
-            print(f"Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication, {len(available_matches)} available (bright) buttons")
+            debug_print(f"[DEBUG] Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication, {len(available_matches)} available (bright) buttons")
         else:
             available_matches = unique_matches
-            print(f"Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication")
+            debug_print(f"[DEBUG] Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication")
         
         # Extract skill information if requested
         skills_info = []
         if extract_skills and available_matches:
-            print(f"Extracting skill information using OCR...")
+            debug_print(f"[DEBUG] Extracting skill information using OCR...")
             for i, (x, y, w, h) in enumerate(available_matches):
                 try:
                     skill_info = extract_skill_info(screenshot, x, y)
@@ -419,9 +419,9 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
                         }
                     }
                     skills_info.append(skill_data)
-                    print(f"  {i+1}. {skill_info['name']} - {skill_info['price']}")
+                    debug_print(f"[DEBUG] {i+1}. {skill_info['name']} - {skill_info['price']}")
                 except Exception as e:
-                    print(f"  {i+1}. Error extracting skill: {e}")
+                    debug_print(f"[DEBUG] {i+1}. Error extracting skill: {e}")
                     # Add a fallback skill entry
                     skill_data = {
                         'name': f'Skill {i+1} (Error)',
@@ -467,7 +467,7 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
         return result
         
     except Exception as e:
-        print(f"Error in skill recognition: {e}")
+        debug_print(f"[DEBUG] Error in skill recognition: {e}")
         return {
             'count': 0,
             'locations': [],
@@ -580,23 +580,23 @@ def generate_debug_image(screenshot, locations, confidence, brightness_info=None
         
         # Save the image
         debug_image.save(debug_path)
-        print(f"Debug image saved: {debug_path}")
+        debug_print(f"[DEBUG] Debug image saved: {debug_path}")
         
         return debug_path
         
     except Exception as e:
-        print(f"Error generating debug image: {e}")
+        debug_print(f"[DEBUG] Error generating debug image: {e}")
         return None
 
 def test_skill_recognition():
     """
     Test function for skill recognition - can be used for manual testing.
     """
-    print("Testing skill recognition with brightness filtering...")
-    print("=" * 60)
+    debug_print("[DEBUG] Testing skill recognition with brightness filtering...")
+    debug_print("[DEBUG] " + "=" * 60)
     
     # Test with optimized settings for Auto Skill Purchase
-    print(f"\nTesting with confidence: 0.9 (optimized for Auto Skill Purchase)")
+    debug_print(f"[DEBUG] Testing with confidence: 0.9 (optimized for Auto Skill Purchase)")
     result = recognize_skill_up_locations(
         confidence=0.9, 
         debug_output=True,
@@ -605,73 +605,73 @@ def test_skill_recognition():
     )
         
     if 'error' in result:
-        print(f"Error: {result['error']}")
+        debug_print(f"[DEBUG] Error: {result['error']}")
         return
         
-    print(f"Available skill_up icons: {result['count']}")
-    print(f"Raw matches: {result.get('raw_matches', 'N/A')}")
-    print(f"After de-duplication: {result.get('deduplicated_matches', 'N/A')}")
+    debug_print(f"[DEBUG] Available skill_up icons: {result['count']}")
+    debug_print(f"[DEBUG] Raw matches: {result.get('raw_matches', 'N/A')}")
+    debug_print(f"[DEBUG] After de-duplication: {result.get('deduplicated_matches', 'N/A')}")
     
     if result.get('dark_buttons_filtered', 0) > 0:
-        print(f"Dark buttons filtered out: {result['dark_buttons_filtered']}")
+        debug_print(f"[DEBUG] Dark buttons filtered out: {result['dark_buttons_filtered']}")
     
     # Show skill information if available
     if result.get('skills'):
-        print(f"\n📋 Detected Skills and Prices:")
-        print("=" * 60)
+        debug_print(f"[DEBUG] Detected Skills and Prices:")
+        debug_print("[DEBUG] " + "=" * 60)
         for i, skill in enumerate(result['skills']):
             x, y, w, h = skill['location']
-            print(f"  {i+1}. Skill: {skill['name']}")
-            print(f"      Price: {skill['price']}")
-            print(f"      Button Location: ({x}, {y}) size: {w}x{h}")
+            debug_print(f"[DEBUG] {i+1}. Skill: {skill['name']}")
+            debug_print(f"[DEBUG]      Price: {skill['price']}")
+            debug_print(f"[DEBUG]      Button Location: ({x}, {y}) size: {w}x{h}")
             if skill['regions']['name_region']:
                 nr = skill['regions']['name_region']
-                print(f"      Name Region: ({nr[0]}, {nr[1]}) to ({nr[2]}, {nr[3]})")
+                debug_print(f"[DEBUG]      Name Region: ({nr[0]}, {nr[1]}) to ({nr[2]}, {nr[3]})")
             if skill['regions']['price_region']:
                 pr = skill['regions']['price_region']
-                print(f"      Price Region: ({pr[0]}, {pr[1]}) to ({pr[2]}, {pr[3]})")
-            print()
+                debug_print(f"[DEBUG]      Price Region: ({pr[0]}, {pr[1]}) to ({pr[2]}, {pr[3]})")
+            debug_print("[DEBUG] ")
     elif result['locations']:
-        print("Available button locations (skill info extraction disabled):")
+        debug_print("[DEBUG] Available button locations (skill info extraction disabled):")
         for i, (x, y, w, h) in enumerate(result['locations']):
-            print(f"  {i+1}: ({x}, {y}) size: {w}x{h}")
+            debug_print(f"[DEBUG] {i+1}: ({x}, {y}) size: {w}x{h}")
     
     # Show brightness info if available
     if 'brightness_info' in result:
-        print("Brightness analysis:")
+        debug_print("[DEBUG] Brightness analysis:")
         for info in result['brightness_info']:
             x, y, w, h = info['location']
             status = "✓ Available" if info['available'] else "✗ Dark"
-            print(f"  ({x}, {y}): {info['brightness']:.1f} - {status}")
+            debug_print(f"[DEBUG] ({x}, {y}): {info['brightness']:.1f} - {status}")
     
     if result['debug_image_path']:
-        print(f"Debug image: {result['debug_image_path']}")
+        debug_print(f"[DEBUG] Debug image: {result['debug_image_path']}")
     
     # Test comparison between filtered and unfiltered
-    print(f"\n" + "=" * 60)
-    print("Comparing filtered vs unfiltered detection:")
+    debug_print(f"[DEBUG] " + "=" * 60)
+    debug_print("[DEBUG] Comparing filtered vs unfiltered detection:")
     
-    print("\n1. Without brightness filtering:")
+    debug_print("[DEBUG] 1. Without brightness filtering:")
     result_unfiltered = recognize_skill_up_locations(
         confidence=0.9, 
         debug_output=False,
         filter_dark_buttons=False
     )
-    print(f"   Found: {result_unfiltered['count']} buttons")
+    debug_print(f"[DEBUG]    Found: {result_unfiltered['count']} buttons")
     
-    print("\n2. With brightness filtering (Auto Skill Purchase optimized):")
+    debug_print("[DEBUG] 2. With brightness filtering (Auto Skill Purchase optimized):")
     result_filtered = recognize_skill_up_locations(
         confidence=0.9, 
         debug_output=True,
         filter_dark_buttons=True,
         brightness_threshold=150
     )
-    print(f"   Found: {result_filtered['count']} available buttons")
+    debug_print(f"[DEBUG]    Found: {result_filtered['count']} available buttons")
     if 'dark_buttons_filtered' in result_filtered:
-        print(f"   Filtered out: {result_filtered['dark_buttons_filtered']} dark buttons")
+        debug_print(f"[DEBUG]    Filtered out: {result_filtered['dark_buttons_filtered']} dark buttons")
     
-    print("\n" + "=" * 60)
-    print("Test completed!")
+    debug_print("[DEBUG] " + "=" * 60)
+    debug_print("[DEBUG] Test completed!")
 
 def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end_x=504, swipe_end_y=926,
                                confidence=0.9, brightness_threshold=150, max_scrolls=20):
@@ -694,8 +694,8 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
             'duplicate_found': str or None
         }
     """
-    print("[INFO] Scanning all available skills with scrolling")
-    print("=" * 60)
+    debug_print("[DEBUG] Scanning all available skills with scrolling")
+    debug_print("[DEBUG] " + "=" * 60)
     
     all_skills = []
     seen_skill_names = set()
@@ -704,7 +704,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
     
     try:
         while scrolls_performed < max_scrolls:
-            print(f"\n[INFO] Scroll {scrolls_performed + 1}/{max_scrolls}")
+            debug_print(f"[DEBUG] Scroll {scrolls_performed + 1}/{max_scrolls}")
             
             # Take screenshot and detect skills
             result = recognize_skill_up_locations(
@@ -716,18 +716,18 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
             )
             
             if 'error' in result:
-                print(f"[ERROR] Error during skill detection: {result['error']}")
+                debug_print(f"[DEBUG] Error during skill detection: {result['error']}")
                 break
             
             current_skills = result.get('skills', [])
             new_skills_found = 0
             
             if not current_skills:
-                print("  No skills found on this screen")
+                debug_print("[DEBUG] No skills found on this screen")
                 # Don't break here - continue scrolling to find skills
                 # Only break if we've tried several empty screens in a row
                 if scrolls_performed >= 3 and len(all_skills) == 0:
-                    print("[WARNING] No skills found after 3 scrolls - may not be on skill screen")
+                    debug_print("[DEBUG] No skills found after 3 scrolls - may not be on skill screen")
                     break
             else:
                 # Check for duplicates and add new skills
@@ -737,13 +737,13 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
                     if skill_name in seen_skill_names:
                         debug_print(f"[DEBUG] Duplicate found: '{skill_name}' - end of list reached")
                         duplicate_found = skill_name
-                        print("[INFO] Stopping scan - we've looped back to already seen skills")
+                        debug_print("[DEBUG] Stopping scan - we've looped back to already seen skills")
                         break
                     else:
                         seen_skill_names.add(skill_name)
                         all_skills.append(skill)
                         new_skills_found += 1
-                        print(f"  {len(all_skills)}. {skill_name} - {skill['price']}")
+                        debug_print(f"[DEBUG] {len(all_skills)}. {skill_name} - {skill['price']}")
                 
                 # Stop if duplicate found
                 if duplicate_found:
@@ -758,23 +758,23 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
                 success = perform_swipe(swipe_start_x, swipe_start_y, swipe_end_x, swipe_end_y)
                 
                 if not success:
-                    print("[ERROR] Failed to perform swipe, stopping scan")
+                    debug_print("[DEBUG] Failed to perform swipe, stopping scan")
                     break
                 
                 # Wait for scroll animation to complete
                 time.sleep(1.5)
         
         # Summary
-        print(f"\n" + "=" * 60)
-        print(f"[INFO] Skill Scan Complete")
-        print(f"   Total unique skills found: {len(all_skills)}")
-        print(f"   Scrolls performed: {scrolls_performed}")
+        debug_print(f"[DEBUG] " + "=" * 60)
+        debug_print(f"[DEBUG] Skill Scan Complete")
+        debug_print(f"[DEBUG]    Total unique skills found: {len(all_skills)}")
+        debug_print(f"[DEBUG]    Scrolls performed: {scrolls_performed}")
         if duplicate_found:
             debug_print(f"[DEBUG] Stopped due to duplicate: {duplicate_found}")
         elif scrolls_performed >= max_scrolls:
-            print(f"[WARNING] Stopped due to max scroll limit reached")
+            debug_print(f"[DEBUG] Stopped due to max scroll limit reached")
         else:
-            print(f"[INFO] Scan completed - reached end of list")
+            debug_print(f"[DEBUG] Scan completed - reached end of list")
         
         return {
             'all_skills': all_skills,
@@ -784,7 +784,7 @@ def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end
         }
         
     except Exception as e:
-        print(f"[ERROR] Error during skill scanning: {e}")
+        debug_print(f"[DEBUG] Error during skill scanning: {e}")
         return {
             'all_skills': all_skills,
             'total_unique_skills': len(all_skills),
@@ -797,10 +797,10 @@ def test_skill_listing():
     """
     Test function specifically for listing all skills with their prices.
     """
-    print("Testing skill listing with OCR extraction...")
-    print("=" * 70)
-    print("This will detect all available skill_up buttons and extract their names and prices.")
-    print()
+    debug_print("[DEBUG] Testing skill listing with OCR extraction...")
+    debug_print("[DEBUG] " + "=" * 70)
+    debug_print("[DEBUG] This will detect all available skill_up buttons and extract their names and prices.")
+    debug_print("[DEBUG] ")
     
     # Run with skill info extraction enabled
     result = recognize_skill_up_locations(
@@ -812,26 +812,26 @@ def test_skill_listing():
     )
     
     if 'error' in result:
-        print(f"❌ Error: {result['error']}")
+        debug_print(f"[DEBUG] Error: {result['error']}")
         return
     
-    print(f"🎯 Detection Results:")
-    print(f"   Available skill buttons found: {result['count']}")
-    print(f"   Total detected before filtering: {result.get('deduplicated_matches', 'N/A')}")
+    debug_print(f"[DEBUG] Detection Results:")
+    debug_print(f"[DEBUG]    Available skill buttons found: {result['count']}")
+    debug_print(f"[DEBUG]    Total detected before filtering: {result.get('deduplicated_matches', 'N/A')}")
     
     if result.get('dark_buttons_filtered', 0) > 0:
-        print(f"   Dark buttons filtered out: {result['dark_buttons_filtered']}")
+        debug_print(f"[DEBUG]    Dark buttons filtered out: {result['dark_buttons_filtered']}")
     
     if result.get('skills'):
-        print(f"\n📋 SKILL INVENTORY:")
-        print("=" * 70)
+        debug_print(f"[DEBUG] SKILL INVENTORY:")
+        debug_print("[DEBUG] " + "=" * 70)
         
         for i, skill in enumerate(result['skills'], 1):
             x, y, w, h = skill['location']
-            print(f"{i:2d}. {skill['name']:<30} | Price: {skill['price']:<10} | Button: ({x}, {y})")
+            debug_print(f"[DEBUG] {i:2d}. {skill['name']:<30} | Price: {skill['price']:<10} | Button: ({x}, {y})")
         
-        print("=" * 70)
-        print(f"Total skills available for purchase: {len(result['skills'])}")
+        debug_print("[DEBUG] " + "=" * 70)
+        debug_print(f"[DEBUG] Total skills available for purchase: {len(result['skills'])}")
         
         # Extract unique prices for summary
         prices = [skill['price'] for skill in result['skills'] if skill['price'] != 'Unknown Price']
@@ -839,20 +839,20 @@ def test_skill_listing():
             try:
                 numeric_prices = [int(p) for p in prices if p.isdigit()]
                 if numeric_prices:
-                    print(f"Price range: {min(numeric_prices)} - {max(numeric_prices)}")
+                    debug_print(f"[DEBUG] Price range: {min(numeric_prices)} - {max(numeric_prices)}")
             except:
                 pass
     else:
-        print(f"\n❌ No skills detected or OCR extraction failed")
+        debug_print(f"[DEBUG] No skills detected or OCR extraction failed")
         if not OCR_AVAILABLE:
-            print("   Note: pytesseract not available for OCR")
+            debug_print("[DEBUG]    Note: pytesseract not available for OCR")
         
     if result['debug_image_path']:
-        print(f"\n🖼️  Debug image saved: {result['debug_image_path']}")
-        print("   Green boxes = Available buttons, Red boxes = Dark buttons")
+        debug_print(f"[DEBUG] Debug image saved: {result['debug_image_path']}")
+        debug_print("[DEBUG]    Green boxes = Available buttons, Red boxes = Dark buttons")
     
-    print(f"\n" + "=" * 70)
-    print("Skill listing test completed!")
+    debug_print(f"[DEBUG] " + "=" * 70)
+    debug_print("[DEBUG] Skill listing test completed!")
 
 if __name__ == "__main__":
     # Run test when script is executed directly
