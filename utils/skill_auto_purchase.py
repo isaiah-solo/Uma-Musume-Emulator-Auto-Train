@@ -358,18 +358,18 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
             confirm_success = click_image_button("assets/buttons/confirm.png", "confirm button", max_attempts=10)
             if confirm_success:
                 debug_print("[DEBUG] Waiting for confirmation")
-                time.sleep(2)  # Reduced wait time
+                time.sleep(1)  # Reduced wait time
                 
                 # Step 4: Click learn button
                 debug_print("[DEBUG] Looking for learn button")
                 learn_success = click_image_button("assets/buttons/learn.png", "learn button", max_attempts=10)
                 if learn_success:
                     debug_print("[DEBUG] Waiting for learning to complete")
-                    time.sleep(1.5)  # Reduced wait time
+                    time.sleep(1)  # Reduced wait time
                     
                     # Step 5: Click close button (wait before it appears)
                     debug_print("[DEBUG] Waiting for close button to appear")
-                    time.sleep(1.5)  # Reduced wait time
+                    time.sleep(0.5)  # Reduced wait time
                     close_success = click_image_button("assets/buttons/close.png", "close button", max_attempts=10)
                     if close_success:
                         print("[INFO] Skill purchase sequence completed successfully")
