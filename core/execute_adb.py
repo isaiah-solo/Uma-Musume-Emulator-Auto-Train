@@ -25,6 +25,33 @@ def debug_print(message):
     if DEBUG_MODE:
         print(message)
 
+def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
+    """
+    Find center of `assets/ui/match_track.png` that also passes brightness threshold.
+    Returns (x, y) center or None.
+    """
+    try:
+        screenshot = take_screenshot()
+        matches = match_template(screenshot, "assets/ui/match_track.png", confidence=confidence, region=region)
+        if not matches:
+            return None
+
+        grayscale = screenshot.convert("L")
+        for (x, y, w, h) in matches:
+            try:
+                roi = grayscale.crop((x, y, x + w, y + h))
+                avg_brightness = ImageStat.Stat(roi).mean[0]
+                debug_print(f"[DEBUG] match_track bbox=({x},{y},{w},{h}) brightness={avg_brightness:.1f} (thr {brightness_threshold})")
+                if avg_brightness > brightness_threshold:
+                    center = (x + w//2, y + h//2)
+                    return center
+            except Exception:
+                continue
+        return None
+    except Exception as e:
+        debug_print(f"[DEBUG] match_track locate error: {e}")
+        return None
+
 def is_infirmary_active_adb(button_location):
     """
     Check if the infirmary button is active (bright) or disabled (dark).
@@ -1048,7 +1075,7 @@ def race_select(prioritize_g1=False):
                     # Search for match_track.png within the race card region
                     region = (x, y, RACE_CARD_REGION[2], RACE_CARD_REGION[3])
                     debug_print(f"[DEBUG] Searching region: {region}")
-                    match_aptitude = locate_on_screen("assets/ui/match_track.png", confidence=0.6, region=region)
+                    match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
                     if match_aptitude:
                         debug_print(f"[DEBUG] ✅ Match track found at {match_aptitude} in region {region}")
                     else:
@@ -1072,7 +1099,7 @@ def race_select(prioritize_g1=False):
                 debug_print("[DEBUG] No G1 race cards found on initial screen, will try swiping...")
         else:
             debug_print("[DEBUG] Looking for race.")
-            match_aptitude = locate_on_screen("assets/ui/match_track.png", confidence=0.6)
+            match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
             if match_aptitude:
                 debug_print(f"[DEBUG] Race found at {match_aptitude}")
                 tap(match_aptitude[0], match_aptitude[1])
@@ -1109,7 +1136,7 @@ def race_select(prioritize_g1=False):
                         # Search for match_track.png within the race card region
                         region = (x, y, RACE_CARD_REGION[2], RACE_CARD_REGION[3])
                         debug_print(f"[DEBUG] Extended region: {region}")
-                        match_aptitude = locate_on_screen("assets/ui/match_track.png", confidence=0.6, region=region)
+                        match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
                         if match_aptitude:
                             debug_print(f"[DEBUG] ✅ Match track found at {match_aptitude} in region {region}")
                         else:
@@ -1133,7 +1160,7 @@ def race_select(prioritize_g1=False):
                     debug_print(f"[DEBUG] No G1 race cards found after swipe {scroll+1}")
             else:
                 debug_print(f"[DEBUG] Looking for any race (non-G1) after swipe {scroll+1}")
-                match_aptitude = locate_on_screen("assets/ui/match_track.png", confidence=0.6)
+                match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
                 if match_aptitude:
                     debug_print(f"[DEBUG] Race found at {match_aptitude} after swipe {scroll+1}")
                     tap(match_aptitude[0], match_aptitude[1])
