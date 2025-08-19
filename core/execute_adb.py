@@ -698,7 +698,7 @@ def click_event_choice(choice_number, choice_locations=None):
 def is_racing_available(year):
     """Check if racing is available based on the current year/month"""
     # No races in Pre-Debut
-    if "Pre-Debut" in year:
+    if is_pre_debut_year(year):
         return False
     # No races in Finale Season (final training period before URA)
     if "Finale Season" in year:
@@ -890,16 +890,25 @@ def race_day():
     if click("assets/buttons/race_day_btn.png", minSearch=10):
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
-        click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=2)
-        time.sleep(0.5)
+        click("assets/buttons/ok_btn.png", minSearch=1)
+        time.sleep(1.0)  # Increased wait time
         
-        debug_print("[DEBUG] Selecting race using match_track.png...")
-        # Use race_select to find and select the right race using match_track.png
-        found = race_select(prioritize_g1=False)  # Race day doesn't prioritize G1
-        if not found:
-            print("[INFO] No suitable race found on race day.")
+        # Try to find and click race button with better error handling
+        race_clicked = False
+        for attempt in range(3):  # Try up to 3 times
+            if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
+                debug_print(f"[DEBUG] Race button clicked successfully, attempt {attempt + 1}")
+                race_clicked = True
+                time.sleep(0.8)  # Wait for UI to respond
+                break
+            else:
+                debug_print(f"[DEBUG] Race button not found, attempt {attempt + 1}")
+                time.sleep(0.5)
+        
+        if not race_clicked:
+            debug_print("[ERROR] Failed to click race button after multiple attempts")
             return False
-        
+            
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
@@ -911,10 +920,6 @@ def race_select(prioritize_g1=False):
     """Select race"""
     debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
     
-    # # Move to center position like PC version
-    # from utils.adb_input import tap
-    # tap(560, 680)  # Center position like PC version
-    # time.sleep(0.2)
     
     def find_and_select_race():
         """Helper function to find and select a race (G1 or normal)"""
@@ -1228,39 +1233,48 @@ def career_lobby():
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
         turn = check_turn()
         year = check_current_year()
-        criteria = check_criteria()
+        criteria_data = check_criteria()
         
         print("\n=======================================================================================\n")
         print(f"Year: {year}")
         print(f"Mood: {mood}")
         print(f"Turn: {turn}")
-        print(f"Goal: {criteria}")
+        print(f"Goal: {criteria_data['text']}")
+        if criteria_data['requires_g1_races']:
+            print(f"G1 Race Requirement: {criteria_data['text']}")
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
         debug_print("[DEBUG] Checking goal criteria...")
-        criteria_met = (criteria.split(" ")[0] == "criteria" or "criteria met" in criteria.lower() or "goal achieved" in criteria.lower())
-        year_parts = year.split(" ")
-        is_pre_debut = "Pre-Debut" in year or "PreDebut" in year or "PreeDebut" in year or "PreeDebout" in year
-        # Check if turn is a number before comparing
-        turn_is_number = isinstance(turn, int) or (isinstance(turn, str) and turn.isdigit())
-        turn_less_than_10 = turn < 10 if turn_is_number else False
-        debug_print(f"[DEBUG] Year: '{year}', Criteria met: {criteria_met}, Pre-debut: {is_pre_debut}, Turn < 10: {turn_less_than_10}")
+        goal_analysis = check_goal_criteria(criteria_data, year, turn)
         
-        if not criteria_met and not is_pre_debut and turn_less_than_10:
-            print(f"Goal Status: Criteria not met - Prioritizing racing to meet goals")
-            race_found = do_race()
-            if race_found:
-                print("Race Result: Found Race")
-                continue
+        if goal_analysis["should_prioritize_racing"]:
+            if goal_analysis["should_prioritize_g1_races"]:
+                print(f"Goal Status: Criteria not met - Prioritizing G1 races to meet goals")
+                race_found = do_race(prioritize_g1=True)
+                if race_found:
+                    print("Race Result: Found G1 Race")
+                    continue
+                else:
+                    print("Race Result: No G1 Race Found")
+                    # If there is no G1 race found, go back and do training instead
+                    click("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
+                    time.sleep(0.5)
             else:
-                print("Race Result: No Race Found")
-                # If there is no race matching to aptitude, go back and do training instead
-                click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
-                time.sleep(0.5)
+                print(f"Goal Status: Criteria not met - Prioritizing normal races to meet goals")
+                race_found = do_race()
+                if race_found:
+                    print("Race Result: Found Race")
+                    continue
+                else:
+                    print("Race Result: No Race Found")
+                    # If there is no race found, go back and do training instead
+                    click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
+                    time.sleep(0.5)
         else:
             print("Goal Status: Criteria met or conditions not suitable for racing")
+            debug_print(f"[DEBUG] Racing not prioritized - Criteria met: {goal_analysis['criteria_met']}, Pre-debut: {goal_analysis['is_pre_debut']}, Turn < 10: {goal_analysis['turn_less_than_10']}")
         
         print("")
 
@@ -1316,7 +1330,7 @@ def career_lobby():
 
         # If Prioritize G1 Race is true, check G1 race every turn
         debug_print(f"[DEBUG] Checking G1 race priority: {PRIORITIZE_G1_RACE}")
-        if PRIORITIZE_G1_RACE and "Pre-Debut" not in year and "PreDebut" not in year and "PreeDebut" not in year and "PreeDebout" not in year and is_racing_available(year):
+        if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year):
             print("G1 Race Check: Looking for G1 race...")
             g1_race_found = do_race(PRIORITIZE_G1_RACE)
             if g1_race_found:
@@ -1348,7 +1362,7 @@ def career_lobby():
             debug_print("[DEBUG] Training logic suggests prioritizing race...")
             # Check if it's Pre-Debut - if so, don't prioritize racing
             year_parts = year.split(" ")
-            if "Pre-Debut" in year or "PreDebut" in year or "PreeDebut" in year or "PreeDebout" in year:
+            if is_pre_debut_year(year):
                 debug_print(f"[DEBUG] {year} detected, skipping race prioritization (no races available)")
                 print(f"[INFO] {year} detected. Skipping race prioritization and proceeding to training.")
                 # Re-evaluate training without race prioritization
@@ -1417,3 +1431,53 @@ def career_lobby():
             do_rest()
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(1) 
+
+def is_pre_debut_year(year):
+    return ("Pre-Debut" in year or "PreDebut" in year or 
+            "PreeDebut" in year or "PreeDebout" in year)
+
+def check_goal_criteria(criteria_data, year, turn):
+    """
+    Check if goal criteria are met and determine if racing should be prioritized.
+    
+    Args:
+        criteria_data (dict): The criteria data from OCR with text and G1 race requirements
+        year (str): Current year text
+        turn (str/int): Current turn number or text
+    
+    Returns:
+        dict: Dictionary containing criteria analysis and decision
+    """
+    # Extract criteria text and G1 race requirements
+    criteria_text = criteria_data.get("text", "")
+    requires_g1_races = criteria_data.get("requires_g1_races", False)
+    
+    # Check if goals criteria are met
+    criteria_met = (criteria_text.split(" ")[0] == "criteria" or 
+                    "criteria met" in criteria_text.lower() or 
+                    "goal achieved" in criteria_text.lower())
+    
+    # Check if it's pre-debut year
+    is_pre_debut = is_pre_debut_year(year)
+    
+    # Check if turn is a number before comparing
+    turn_is_number = isinstance(turn, int) or (isinstance(turn, str) and turn.isdigit())
+    turn_less_than_10 = turn < 10 if turn_is_number else False
+    
+    # Determine if racing should be prioritized (when criteria not met, not pre-debut, turn < 10)
+    should_prioritize_racing = not criteria_met and not is_pre_debut and turn_less_than_10
+    
+    # Determine if G1 races should be prioritized (when racing should be prioritized AND G1 races are required)
+    should_prioritize_g1_races = should_prioritize_racing and requires_g1_races
+    
+    debug_print(f"[DEBUG] Year: '{year}', Criteria met: {criteria_met}, Pre-debut: {is_pre_debut}, Turn < 10: {turn_less_than_10}")
+    debug_print(f"[DEBUG] G1 races required: {requires_g1_races}, Should prioritize G1: {should_prioritize_g1_races}")
+    
+    return {
+        "criteria_met": criteria_met,
+        "is_pre_debut": is_pre_debut,
+        "turn_less_than_10": turn_less_than_10,
+        "should_prioritize_racing": should_prioritize_racing,
+        "requires_g1_races": requires_g1_races,
+        "should_prioritize_g1_races": should_prioritize_g1_races
+    } 
