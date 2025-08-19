@@ -379,7 +379,7 @@ def check_current_year():
     return "Unknown Year"
 
 def check_criteria():
-    """Fast criteria detection using single OCR attempt"""
+    """Enhanced criteria detection with G1 race requirement detection"""
     criteria_img = enhanced_screenshot(CRITERIA_REGION)
     
     # Use single, fast OCR configuration
@@ -394,15 +394,25 @@ def check_criteria():
         text = text.replace("Goalachieved", "Goal achieved")
         
         debug_print(f"[DEBUG] Criteria OCR result: '{text}'")
-        return text
+    else:
+        # Single fallback attempt
+        fallback_text = extract_text(criteria_img)
+        if fallback_text.strip():
+            debug_print(f"[DEBUG] Using fallback criteria OCR result: '{fallback_text}'")
+            text = fallback_text.strip()
+        else:
+            text = "Unknown Criteria"
     
-    # Single fallback attempt
-    fallback_text = extract_text(criteria_img)
-    if fallback_text.strip():
-        debug_print(f"[DEBUG] Using fallback criteria OCR result: '{fallback_text}'")
-        return fallback_text.strip()
+    # Check if criteria contains G1 race requirements
+    requires_g1_races = False
+    if text and "G1" in text.upper():
+        requires_g1_races = True
+        debug_print(f"[DEBUG] G1 race requirement detected in criteria: '{text}'")
     
-    return "Unknown Criteria"
+    return {
+        "text": text,
+        "requires_g1_races": requires_g1_races
+    }
 
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)
