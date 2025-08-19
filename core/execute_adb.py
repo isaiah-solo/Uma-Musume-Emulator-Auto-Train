@@ -898,6 +898,16 @@ def race_day():
         for attempt in range(3):  # Try up to 3 times
             if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
                 debug_print(f"[DEBUG] Race button clicked successfully, attempt {attempt + 1}")
+                time.sleep(0.5)  # Wait between clicks
+                
+                # Click race button twice like in race_select
+                for j in range(2):
+                    if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
+                        debug_print(f"[DEBUG] Race button clicked {j+1} time(s)")
+                        time.sleep(0.5)
+                    else:
+                        debug_print(f"[DEBUG] Failed to click race button {j+1} time(s)")
+                
                 race_clicked = True
                 time.sleep(0.8)  # Wait for UI to respond
                 break
