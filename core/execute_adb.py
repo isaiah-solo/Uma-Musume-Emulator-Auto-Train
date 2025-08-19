@@ -86,8 +86,9 @@ def count_event_choices():
     """
     Count how many event choice icons are found on screen.
     Uses event_choice_1.png as template to find all U-shaped icons.
+    Filters matches by brightness to avoid dim/false positives.
     Returns:
-        tuple: (count, locations) - number of unique choices found and their locations
+        tuple: (count, locations) - number of unique bright choices found and their locations
     """
     template_path = "assets/icons/event_choice_1.png"
     
@@ -119,8 +120,24 @@ def count_event_choices():
             distance = ((center[0] - last_center[0]) ** 2 + (center[1] - last_center[1]) ** 2) ** 0.5
             if distance >= 150:  # Increased from 30 to 150 to separate different choice rows
                 unique_locations.append(location)
-        debug_print(f"[DEBUG] Final unique locations: {len(unique_locations)}")
-        return len(unique_locations), unique_locations
+        # Compute brightness and filter
+        screenshot = take_screenshot()
+        grayscale = screenshot.convert("L")
+        bright_threshold = 160.0
+        bright_locations = []
+        for (x, y, w, h) in unique_locations:
+            try:
+                region_img = grayscale.crop((x, y, x + w, y + h))
+                avg_brightness = ImageStat.Stat(region_img).mean[0]
+                debug_print(f"[DEBUG] Choice at ({x},{y},{w},{h}) brightness: {avg_brightness:.1f}")
+                if avg_brightness > bright_threshold:
+                    bright_locations.append((x, y, w, h))
+            except Exception:
+                # If brightness calc fails, skip this location
+                continue
+
+        debug_print(f"[DEBUG] Final unique bright locations: {len(bright_locations)} (threshold: {bright_threshold})")
+        return len(bright_locations), bright_locations
     except Exception as e:
         print(f"❌ Error counting event choices: {str(e)}")
         return 0, []
