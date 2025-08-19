@@ -891,15 +891,24 @@ def race_day():
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
         click("assets/buttons/ok_btn.png", minSearch=1)
-        time.sleep(0.5)
+        time.sleep(1.0)  # Increased wait time
         
-        debug_print("[DEBUG] Selecting race using match_track.png...")
-        # Use race_select to find and select the right race using match_track.png
-        found = race_select(prioritize_g1=False)  # Race day doesn't prioritize G1
-        if not found:
-            print("[INFO] No suitable race found on race day.")
+        # Try to find and click race button with better error handling
+        race_clicked = False
+        for attempt in range(3):  # Try up to 3 times
+            if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
+                debug_print(f"[DEBUG] Race button clicked successfully, attempt {attempt + 1}")
+                race_clicked = True
+                time.sleep(0.8)  # Wait for UI to respond
+                break
+            else:
+                debug_print(f"[DEBUG] Race button not found, attempt {attempt + 1}")
+                time.sleep(0.5)
+        
+        if not race_clicked:
+            debug_print("[ERROR] Failed to click race button after multiple attempts")
             return False
-        
+            
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
@@ -911,10 +920,6 @@ def race_select(prioritize_g1=False):
     """Select race"""
     debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
     
-    # # Move to center position like PC version
-    # from utils.adb_input import tap
-    # tap(560, 680)  # Center position like PC version
-    # time.sleep(0.2)
     
     def find_and_select_race():
         """Helper function to find and select a race (G1 or normal)"""
