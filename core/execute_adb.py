@@ -568,7 +568,8 @@ def handle_event_choice():
         
         if not event_name:
             print("No text detected in event region")
-            return 1, False, []  # Default to first choice
+            # Choices were visible and stabilized earlier; provide locations for fallback top-choice click
+            return 1, False, recheck_locations
         
         print(f"Event found: {event_name}")
 
@@ -705,7 +706,12 @@ def handle_event_choice():
     
     except Exception as e:
         print(f"Error during event handling: {e}")
-        return 1, False, []  # Default to first choice on error
+        # If choices are visible, return their locations to allow fallback top-choice click
+        try:
+            _, fallback_locations = count_event_choices()
+        except Exception:
+            fallback_locations = []
+        return 1, False, fallback_locations  # Default to first choice on error
 
 def click_event_choice(choice_number, choice_locations=None):
     """

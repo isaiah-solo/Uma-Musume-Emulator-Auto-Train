@@ -45,7 +45,7 @@ def extract_text(pil_img: Image.Image) -> str:
             img_np = pil_img
             
         # Use Tesseract with custom configuration for better accuracy
-        config = '--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%().- '
+        config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%().- "'
         text = pytesseract.image_to_string(img_np, config=config, lang='eng')
         return text.strip()
     except Exception as e:
@@ -141,10 +141,10 @@ def extract_failure_text(pil_img: Image.Image) -> str:
             
         # Try multiple PSM modes for better text recognition
         configs = [
-            '--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). ',  # Uniform block
-            '--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). ',  # Single line
-            '--oem 3 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). ',  # Single word
-            '--oem 3 --psm 13 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). ',  # Raw line
+            '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Uniform block
+            '--oem 3 --psm 7 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single line
+            '--oem 3 --psm 8 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single word
+            '--oem 3 --psm 13 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Raw line
         ]
         
         for config in configs:
@@ -168,7 +168,7 @@ def extract_failure_text_with_confidence(pil_img: Image.Image) -> tuple[str, flo
             img_np = pil_img
             
         # Use Tesseract with data output to get confidence scores
-        config = '--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). '
+        config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "'
         ocr_data = pytesseract.image_to_data(img_np, config=config, lang='eng', output_type=pytesseract.Output.DICT)
         
         # Extract text and calculate average confidence
@@ -228,7 +228,7 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
 
         # Simple OCR path (no PSM), preserve spaces
         try:
-            cfg_simple = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?! -c preserve_interword_spaces=1 -c user_defined_dpi=300"
+            cfg_simple = "-c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300"
             debug_print(f"[DEBUG] Simple OCR cfg: {cfg_simple}")
             simple_text = pytesseract.image_to_string(enhanced_gray, config=cfg_simple, lang='eng')
             simple_text = (simple_text or "").strip()
@@ -264,9 +264,9 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
         img_np_proc = processed
 
         configs = [
-            "--oem 3 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?! -c preserve_interword_spaces=1 -c user_defined_dpi=300",
-            "--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?! -c preserve_interword_spaces=1 -c user_defined_dpi=300",
-            "--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?! -c preserve_interword_spaces=1 -c user_defined_dpi=300",
+            "--oem 3 --psm 8 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
+            "--oem 3 --psm 7 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
+            "--oem 3 --psm 6 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
         ]
         for config in configs:
             try:
@@ -439,7 +439,7 @@ def extract_event_name_text_debug(pil_img: Image.Image, save_prefix: str = "even
         img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2RGB)
 
     # Use the exact same config as event_ocr.py
-    config = '-c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz \'!,♪☆():.-?!" -c tessedit_pageseg_mode=7 -c user_defined_dpi=300'
+    config = '-c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 \'!,♪☆():.-?!" -c tessedit_pageseg_mode=7 -c user_defined_dpi=300'
     
     # Use image_to_data to get confidence scores (like event_ocr.py)
     data = pytesseract.image_to_data(img_np, config=config, lang='eng', output_type=pytesseract.Output.DICT)
