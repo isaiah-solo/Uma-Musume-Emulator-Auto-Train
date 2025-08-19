@@ -1015,7 +1015,7 @@ def race_day():
     if click("assets/buttons/race_day_btn.png", minSearch=10):
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
-        click("assets/buttons/ok_btn.png", minSearch=1)
+        click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=2)
         time.sleep(1.0)  # Increased wait time
         
         # Try to find and click race button with better error handling
