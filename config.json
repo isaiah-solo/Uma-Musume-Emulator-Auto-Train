@@ -6,13 +6,19 @@
     "pwr",
     "guts"
   ],
+
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
-  "prioritize_g1_race": true,
-  "skill_point_cap": 500,
+  "prioritize_g1_race": false,
+
+  "skill_point_cap": 350,
+  "skill_purchase": "auto",
+  "skill_file": "skills_example.json",
   "enable_skill_point_check": true,
-  "min_support": 3,
+
+  "min_support": 2,
   "do_race_when_bad_training": true,
+
   "stat_caps": {
     "spd": 1100,
     "sta": 1100,
@@ -20,6 +26,7 @@
     "guts": 600,
     "wit": 600
   },
+
   "adb_config": {
     "device_address": "127.0.0.1:7555",
     "adb_path": "adb",
@@ -27,5 +34,6 @@
     "input_delay": 0.5,
     "connection_timeout": 10
   },
-  "debug_mode": true
+
+  "debug_mode": false
 }
