@@ -4,13 +4,15 @@
         "Swinging Maestro",
         "Rushing Gale!",
         "Unrestrained",
-        "Killer Tunes"
+        "Killer Tunes",
+        "Beeline Burst"
     ],
     "gold_skill_upgrades": {
         "Professor of Curvature": "Corner Adept",
         "Swinging Maestro": "Corner Recovery",
         "Rushing Gale!": "Straightaway Acceleration",
         "Unrestrained": "Final Push",
-        "Killer Tunes": "Up-Tempo"
+        "Killer Tunes": "Up-Tempo",
+        "Beeline Burst": "Straightaway Adept"
     }
 }
