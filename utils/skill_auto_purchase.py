@@ -79,6 +79,9 @@ def clean_skill_points(text):
         return 0
     
     import re
+    # Normalize common OCR confusions before extracting digits
+    # Treat backslash as '1' (e.g., 77\ -> 771)
+    text = text.replace('\\', '1')
     # Remove extra whitespace and newlines
     text = re.sub(r'\s+', ' ', text).strip()
     
