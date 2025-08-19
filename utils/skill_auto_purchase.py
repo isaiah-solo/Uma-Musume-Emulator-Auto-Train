@@ -13,14 +13,39 @@ try:
 except:
     DEBUG_MODE = False
 
+# Global cache for skill points to avoid re-detection
+_skill_points_cache = None
+_cache_timestamp = 0
+_cache_lifetime = 300  # Cache valid for 5 minutes
+
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
 
+def cache_skill_points(points: int):
+    """Cache skill points for reuse (called from race day detection)"""
+    global _skill_points_cache, _cache_timestamp
+    _skill_points_cache = points
+    _cache_timestamp = time.time()
+    debug_print(f"[DEBUG] Cached skill points: {points}")
+
+def get_cached_skill_points() -> int | None:
+    """Get cached skill points if still valid, None if expired/missing"""
+    global _skill_points_cache, _cache_timestamp
+    if _skill_points_cache is None:
+        return None
+    if time.time() - _cache_timestamp > _cache_lifetime:
+        debug_print("[DEBUG] Skill points cache expired")
+        _skill_points_cache = None
+        return None
+    debug_print(f"[DEBUG] Using cached skill points: {_skill_points_cache}")
+    return _skill_points_cache
+
 def extract_skill_points(screenshot=None):
     """
     Extract available skill points from the screen using OCR with enhanced preprocessing.
+    First checks cache, then falls back to OCR detection.
     
     Args:
         screenshot: PIL Image (optional, will take new screenshot if not provided)
@@ -28,6 +53,12 @@ def extract_skill_points(screenshot=None):
     Returns:
         int: Available skill points, or 0 if extraction fails
     """
+    # Check cache first
+    cached = get_cached_skill_points()
+    if cached is not None:
+        print(f"[INFO] Using cached skill points: {cached}")
+        return cached
+
     try:
         if screenshot is None:
             from utils.adb_screenshot import take_screenshot
@@ -59,6 +90,8 @@ def extract_skill_points(screenshot=None):
         skill_points = clean_skill_points(skill_points_raw)
         print(f"[INFO] Available skill points: {skill_points}")
         
+        # Cache the result for future use
+        cache_skill_points(skill_points)
         return skill_points
         
     except Exception as e:

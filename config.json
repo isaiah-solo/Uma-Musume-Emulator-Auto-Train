@@ -11,7 +11,7 @@
   "maximum_failure": 15,
   "prioritize_g1_race": false,
 
-  "skill_point_cap": 350,
+  "skill_point_cap": 400,
   "skill_purchase": "auto",
   "skill_file": "skills_example.json",
   "enable_skill_point_check": true,

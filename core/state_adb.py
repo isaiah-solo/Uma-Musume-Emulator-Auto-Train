@@ -441,6 +441,11 @@ def check_skill_points():
     result = int(digits) if digits.isdigit() else 0
     debug_print(f"[DEBUG] Final skill points value: {result}")
     
+    # Cache the skill points for reuse in skill auto-purchase
+    if result > 0:
+        from utils.skill_auto_purchase import cache_skill_points
+        cache_skill_points(result)
+    
     return result
 
 def check_skill_points_cap():

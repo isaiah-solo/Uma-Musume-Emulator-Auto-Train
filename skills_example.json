@@ -2,6 +2,7 @@
     "skill_priority": [
         "Professor of Curvature",
         "Swinging Maestro",
+        "Determined Descent",
         "Rushing Gale!",
         "Unrestrained",
         "Killer Tunes",
@@ -13,6 +14,7 @@
         "Rushing Gale!": "Straightaway Acceleration",
         "Unrestrained": "Final Push",
         "Killer Tunes": "Up-Tempo",
-        "Beeline Burst": "Straightaway Adept"
+        "Beeline Burst": "Straightaway Adept",
+        "Determined Descent": "Straight Descent"
     }
 }
