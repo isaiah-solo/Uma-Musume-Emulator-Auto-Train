@@ -1574,7 +1574,7 @@ def career_lobby():
 
 def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 
-            "PreeDebut" in year or "PreeDebout" in year)
+            "PreeDebut" in year or "Pre" in year)
 
 def check_goal_criteria(criteria_data, year, turn):
     """
