@@ -2,6 +2,7 @@
     "skill_priority": [
         "Professor of Curvature",
         "Swinging Maestro",
+        "Gourmand",
         "Determined Descent",
         "Rushing Gale!",
         "Unrestrained",
@@ -11,6 +12,7 @@
     "gold_skill_upgrades": {
         "Professor of Curvature": "Corner Adept",
         "Swinging Maestro": "Corner Recovery",
+        "Gourmand":"Hydrate",
         "Rushing Gale!": "Straightaway Acceleration",
         "Unrestrained": "Final Push",
         "Killer Tunes": "Up-Tempo",

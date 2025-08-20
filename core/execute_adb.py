@@ -8,12 +8,11 @@ from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_fo
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
-    MOOD_LIST, EVENT_REGION, RACE_CARD_REGION
+    MOOD_LIST, EVENT_REGION, RACE_CARD_REGION, SUPPORT_CARD_ICON_REGION
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement
-from core.logic import do_something, do_something_fallback, all_training_unsafe, MAX_FAILURE
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training
 
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
@@ -24,6 +23,53 @@ def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
+
+# Support icon templates for detailed detection
+SUPPORT_ICON_PATHS = {
+    "spd": "assets/icons/support_card_type_spd.png",
+    "sta": "assets/icons/support_card_type_sta.png",
+    "pwr": "assets/icons/support_card_type_pwr.png",
+    "guts": "assets/icons/support_card_type_guts.png",
+    "wit": "assets/icons/support_card_type_wit.png",
+    "friend": "assets/icons/support_card_type_friend.png",
+}
+
+# Bond color classification helpers
+BOND_SAMPLE_OFFSET = (-2, 116)
+BOND_LEVEL_COLORS = {
+    5: (255, 235, 120),
+    4: (255, 173, 30),
+    3: (162, 230, 30),
+    2: (42, 192, 255),
+    1: (109, 108, 117),
+}
+
+def _classify_bond_level(rgb_tuple):
+    r, g, b = rgb_tuple
+    best_level, best_dist = 1, float('inf')
+    for level, (cr, cg, cb) in BOND_LEVEL_COLORS.items():
+        dr, dg, db = r - cr, g - cg, b - cb
+        dist = dr*dr + dg*dg + db*db
+        if dist < best_dist:
+            best_dist, best_level = dist, level
+    return best_level
+
+def _filtered_template_matches(screenshot, template_path, region_cv, confidence=0.8):
+    raw = match_template(screenshot, template_path, confidence, region_cv)
+    if not raw:
+        return []
+    filtered = []
+    for (x, y, w, h) in raw:
+        cx, cy = x + w // 2, y + h // 2
+        duplicate = False
+        for (ex, ey, ew, eh) in filtered:
+            ecx, ecy = ex + ew // 2, ey + eh // 2
+            if abs(cx - ecx) < 30 and abs(cy - ecy) < 30:
+                duplicate = True
+                break
+        if not duplicate:
+            filtered.append((x, y, w, h))
+    return filtered
 
 def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
     """
@@ -858,7 +904,8 @@ def go_to_training():
     return click("assets/buttons/training_btn.png", minSearch=10)
 
 def check_training():
-    """Check training results with support cards and failure rates using fixed coordinates"""
+    """Check training results using fixed coordinates, collecting support counts,
+    bond levels and hint presence in one hover pass before computing failure rates."""
     debug_print("[DEBUG] Checking training options...")
     
     # Fixed coordinates for each training type
@@ -886,29 +933,98 @@ def check_training():
         swipe(start_x, start_y, end_x, end_y, duration_ms=200)  # Longer duration for hover effect
         time.sleep(0.3)  # Wait for hover effect to register
         
-        # Step 2: Check support cards while hovering
+        # Step 2: One pass: capture screenshot, evaluate support counts, bond levels, and hint
+        screenshot = take_screenshot()
+        left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+        region_cv = (left, top, right - left, bottom - top)
+
+        # Support counts
         support_counts = check_support_card()
         total_support = sum(support_counts.values())
-        debug_print(f"[DEBUG] Support cards detected: {support_counts} (total: {total_support})")
-        
 
-        
+        # Bond levels per type
+        detailed_support = {}
+        rgb_img = screenshot.convert("RGB")
+        width, height = rgb_img.size
+        dx, dy = BOND_SAMPLE_OFFSET
+        for t_key, tpl in SUPPORT_ICON_PATHS.items():
+            matches = _filtered_template_matches(screenshot, tpl, region_cv, confidence=0.8)
+            if not matches:
+                continue
+            entries = []
+            for (x, y, w, h) in matches:
+                cx, cy = int(x + w // 2), int(y + h // 2)
+                sx, sy = cx + dx, cy + dy
+                sx = max(0, min(width - 1, sx))
+                sy = max(0, min(height - 1, sy))
+                r, g, b = rgb_img.getpixel((sx, sy))
+                level = _classify_bond_level((r, g, b))
+                entries.append({
+                    "bbox": [int(x), int(y), int(w), int(h)],
+                    "center": [cx, cy],
+                    "bond_sample_point": [int(sx), int(sy)],
+                    "bond_color": [int(r), int(g), int(b)],
+                    "bond_level": int(level),
+                })
+            if entries:
+                detailed_support[t_key] = entries
+
+        # Hint
+        hint_found = check_hint()
+
+        # Calculate score for this training type
+        from core.state_adb import calculate_training_score
+        score = calculate_training_score(detailed_support, hint_found, key)
+
+        debug_print(f"[DEBUG] Support counts: {support_counts} | hint_found={hint_found} | score={score}")
+
         debug_print(f"[DEBUG] Checking failure rate for {key.upper()} training...")
         failure_chance, confidence = check_failure(key)
         
         results[key] = {
             "support": support_counts,
+            "support_detail": detailed_support,
+            "hint": bool(hint_found),
             "total_support": total_support,
             "failure": failure_chance,
-            "confidence": confidence
+            "confidence": confidence,
+            "score": score
         }
         
-        print(f"[{key.upper()}] → {support_counts}, Fail: {failure_chance}% - Confident: {confidence:.2f}")
+        # Use clean format matching training_score_test.py exactly
+        print(f"\n[{key.upper()}]")
+        
+        # Show support card details (similar to test script)
+        if detailed_support:
+            support_lines = []
+            for card_type, entries in detailed_support.items():
+                for idx, entry in enumerate(entries, start=1):
+                    level = entry['bond_level']
+                    is_rainbow = (card_type == key and level >= 4)
+                    label = f"{card_type.upper()}{idx}: {level}"
+                    if is_rainbow:
+                        label += " (Rainbow)"
+                    support_lines.append(label)
+            print(", ".join(support_lines))
+        else:
+            print("-")
+        
+        print(f"hint={hint_found}")
+        print(f"Fail: {failure_chance}% - Confident: {confidence:.2f}")
+        print(f"Score: {score}")
         
 
     
     debug_print("[DEBUG] Going back from training screen...")
     click("assets/buttons/back_btn.png")
+    
+    # Print overall summary
+    print("\n=== Overall ===")
+    for k in ["spd", "sta", "pwr", "guts", "wit"]:
+        if k in results:
+            data = results[k]
+            print(f"{k.upper()}: Score={data['score']:.2f}, Fail={data['failure']}% - Confident: {data['confidence']:.2f}")
+    
     return results
 
 def do_train(train):
@@ -946,19 +1062,43 @@ def do_train(train):
 def do_rest():
     """Perform rest action"""
     debug_print("[DEBUG] Performing rest action...")
-    rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.8)
-    rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.8)
+    print("[INFO] Performing rest action...")
+    
+    # Rest button is in the lobby, not on training screen
+    # If we're on training screen, go back to lobby first
+    from utils.adb_recognizer import locate_on_screen
+    back_btn = locate_on_screen("assets/buttons/back_btn.png", confidence=0.8)
+    if back_btn:
+        debug_print("[DEBUG] Going back to lobby to find rest button...")
+        print("[INFO] Going back to lobby to find rest button...")
+        from utils.adb_input import tap
+        tap(back_btn[0], back_btn[1])
+        time.sleep(1.0)  # Wait for lobby to load
+    
+    # Now look for rest buttons in the lobby
+    rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.5)
+    rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.5)
+    
+    debug_print(f"[DEBUG] Rest button found: {rest_btn}")
+    debug_print(f"[DEBUG] Summer rest button found: {rest_summer_btn}")
     
     if rest_btn:
-        debug_print(f"[DEBUG] Found rest button at {rest_btn}")
+        debug_print(f"[DEBUG] Clicking rest button at {rest_btn}")
+        print(f"[INFO] Clicking rest button at {rest_btn}")
+        from utils.adb_input import tap
         tap(rest_btn[0], rest_btn[1])
         debug_print("[DEBUG] Clicked rest button")
+        print("[INFO] Rest button clicked")
     elif rest_summer_btn:
-        debug_print(f"[DEBUG] Found summer rest button at {rest_summer_btn}")
+        debug_print(f"[DEBUG] Clicking summer rest button at {rest_summer_btn}")
+        print(f"[INFO] Clicking summer rest button at {rest_summer_btn}")
+        from utils.adb_input import tap
         tap(rest_summer_btn[0], rest_summer_btn[1])
         debug_print("[DEBUG] Clicked summer rest button")
+        print("[INFO] Summer rest button clicked")
     else:
-        debug_print("[DEBUG] No rest button found")
+        debug_print("[DEBUG] No rest button found in lobby")
+        print("[WARNING] No rest button found in lobby")
 
 def do_recreation():
     """Perform recreation action"""
@@ -1478,7 +1618,7 @@ def career_lobby():
                 continue
             else:
                 print("G1 Race Result: No G1 Race Found")
-                # If there is no G1 race, go back and do training
+                # If there is no G1 race, go back and do training instead
                 click("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
                 time.sleep(0.5)
         else:
@@ -1495,82 +1635,67 @@ def career_lobby():
         time.sleep(0.5)
         results_training = check_training()
         
-        debug_print("[DEBUG] Deciding best training action...")
-        best_training = do_something(results_training)
-        debug_print(f"[DEBUG] Best training decision: {best_training}")
-        if best_training == "PRIORITIZE_RACE":
-            debug_print("[DEBUG] Training logic suggests prioritizing race...")
-            # Check if it's Pre-Debut - if so, don't prioritize racing
-            year_parts = year.split(" ")
-            if is_pre_debut_year(year):
-                debug_print(f"[DEBUG] {year} detected, skipping race prioritization (no races available)")
-                print(f"[INFO] {year} detected. Skipping race prioritization and proceeding to training.")
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-                continue
-            
-            # Check if it's Finale Season - no races available, fall back to training without min_support
-            if year == "Finale Season":
-                debug_print("[DEBUG] Finale Season detected, no races available")
-                print("[INFO] Finale Season detected. No races available. Proceeding to training without minimum support requirements.")
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-                continue
-            
-            print("[INFO] Prioritizing race due to insufficient support cards.")
-            
-            # Check if all training options are unsafe before attempting race
-            debug_print("[DEBUG] Checking if all training options are unsafe...")
-            if all_training_unsafe(results_training):
-                debug_print(f"[DEBUG] All training options have failure rate > {MAX_FAILURE}%")
-                print(f"[INFO] All training options have failure rate > {MAX_FAILURE}%. Skipping race and choosing to rest.")
-                do_rest()
-                continue
-            
-            # Check if racing is available (no races in July/August)
-            debug_print("[DEBUG] Checking if racing is available...")
-            if not is_racing_available(year):
-                debug_print("[DEBUG] Racing not available (summer break)")
-                print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
-                do_rest()
-                continue
-            
-            print("Training Race Check: Looking for race due to insufficient support cards...")
-            race_found = do_race()
-            if race_found:
-                print("Training Race Result: Found Race")
-                continue
-            else:
-                print("Training Race Result: No Race Found")
-                # If no race found, go back to training logic
-                print("[INFO] No race found. Returning to training logic.")
-                click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
-                time.sleep(0.5)
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-        elif best_training:
-            debug_print(f"[DEBUG] Performing {best_training} training...")
+        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
+        
+        # Load config for scoring thresholds
+        try:
+            with open("config.json", "r", encoding="utf-8") as file:
+                training_config = json.load(file)
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
+        
+        # Use new scoring algorithm to choose best training
+        from core.state_adb import choose_best_training
+        best_training = choose_best_training(results_training, training_config)
+        
+        if best_training:
+            debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
+            print(f"[INFO] Selected {best_training.upper()} training based on scoring algorithm")
             do_train(best_training)
         else:
-            debug_print("[DEBUG] No suitable training found, doing rest...")
-            do_rest()
+            debug_print("[DEBUG] No suitable training found based on scoring criteria")
+            print("[INFO] No suitable training found based on scoring criteria.")
+            
+            # Check if we should prioritize racing when no good training is available
+            do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
+            
+            if do_race_when_bad_training:
+                # Check if all training options have failure rates above maximum
+                from core.logic import all_training_unsafe
+                max_failure = training_config.get('maximum_failure', 15)
+                debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
+                debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
+                
+                if all_training_unsafe(results_training, max_failure):
+                    debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
+                    print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
+                    do_rest()
+                else:
+                    # Check if racing is available (no races in July/August)
+                    if not is_racing_available(year):
+                        debug_print("[DEBUG] Racing not available (summer break)")
+                        print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
+                        do_rest()
+                    else:
+                        print("[INFO] Prioritizing race due to insufficient training scores.")
+                        print("Training Race Check: Looking for race due to insufficient training scores...")
+                        race_found = do_race()
+                        if race_found:
+                            print("Training Race Result: Found Race")
+                            continue
+                        else:
+                            print("Training Race Result: No Race Found")
+                            # If no race found, go back and rest
+                            click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to rest.")
+                            time.sleep(0.5)
+                            do_rest()
+            else:
+                print("[INFO] Race prioritization disabled. Choosing to rest.")
+                do_rest()
+        
         debug_print("[DEBUG] Waiting before next iteration...")
-        time.sleep(1) 
+        time.sleep(1)
 
 def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 

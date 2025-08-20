@@ -12,6 +12,7 @@ Thumbs.db
 test_*.py
 test_*.png
 test_*.jpg
+TEST_*.md
 
 # Debug images and temporary files
 debug_*.png

@@ -122,6 +122,40 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
+def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.85) -> bool:
+    """Detect presence of a hint icon within the support card search region.
+
+    Args:
+        template_path: Path to the hint icon template image.
+        confidence: Minimum confidence threshold for template matching.
+
+    Returns:
+        True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
+    """
+    try:
+        screenshot = take_screenshot()
+
+        # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
+        left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+        region_cv = (left, top, right - left, bottom - top)
+        debug_print(f"[DEBUG] Checking hint in region: {region_cv} using template: {template_path}")
+
+        if DEBUG_MODE:
+            try:
+                screenshot.crop(SUPPORT_CARD_ICON_REGION).save("debug_hint_search_region.png")
+                debug_print("[DEBUG] Saved hint search region to debug_hint_search_region.png")
+            except Exception:
+                pass
+
+        matches = match_template(screenshot, template_path, confidence, region_cv)
+
+        found = bool(matches and len(matches) > 0)
+        debug_print(f"[DEBUG] Hint icon found: {found}")
+        return found
+    except Exception as e:
+        debug_print(f"[DEBUG] check_hint failed: {e}")
+        return False
+
 def check_failure(train_type):
     """
     Check failure rate for a specific training type using direct region OCR.
@@ -614,4 +648,82 @@ def check_skill_points_cap():
         
         return True
     
-    return True 
+    return True
+
+def calculate_training_score(support_detail, hint_found, training_type):
+    """
+    Calculate training score based on support cards, bond levels, and hints.
+    
+    Args:
+        support_detail: Dictionary of support card details with bond levels
+        hint_found: Boolean indicating if hint is present
+        training_type: The type of training being evaluated
+    
+    Returns:
+        float: Calculated score for the training
+    """
+    score = 0.0
+    
+    # Score support cards based on bond levels
+    for card_type, entries in support_detail.items():
+        for entry in entries:
+            level = entry['bond_level']
+            is_rainbow = (card_type == training_type and level >= 4)
+            
+            if is_rainbow:
+                score += 1.0  # Rainbow support (same type, bond >= 4)
+            else:
+                if level < 4:
+                    score += 0.7  # Not rainbow, bond < 4
+                # bond >= 4 for non-rainbow gets 0.0 points
+    
+    # Add hint bonus
+    if hint_found:
+        score += 0.3
+    
+    return round(score, 2)
+
+def choose_best_training(training_results, config):
+    """
+    Choose the best training based on scoring algorithm.
+    
+    Args:
+        training_results: Dictionary of training results with scores, failure rates, etc.
+        config: Configuration dictionary with thresholds and priorities
+    
+    Returns:
+        str: Best training type to choose, or None if no suitable training
+    """
+    maximum_failure = config.get("maximum_failure", 15)
+    min_score = config.get("min_score", 1.0)
+    min_wit_score = config.get("min_wit_score", 1.0)
+    priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
+    
+    # Filter eligible trainings
+    eligible = []
+    for training_type, data in training_results.items():
+        if data["failure"] > maximum_failure:
+            continue
+        
+        # Apply appropriate score threshold
+        threshold = min_wit_score if training_type == "wit" else min_score
+        if data["score"] < threshold:
+            continue
+        
+        eligible.append((training_type, data))
+    
+    if not eligible:
+        return None
+    
+    # Find training with highest score
+    max_score = max(d["score"] for _, d in eligible)
+    tied_trainings = [t for t, d in eligible if d["score"] == max_score]
+    
+    if len(tied_trainings) == 1:
+        return tied_trainings[0]
+    
+    # Tie-breaker: use priority order from config
+    order_index = {name: i for i, name in enumerate(priority_order)}
+    chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
+    
+    return chosen 
