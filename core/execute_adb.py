@@ -1315,7 +1315,7 @@ def career_lobby():
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.8)
+        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.6)
         if next_matches:
             x, y, w, h = next_matches[0]
             center = (x + w//2, y + h//2)
@@ -1325,7 +1325,7 @@ def career_lobby():
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.8)
+        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.6)
         if cancel_matches:
             x, y, w, h = cancel_matches[0]
             center = (x + w//2, y + h//2)
