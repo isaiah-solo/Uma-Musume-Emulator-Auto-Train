@@ -12,7 +12,7 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement
 from core.logic import do_something, do_something_fallback, all_training_unsafe, MAX_FAILURE
 
 # Load config and check debug mode
@@ -1372,27 +1372,26 @@ def career_lobby():
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
         turn = check_turn()
         year = check_current_year()
-        goal_name = check_goal_name()
-        criteria_data = check_criteria()
+        goal_data = check_goal_name_with_g1_requirement()
+        criteria_text = check_criteria()
         
         print("\n=======================================================================================\n")
         print(f"Year: {year}")
         print(f"Mood: {mood}")
         print(f"Turn: {turn}")
-        print(f"Goal Name: {goal_name}")
-        print(f"Goal: {criteria_data['text']}")
-        if criteria_data['requires_g1_races']:
-            print(f"G1 Race Requirement: {criteria_data['text']}")
+        print(f"Goal Name: {goal_data['text']}")
+        print(f"Status: {criteria_text}")
+        print(f"G1 Race Requirement: {goal_data['requires_g1_races']}")
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
         debug_print("[DEBUG] Checking goal criteria...")
-        goal_analysis = check_goal_criteria(criteria_data, year, turn)
+        goal_analysis = check_goal_criteria({"text": criteria_text, "requires_g1_races": goal_data['requires_g1_races']}, year, turn)
         
         if goal_analysis["should_prioritize_racing"]:
             if goal_analysis["should_prioritize_g1_races"]:
-                print(f"Goal Status: Criteria not met - Prioritizing G1 races to meet goals")
+                print(f"Decision: Criteria not met - Prioritizing G1 races to meet goals")
                 race_found = do_race(prioritize_g1=True)
                 if race_found:
                     print("Race Result: Found G1 Race")
@@ -1403,7 +1402,7 @@ def career_lobby():
                     click("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
                     time.sleep(0.5)
             else:
-                print(f"Goal Status: Criteria not met - Prioritizing normal races to meet goals")
+                print(f"Decision: Criteria not met - Prioritizing normal races to meet goals")
                 race_found = do_race()
                 if race_found:
                     print("Race Result: Found Race")
@@ -1414,7 +1413,7 @@ def career_lobby():
                     click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
                     time.sleep(0.5)
         else:
-            print("Goal Status: Criteria met or conditions not suitable for racing")
+            print("Decision: Criteria met or conditions not suitable for racing")
             debug_print(f"[DEBUG] Racing not prioritized - Criteria met: {goal_analysis['criteria_met']}, Pre-debut: {goal_analysis['is_pre_debut']}, Turn < 10: {goal_analysis['turn_less_than_10']}")
         
         print("")

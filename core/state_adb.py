@@ -382,7 +382,7 @@ def check_current_year():
     return "Unknown Year"
 
 def check_criteria():
-    """Enhanced criteria detection with G1 race requirement detection"""
+    """Enhanced criteria detection"""
     criteria_img = enhanced_screenshot(CRITERIA_REGION)
     
     # Use single, fast OCR configuration
@@ -406,16 +406,7 @@ def check_criteria():
         else:
             text = "Unknown Criteria"
     
-    # Check if criteria contains G1 race requirements
-    requires_g1_races = False
-    if text and "G1" in text.upper():
-        requires_g1_races = True
-        debug_print(f"[DEBUG] G1 race requirement detected in criteria: '{text}'")
-    
-    return {
-        "text": text,
-        "requires_g1_races": requires_g1_races
-    }
+    return text
 
 def check_goal_name():
     """Detect the current goal name using simple Tesseract OCR.
@@ -457,6 +448,25 @@ def check_goal_name():
         debug_print(f"[DEBUG] Goal name OCR result: '{text}'")
 
     return text
+
+def check_goal_name_with_g1_requirement():
+    """Detect the current goal name and check if it requires G1 races.
+    
+    Returns:
+        dict: Dictionary with goal name text and G1 race requirement flag
+    """
+    goal_name = check_goal_name()
+    
+    # Check if goal name contains G1 race requirements
+    requires_g1_races = False
+    if goal_name and "G1" in goal_name.upper():
+        requires_g1_races = True
+        debug_print(f"[DEBUG] G1 race requirement detected in goal name: '{goal_name}'")
+    
+    return {
+        "text": goal_name,
+        "requires_g1_races": requires_g1_races
+    }
 
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)
