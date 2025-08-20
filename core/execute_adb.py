@@ -12,7 +12,7 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name
 from core.logic import do_something, do_something_fallback, all_training_unsafe, MAX_FAILURE
 
 # Load config and check debug mode
@@ -1372,12 +1372,14 @@ def career_lobby():
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
         turn = check_turn()
         year = check_current_year()
+        goal_name = check_goal_name()
         criteria_data = check_criteria()
         
         print("\n=======================================================================================\n")
         print(f"Year: {year}")
         print(f"Mood: {mood}")
         print(f"Turn: {turn}")
+        print(f"Goal Name: {goal_name}")
         print(f"Goal: {criteria_data['text']}")
         if criteria_data['requires_g1_races']:
             print(f"G1 Race Requirement: {criteria_data['text']}")

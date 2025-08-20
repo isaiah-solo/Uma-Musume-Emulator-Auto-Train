@@ -417,6 +417,47 @@ def check_criteria():
         "requires_g1_races": requires_g1_races
     }
 
+def check_goal_name():
+    """Detect the current goal name using simple Tesseract OCR.
+
+    Captures the region (372, 113, 912, 152) and returns the recognized
+    goal name as a string. Mirrors the lightweight OCR approach used in
+    check_criteria (PSM 7, single line) with a single fallback to the
+    shared extract_text helper.
+    """
+    GOAL_REGION = (372, 113, 912, 152)
+
+    # Capture enhanced image of the goal name region for better OCR
+    goal_img = enhanced_screenshot(GOAL_REGION)
+
+    # Save debug images if enabled
+    if DEBUG_MODE:
+        try:
+            raw_img = capture_region(GOAL_REGION)
+            raw_img.save("debug_goal_region_raw.png")
+        except Exception:
+            pass
+        try:
+            goal_img.save("debug_goal_region_enhanced.png")
+        except Exception:
+            pass
+
+    # Primary OCR path: single line recognition
+    import pytesseract
+    text = pytesseract.image_to_string(goal_img, config='--oem 3 --psm 7').strip()
+
+    if not text:
+        # Fallback once to the shared OCR helper
+        fallback_text = extract_text(goal_img)
+        if fallback_text.strip():
+            debug_print(f"[DEBUG] Using fallback goal OCR result: '{fallback_text}'")
+            text = fallback_text.strip()
+
+    if DEBUG_MODE:
+        debug_print(f"[DEBUG] Goal name OCR result: '{text}'")
+
+    return text
+
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)
     
