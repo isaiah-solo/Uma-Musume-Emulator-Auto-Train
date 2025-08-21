@@ -21,6 +21,7 @@ from core.event_handling import count_event_choices, load_event_priorities, anal
 with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
+    RETRY_RACE = config.get("retry_race", True)
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
@@ -422,6 +423,8 @@ def do_race(prioritize_g1=False):
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
         time.sleep(1)
+        # If race failed screen appears, handle retry before proceeding
+        handle_race_retry_if_failed()
         after_race()
         return True
     else:
@@ -480,6 +483,8 @@ def race_day():
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
+        # If race failed screen appears, handle retry before proceeding
+        handle_race_retry_if_failed()
         after_race()
         return True
     return False
@@ -635,6 +640,47 @@ def race_prep():
         debug_print("[DEBUG] Race preparation complete")
     else:
         debug_print("[DEBUG] View results button not found")
+
+def handle_race_retry_if_failed():
+    """Detect race failure on race day and retry based on config.
+
+    Recognizes failure by detecting `assets/icons/clock.png` on screen.
+    If `retry_race` is true in config, taps `assets/buttons/try_again.png`, waits 5s,
+    and calls `race_prep()` again. Returns True if a retry was performed, False otherwise.
+    """
+    try:
+        # Check for failure indicator (clock icon)
+        clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+        if not clock:
+            return False
+
+        print("[INFO] Race failed detected (clock icon).")
+
+        if not RETRY_RACE:
+            print("[INFO] retry_race is disabled. Stopping automation.")
+            raise SystemExit(0)
+
+        # Try to click Try Again button
+        try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
+        if try_again:
+            print("[INFO] Clicking Try Again button.")
+            tap(try_again[0], try_again[1])
+        else:
+            print("[INFO] Try Again button not found. Attempting helper click...")
+            # Fallback: attempt generic click using click helper
+            click("assets/buttons/try_again.png", confidence=0.8, minSearch=10)
+
+        # Wait before re-prepping the race
+        print("[INFO] Waiting 5 seconds before retrying the race...")
+        time.sleep(5)
+        print("[INFO] Re-preparing race...")
+        race_prep()
+        return True
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"[ERROR] handle_race_retry_if_failed error: {e}")
+        return False
 
 def after_race():
     """Handle post-race actions"""
@@ -877,6 +923,8 @@ def career_lobby():
             
             race_prep()
             time.sleep(1)
+            # If race failed screen appears, handle retry before proceeding
+            handle_race_retry_if_failed()
             after_race()
             continue
         else:

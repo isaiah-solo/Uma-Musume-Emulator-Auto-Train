@@ -9,7 +9,8 @@
 
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
-  "prioritize_g1_race": true,
+  "prioritize_g1_race": false,
+  "retry_race": true,
 
   "skill_point_cap": 400,
   "skill_purchase": "auto",

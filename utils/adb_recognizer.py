@@ -59,6 +59,41 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
         print(f"Error in template matching: {e}")
         return None
 
+def max_match_confidence(screenshot, template_path, region=None):
+    """
+    Compute the maximum template match score for a template against a screenshot.
+
+    Args:
+        screenshot: PIL Image of the screen
+        template_path: Path to template image
+        region: Optional region to search (x, y, w, h)
+
+    Returns:
+        float: max normalized correlation score in [0,1], or None on error
+    """
+    try:
+        if not os.path.exists(template_path):
+            print(f"Template not found: {template_path}")
+            return None
+
+        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+        if template is None:
+            print(f"Failed to load template: {template_path}")
+            return None
+
+        screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+        if region:
+            x, y, w, h = region
+            screenshot_cv = screenshot_cv[y:y+h, x:x+w]
+
+        result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        return float(max_val)
+    except Exception as e:
+        print(f"Error computing max template confidence: {e}")
+        return None
+
 def locate_on_screen(template_path, confidence=0.8, region=None):
     """
     Locate template on screen and return center coordinates

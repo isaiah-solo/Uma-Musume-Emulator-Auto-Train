@@ -1,6 +1,7 @@
 import json
 import os
 from difflib import SequenceMatcher
+from utils.skill_recognizer import scan_all_skills_with_scroll
 
 # Load config for debug mode
 try:
@@ -232,21 +233,27 @@ def test_purchase_optimizer():
     
     # Load config
     config = load_skill_config()
-    
-    # Sample available skills (from your scan results)
-    sample_skills = [
-        {"name": "Shooting For Victory", "price": "160"},
-        {"name": "Homestretch Haste", "price": "153"},
-        {"name": "Deep Breaths", "price": "144"},
-        {"name": "Pressure", "price": "160"},
-        {"name": "The Coast Is Clear", "price": "220"},
-        {"name": "I Can See Right Through You", "price": "110"},
-        {"name": "After-School Stroll", "price": "170"},
-        {"name": "Uma Stan", "price": "160"}
-    ]
-    
+
+    # Live scan via scroll to collect skills from the UI
+    print("[INFO] Scanning skills via scroll to build available list...")
+    scan = scan_all_skills_with_scroll(confidence=0.9, brightness_threshold=150, max_scrolls=20)
+    available_skills = [{"name": s.get("name", "Unknown"), "price": s.get("price", "0")} for s in scan.get("all_skills", [])]
+
+    if not available_skills:
+        print("[WARNING] No skills found via scan. Falling back to sample data.")
+        available_skills = [
+            {"name": "Shooting For Victory", "price": "160"},
+            {"name": "Homestretch Haste", "price": "153"},
+            {"name": "Deep Breaths", "price": "144"},
+            {"name": "Pressure", "price": "160"},
+            {"name": "The Coast Is Clear", "price": "220"},
+            {"name": "I Can See Right Through You", "price": "110"},
+            {"name": "After-School Stroll", "price": "170"},
+            {"name": "Uma Stan", "price": "160"}
+        ]
+
     # Create purchase plan
-    purchase_plan = create_purchase_plan(sample_skills, config)
+    purchase_plan = create_purchase_plan(available_skills, config)
     
     # Print summary
     print_purchase_summary(purchase_plan)
