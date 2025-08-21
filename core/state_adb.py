@@ -650,6 +650,63 @@ def check_skill_points_cap():
     
     return True
 
+def check_current_stats():
+    """
+    Check current character stats using OCR on the stat regions.
+    
+    Returns:
+        dict: Dictionary of current stats with keys: spd, sta, pwr, guts, wit
+    """
+    from utils.constants_phone import SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION
+    from utils.adb_screenshot import take_screenshot
+    import pytesseract
+    from PIL import Image, ImageEnhance
+    
+    stats = {}
+    stat_regions = {
+        'spd': SPD_REGION,
+        'sta': STA_REGION,
+        'pwr': PWR_REGION,
+        'guts': GUTS_REGION,
+        'wit': WIT_REGION
+    }
+    
+    for stat_name, region in stat_regions.items():
+        try:
+            # Take screenshot and crop to stat region
+            screenshot = take_screenshot()
+            stat_img = screenshot.crop(region)
+            
+            # Enhance image for better OCR
+            stat_img = stat_img.resize((stat_img.width * 2, stat_img.height * 2), Image.BICUBIC)
+            stat_img = stat_img.convert("L")  # Convert to grayscale
+            stat_img = ImageEnhance.Contrast(stat_img).enhance(2.0)  # Increase contrast
+            
+            # OCR the stat value
+            stat_text = pytesseract.image_to_string(stat_img, config='--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789').strip()
+            
+            # Try to extract the number
+            if stat_text:
+                # Remove any non-digit characters and take the first number
+                import re
+                numbers = re.findall(r'\d+', stat_text)
+                if numbers:
+                    stats[stat_name] = int(numbers[0])
+                    debug_print(f"[DEBUG] {stat_name.upper()} stat: {stats[stat_name]}")
+                else:
+                    stats[stat_name] = 0
+                    debug_print(f"[DEBUG] Failed to extract {stat_name.upper()} stat from text: '{stat_text}'")
+            else:
+                stats[stat_name] = 0
+                debug_print(f"[DEBUG] No text found for {stat_name.upper()} stat")
+                
+        except Exception as e:
+            debug_print(f"[DEBUG] Error reading {stat_name.upper()} stat: {e}")
+            stats[stat_name] = 0
+    
+    debug_print(f"[DEBUG] Current stats: {stats}")
+    return stats
+
 def calculate_training_score(support_detail, hint_found, training_type):
     """
     Calculate training score based on support cards, bond levels, and hints.
@@ -685,7 +742,7 @@ def calculate_training_score(support_detail, hint_found, training_type):
 
 def choose_best_training(training_results, config):
     """
-    Choose the best training based on scoring algorithm.
+    Choose the best training based on scoring algorithm and stat caps.
     
     Args:
         training_results: Dictionary of training results with scores, failure rates, etc.
@@ -699,20 +756,33 @@ def choose_best_training(training_results, config):
     min_wit_score = config.get("min_wit_score", 1.0)
     priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
     
-    # Filter eligible trainings
+    # Get current stats for stat cap filtering
+    current_stats = check_current_stats()
+    debug_print(f"[DEBUG] Current stats for stat cap filtering: {current_stats}")
+    
+    # Filter by stat caps first
+    from core.logic import filter_by_stat_caps
+    filtered_results = filter_by_stat_caps(training_results, current_stats)
+    debug_print(f"[DEBUG] Training results after stat cap filtering: {list(filtered_results.keys())}")
+    
+    # Filter eligible trainings based on failure rate and score
     eligible = []
-    for training_type, data in training_results.items():
+    for training_type, data in filtered_results.items():
         if data["failure"] > maximum_failure:
+            debug_print(f"[DEBUG] {training_type.upper()} filtered out due to high failure rate: {data['failure']}% > {maximum_failure}%")
             continue
         
         # Apply appropriate score threshold
         threshold = min_wit_score if training_type == "wit" else min_score
         if data["score"] < threshold:
+            debug_print(f"[DEBUG] {training_type.upper()} filtered out due to low score: {data['score']} < {threshold}")
             continue
         
         eligible.append((training_type, data))
+        debug_print(f"[DEBUG] {training_type.upper()} is eligible: failure={data['failure']}%, score={data['score']}")
     
     if not eligible:
+        debug_print("[DEBUG] No eligible training found after all filtering")
         return None
     
     # Find training with highest score
@@ -720,10 +790,14 @@ def choose_best_training(training_results, config):
     tied_trainings = [t for t, d in eligible if d["score"] == max_score]
     
     if len(tied_trainings) == 1:
-        return tied_trainings[0]
+        chosen = tied_trainings[0]
+        debug_print(f"[DEBUG] Single best training found: {chosen.upper()} with score {max_score}")
+        return chosen
     
     # Tie-breaker: use priority order from config
+    debug_print(f"[DEBUG] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
     order_index = {name: i for i, name in enumerate(priority_order)}
     chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
+    debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order")
     
     return chosen 
