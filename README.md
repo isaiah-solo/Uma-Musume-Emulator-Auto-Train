@@ -35,6 +35,10 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Minimum support card requirements for training (Read Logic)
 - Intelligent Event Choice Selection: Automatically analyzes event options and selects the best choice based on configured priorities
 - Automated Claw Machine: Automatically detects and handles claw machine mini-games with randomized timing (99% Failure rate bruh)
+- **Energy Bar Detection**: Automatically monitors energy levels (adaptive even with max energy increasing events) and skips training when energy is too low
+- **Advanced Training Scoring**: Uses support card bond levels, hints, and failure rates to calculate optimal training choices
+- **Smart Race Strategy Management**: Automatically checks and adjusts race strategy before races
+- Automatic Race Retry: Auto use clock to retry the race
 
 ## Getting Started
 
@@ -132,16 +136,31 @@ You can edit your configuration in `config.json`
 
 ```json
 {
-  "priority_stat": ["spd", "sta", "wit", "pwr", "guts"],
+  "priority_stat": [
+    "spd",
+    "sta",
+    "wit",
+    "pwr",
+    "guts"
+  ],
+
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
+  
+  "strategy": "PACE",
   "prioritize_g1_race": false,
+  "retry_race": true,
+
   "skill_point_cap": 400,
   "skill_purchase": "auto",
   "skill_file": "skills_example.json",
   "enable_skill_point_check": true,
-  "min_support": 3,
+
+  "min_energy": 30,
+  "min_score": 1.0,
+  "min_wit_score": 1.0,
   "do_race_when_bad_training": true,
+
   "stat_caps": {
     "spd": 1100,
     "sta": 1100,
@@ -149,6 +168,7 @@ You can edit your configuration in `config.json`
     "guts": 600,
     "wit": 600
   },
+
   "adb_config": {
     "device_address": "127.0.0.1:7555",
     "adb_path": "adb",
@@ -156,6 +176,7 @@ You can edit your configuration in `config.json`
     "input_delay": 0.5,
     "connection_timeout": 10
   },
+
   "debug_mode": false
 }
 ```
@@ -179,35 +200,61 @@ You can edit your configuration in `config.json`
 - If `true`, the bot will prioritize G1 races except during July and August (summer).
 - Useful for fan farming.
 
+`retry_race` (boolean)
+- Controls whether the bot automatically retries failed races.
+- **`true`**: Automatically retries failed races (recommended)
+- **`false`**: Stops automation when a race fails
+- **Default**: `true`
+- **Note**: This feature helps maintain automation continuity during race failures
+
+`strategy` (string) 
+- Sets the preferred race strategy for the bot to use.
+- **Accepted values**: `"FRONT"`, `"PACE"`, `"LATE"`, `"END"`
+- **Default**: `"PACE"`
+- **Note**: The bot automatically checks and adjusts race strategy before each race
+
 `skill_point_cap` (integer) - 
 - Maximum skill points before the bot automatically purchases skills or prompts you to spend them.
 - The bot will pause on race days and either auto-purchase skills or show a prompt if skill points exceed this cap.
 
-`skill_purchase` (string) - **🆕 NEW**
+`skill_purchase` (string)
 - Controls how skill points are handled when they exceed the cap.
 - **`"auto"`**: Automatically enters skill shop, purchases optimal skills, and returns to lobby
 - **`"manual"`**: Shows a prompt for manual skill purchasing
 - **Default**: `"auto"`
 
-`skill_file` (string) - **🆕 NEW**
+`skill_file` (string)
 - Specifies which skill configuration file to use for auto skill purchase.
 - **Default**: `"skills.json"`
-- **Example**: `"skills_speed_focus.json"` for a speed-focused build
+- **Example**: `"skills_oguri.json"` for Oguri Cap build
 - **Multiple templates**: Create different skill files for different builds and switch between them
 
 `enable_skill_point_check` (boolean) - 
 - Enables/disables the skill point cap checking feature.
 
-`min_support` (integer) - 
-- Minimum number of support cards required for training (default: 0).
-- If no training meet the requirement, the bot will do race instead.
-- WIT training requires at least 2 support cards regardless of this setting.
-- If you want to turn this off, set it to 0
-
 `do_race_when_bad_training` (boolean) - 
 - If `true`, the bot will prioritize racing when no training meets the requirements (insufficient support cards, high failure rates, etc.).
 - If `false`, the bot will skip support card requirements and train regardless of `min_support` setting (as long as failure rates are acceptable).
 - Default: `true`
+
+`min_energy` (integer)
+- Minimum energy percentage required before attempting training.
+- If energy drops below this threshold, the bot will skip training and go to rest instead.
+- **Example**: Setting to 30 means training will only occur when energy is 30% or higher.
+- **Default**: 30
+- **Range**: 0-100 (percentage)
+
+`min_score` (float)
+- Minimum training score required for a training option to be considered.
+- Training options with scores below this threshold will be skipped.
+- **Default**: 1.0
+- **Note**: Used in the advanced training scoring algorithm
+
+`min_wit_score` (float)
+- Minimum training score specifically required for WIT training.
+- WIT training options with scores below this threshold will be skipped.
+- **Default**: 1.0
+- **Note**: Separate threshold for WIT training due to its unique requirements
 
 `stat_caps` (object) - 
 - Maximum values for each stat. The bot will skip training stats that have reached their cap.
@@ -226,6 +273,33 @@ You can edit your configuration in `config.json`
 - `connection_timeout` (integer) - Maximum seconds to wait for ADB connection (default: 10)
 
 Make sure the values match exactly as expected, typos might cause errors.
+
+### 🆕 **Training Score Configuration**
+
+The bot uses a configurable scoring system defined in `training_score.json`:
+
+```json
+{
+  "scoring_rules": {
+    "rainbow_support": {
+      "description": "Same type support card with bond level >= 4",
+      "points": 1.0
+    },
+    "not_rainbow_support_low": {
+      "description": "Different type support with bond level < 4",
+      "points": 0.7
+    },
+    "not_rainbow_support_high": {
+      "description": "Diffrent type support with bond level >= 4 (no need to get more bond)",
+      "points": 0.0
+    },
+    "hint": {
+      "description": "Hint icon present",
+      "points": 0.3
+    }
+  }
+}
+```
 
 ### 🆕 **Skill Configuration**
 
@@ -378,18 +452,30 @@ python main_adb.py
 - Press `Ctrl + C` in your terminal to stop the bot
 - Or close the terminal window
 
-> **Note**: Unlike the PC version, this ADB version doesn't use mouse position to stop since it operates through ADB commands.
-
 ### Training Logic
 
-The bot uses an improved training logic system:
+The bot uses an advanced training logic system with intelligent scoring:
 
-1. **Junior Year**: Prioritizes training in areas with the most support cards to quickly unlock rainbow training.
-2. **Senior/Classic Year**: Prioritizes rainbow training (training with support cards of the same type).
-3. **Stat Caps**: Automatically skips training stats that have reached their configured caps.
-4. **Support Requirements**: Ensures minimum support card requirements are met before training. If not enough support cards, do race instead.
-5. **Fallback Logic**: If rainbow training isn't available, falls back to most support card logic.
-6. **Rest Logic**: If energy is too low (every training have high failure rate) => Rest
+#### **Training Scoring Algorithm**
+- **Support Card Analysis**: Evaluates support cards by type and bond level
+- **Rainbow Training Detection**: Identifies and prioritizes rainbow training opportunities
+- **Hint Bonus System**: Adds score bonuses for training hints
+- **Failure Rate Integration**: Considers failure rates in final training decisions
+- **Stat Cap Filtering**: Automatically excludes stats that have reached their caps
+
+#### **Scoring Formula**
+```
+Training Score = Support Card Score + Hint Bonus
+```
+
+#### **Decision Making Process**
+1. **Stat Cap Filtering**: Remove stats that have reached their configured caps
+2. **Failure Rate Filtering**: Exclude options above `maximum_failure` threshold
+3. **Score Threshold Filtering**: Apply `min_score` and `min_wit_score` requirements
+4. **Scoring Evaluation**: Calculate scores for all eligible training options
+5. **Tie-Breaking**: Use priority order from `priority_stat` configuration
+6. **Final Selection**: Choose training with highest score
+
 
 #### Race Prioritization
 
@@ -437,10 +523,9 @@ adb shell wm size  # Should show 1080x1920
 
 ### TODO
 
-- Add Race Stragety option (right now the only option is manually changing it)
+- ~~Add Race Strategy option~~
 - Do race that doesn't have trophy yet
-- ~~Multiple skill file templates~~
-- Improve Tesseract OCR accuracy for failure chance detection
+- ~~Improve Tesseract OCR accuracy for failure chance detection~~
 - Add consecutive races limit
 - Add auto retry for failed races
 - Add fans tracking/goal for Senior year (Valentine day, Fan Fest and Holiday Season)
@@ -448,6 +533,8 @@ adb shell wm size  # Should show 1080x1920
 - ~~Add better event options handling~~
 - ~~Automate Claw Machine event~~
 - ~~Auto-purchase skills~~
+- ~~Add energy bar detection and management~~
+- ~~Add new advanced training scoring algorithm~~
 
 ### Contribute
 

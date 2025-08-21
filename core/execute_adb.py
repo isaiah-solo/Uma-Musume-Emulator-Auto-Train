@@ -12,7 +12,7 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
 
 # Import event handling functions
 from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
@@ -1009,6 +1009,13 @@ def career_lobby():
         print(f"G1 Race Requirement: {goal_data['requires_g1_races']}")
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
+        # Check energy bar before proceeding with training decisions
+        debug_print("[DEBUG] Checking energy bar...")
+        energy_percentage = check_energy_bar()
+        min_energy = config.get("min_energy", 30)
+        
+        print(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)")
+        
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
         debug_print("[DEBUG] Checking goal criteria...")
@@ -1113,6 +1120,13 @@ def career_lobby():
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
+        
+        # Check energy before proceeding with training
+        if energy_percentage < min_energy:
+            print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
+            do_rest()
+            continue
+            
         if not go_to_training():
             print("[INFO] Training button is not found.")
             continue

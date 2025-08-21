@@ -24,6 +24,7 @@
 
   "min_score": 1.0,
   "min_wit_score": 1.0,
+  "min_energy": 30,
 
   "stat_caps": {
     "spd": 1100,

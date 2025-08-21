@@ -740,6 +740,107 @@ def calculate_training_score(support_detail, hint_found, training_type):
     
     return round(score, 2)
 
+def check_energy_bar():
+    """
+    Check the energy bar fill percentage using the same logic as energy_detector.py.
+    
+    Returns:
+        float: Energy percentage (0.0 to 100.0)
+    """
+    try:
+        import cv2
+        import numpy as np
+        
+        # Take screenshot and crop to energy bar region (updated coordinates from user)
+        screenshot = take_screenshot()
+        x, y, width, height = 294, 203, 648, 102
+        cropped = screenshot.crop((x, y, x + width, y + height))
+        
+        # Convert to numpy array and handle RGBA -> RGB
+        cropped_np = np.array(cropped, dtype=np.uint8)
+        if cropped_np.shape[2] == 4:
+            cropped_np = cropped_np[:, :, :3]  # Keep only RGB channels
+        
+        # Step 1: Find the white border (253, 253, 253)
+        white_tolerance = 5
+        white_lower = np.array([253 - white_tolerance, 253 - white_tolerance, 253 - white_tolerance])
+        white_upper = np.array([253 + white_tolerance, 253 + white_tolerance, 253 + white_tolerance])
+        white_mask = cv2.inRange(cropped_np, white_lower, white_upper)
+        
+        # Step 2: Find the rounded rectangle contour and create an interior mask
+        contours, _ = cv2.findContours(white_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            debug_print("[DEBUG] No energy bar contour found")
+            return 0.0
+        
+        # Find the largest contour (should be the energy bar's outer white border)
+        largest_contour = max(contours, key=cv2.contourArea)
+        
+        # Create a mask for the area enclosed by the white border
+        border_mask = np.zeros(cropped_np.shape[:2], dtype=np.uint8)
+        cv2.drawContours(border_mask, [largest_contour], -1, 255, cv2.FILLED)
+        
+        # Erode the border mask to get the interior (remove the border itself)
+        kernel = np.ones((5,5), np.uint8)
+        interior_mask = cv2.erode(border_mask, kernel, iterations=1)
+        
+        # Step 3: Count gray pixels vs total pixels in the interior using horizontal line analysis
+        # Create mask for gray pixels (117, 117, 117)
+        gray_tolerance = 10
+        gray_lower = np.array([117 - gray_tolerance, 117 - gray_tolerance, 117 - gray_tolerance])
+        gray_upper = np.array([117 + gray_tolerance, 117 + gray_tolerance, 117 + gray_tolerance])
+        gray_mask = cv2.inRange(cropped_np, gray_lower, gray_upper)
+        
+        # Apply interior mask to only consider gray pixels inside the rounded rectangle
+        gray_pixels_inside = cv2.bitwise_and(gray_mask, interior_mask)
+        
+        # Horizontal line analysis
+        contours_interior, _ = cv2.findContours(interior_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours_interior:
+            debug_print("[DEBUG] No interior contour found")
+            return 0.0
+        
+        x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
+        
+        # Use the middle horizontal line for analysis
+        middle_y = y_rect + h_rect // 2
+        
+        # Ensure middle_y is within bounds
+        if not (0 <= middle_y < interior_mask.shape[0]):
+            debug_print("[DEBUG] Middle Y coordinate out of bounds")
+            return 0.0
+        
+        # Extract the horizontal line from both interior and gray masks
+        interior_line = interior_mask[middle_y, :]
+        gray_line = gray_pixels_inside[middle_y, :]
+        
+        # Find the leftmost and rightmost points of the bar on this line
+        interior_points = np.where(interior_line > 0)[0]
+        if len(interior_points) > 0:
+            leftmost = interior_points[0]
+            rightmost = interior_points[-1]
+            total_width = rightmost - leftmost + 1
+            
+            # Count gray pixels in this horizontal line within the bar's width
+            gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
+            gray_width = len(gray_points)
+            filled_width = total_width - gray_width
+            
+            # Calculate fill percentage based on horizontal line
+            fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
+            
+            debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
+            return fill_percentage
+        else:
+            debug_print("[DEBUG] No interior points found on analysis line")
+            return 0.0
+            
+    except Exception as e:
+        debug_print(f"[DEBUG] Energy bar check failed: {e}")
+        return 0.0
+
 def choose_best_training(training_results, config):
     """
     Choose the best training based on scoring algorithm and stat caps.
