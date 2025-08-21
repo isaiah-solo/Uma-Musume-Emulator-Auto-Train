@@ -9,6 +9,8 @@
 
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
+  
+  "strategy": "PACE",
   "prioritize_g1_race": false,
   "retry_race": true,
 

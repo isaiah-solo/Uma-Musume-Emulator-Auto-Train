@@ -625,9 +625,155 @@ def race_select(prioritize_g1=False):
         debug_print("[DEBUG] No suitable race found")
     return found
 
+def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
+    """Check and ensure strategy matches config before race."""
+    debug_print("[DEBUG] Checking strategy before race...")
+    
+    try:
+        screenshot = take_screenshot()
+        
+        templates = {
+            "front": "assets/icons/front.png",
+            "late": "assets/icons/late.png", 
+            "pace": "assets/icons/pace.png",
+            "end": "assets/icons/end.png",
+        }
+        
+        # Find brightest strategy using existing project functions
+        best_match = None
+        best_brightness = 0
+        
+        for name, path in templates.items():
+            try:
+                # Use existing match_template function
+                matches = match_template(screenshot, path, confidence=0.5, region=region)
+                if matches:
+                    # Get confidence for best match
+                    confidence = max_match_confidence(screenshot, path, region)
+                    if confidence:
+                        # Check brightness of the matched region
+                        x, y, w, h = matches[0]
+                        roi = screenshot.convert("L").crop((x, y, x + w, y + h))
+                        from PIL import ImageStat
+                        bright = float(ImageStat.Stat(roi).mean[0])
+                        
+                        if bright >= 160 and bright > best_brightness:
+                            best_match = (name, matches[0], confidence, bright)
+                            best_brightness = bright
+            except Exception:
+                continue
+        
+        if not best_match:
+            debug_print("[DEBUG] No strategy found with brightness >= 160")
+            return False
+        
+        strategy_name, bbox, conf, bright = best_match
+        current_strategy = strategy_name.upper()
+        
+        # Load expected strategy from config
+        try:
+            with open("config.json", "r", encoding="utf-8") as f:
+                config = json.load(f)
+            expected_strategy = config.get("strategy", "").upper()
+        except Exception:
+            debug_print("[DEBUG] Cannot read config.json")
+            return False
+        
+        matches = current_strategy == expected_strategy
+        debug_print(f"[DEBUG] Current: {current_strategy}, Expected: {expected_strategy}, Match: {matches}")
+        
+        if matches:
+            debug_print("[DEBUG] Strategy matches config, proceeding with race")
+            return True
+        
+        # Strategy doesn't match, try to change it
+        debug_print(f"[DEBUG] Strategy mismatch, changing to {expected_strategy}")
+        
+        if change_strategy_before_race(expected_strategy):
+            # Recheck after change
+            new_strategy, new_matches = check_strategy_before_race(region)
+            if new_matches:
+                debug_print("[DEBUG] Strategy successfully changed")
+                return True
+            else:
+                debug_print("[DEBUG] Strategy change failed")
+                return False
+        else:
+            debug_print("[DEBUG] Failed to change strategy")
+            return False
+            
+    except Exception as e:
+        debug_print(f"[DEBUG] Error checking strategy: {e}")
+        return False
+
+
+def change_strategy_before_race(expected_strategy: str) -> bool:
+    """Change strategy to the expected one before race."""
+    debug_print(f"[DEBUG] Changing strategy to: {expected_strategy}")
+    
+    # Strategy coordinates mapping
+    strategy_coords = {
+        "FRONT": (882, 1159),
+        "PACE": (645, 1159),
+        "LATE": (414, 1159),
+        "END": (186, 1162),
+    }
+    
+    if expected_strategy not in strategy_coords:
+        debug_print(f"[DEBUG] Unknown strategy: {expected_strategy}")
+        return False
+    
+    try:
+        # Step 1: Find and tap strategy_change.png
+        debug_print("[DEBUG] Looking for strategy change button...")
+        change_btn = wait_for_image("assets/buttons/strategy_change.png", timeout=10, confidence=0.8)
+        if not change_btn:
+            debug_print("[DEBUG] Strategy change button not found")
+            return False
+        
+        debug_print(f"[DEBUG] Found strategy change button at {change_btn}")
+        tap(change_btn[0], change_btn[1])
+        debug_print("[DEBUG] Tapped strategy change button")
+        
+        # Step 2: Wait for confirm.png to appear
+        debug_print("[DEBUG] Waiting for confirm button to appear...")
+        confirm_btn = wait_for_image("assets/buttons/confirm.png", timeout=10, confidence=0.8)
+        if not confirm_btn:
+            debug_print("[DEBUG] Confirm button not found after strategy change")
+            return False
+        
+        debug_print(f"[DEBUG] Confirm button appeared at {confirm_btn}")
+        
+        # Step 3: Tap on the specified coordinate for the right strategy
+        target_x, target_y = strategy_coords[expected_strategy]
+        debug_print(f"[DEBUG] Tapping strategy position: ({target_x}, {target_y}) for {expected_strategy}")
+        tap(target_x, target_y)
+        debug_print(f"[DEBUG] Tapped strategy position for {expected_strategy}")
+        
+        # Step 4: Tap confirm.png from found location
+        debug_print("[DEBUG] Confirming strategy change...")
+        tap(confirm_btn[0], confirm_btn[1])
+        debug_print("[DEBUG] Tapped confirm button")
+        
+        # Wait a moment for the change to take effect
+        time.sleep(2)
+        
+        debug_print(f"[DEBUG] Strategy change completed for {expected_strategy}")
+        return True
+        
+    except Exception as e:
+        debug_print(f"[DEBUG] Error during strategy change: {e}")
+        return False
+
+
 def race_prep():
     """Prepare for race"""
     debug_print("[DEBUG] Preparing for race...")
+    
+    # Check and ensure strategy matches config before race
+    if not check_strategy_before_race():
+        debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
+    
     view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
     if view_result_btn:
         debug_print(f"[DEBUG] Found view results button at {view_result_btn}")
