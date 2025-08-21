@@ -19,12 +19,10 @@
   "skill_file": "skills_example.json",
   "enable_skill_point_check": true,
 
-  "min_support": 2,
-  "do_race_when_bad_training": true,
-
+  "min_energy": 30,
   "min_score": 1.0,
   "min_wit_score": 1.0,
-  "min_energy": 30,
+  "do_race_when_bad_training": true,
 
   "stat_caps": {
     "spd": 1100,
