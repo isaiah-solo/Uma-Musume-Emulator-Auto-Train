@@ -93,12 +93,17 @@ pip install -r requirements.txt
 
 **Important:** The bot uses configuration files that you can customize. To avoid conflicts when updating:
 
-1. **Copy the example files** to create your working copies:
-   ```bash
-   copy config.example.json config.json
-   copy event_priority.example.json event_priority.json
-   copy training_score.example.json training_score.json
-   ```
+**Option A: Automatic Setup (Recommended)**
+```bash
+python setup_config.py
+```
+
+**Option B: Manual Setup**
+```bash
+copy config.example.json config.json
+copy event_priority.example.json event_priority.json
+copy training_score.example.json training_score.json
+```
 
 2. **Customize your copies** - these will be preserved when you pull updates
 3. **Never commit your customized config files** - they're already in `.gitignore`
