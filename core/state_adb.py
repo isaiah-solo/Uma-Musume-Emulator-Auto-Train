@@ -122,7 +122,7 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
-def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.85) -> bool:
+def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:

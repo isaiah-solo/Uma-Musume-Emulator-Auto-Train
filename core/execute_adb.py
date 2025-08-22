@@ -4,7 +4,7 @@ import os
 import random
 from PIL import ImageStat
 
-from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template
+from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template, max_match_confidence
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
@@ -770,11 +770,11 @@ def race_prep():
     """Prepare for race"""
     debug_print("[DEBUG] Preparing for race...")
     
+    view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
+        
     # Check and ensure strategy matches config before race
     if not check_strategy_before_race():
         debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
-    
-    view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
     if view_result_btn:
         debug_print(f"[DEBUG] Found view results button at {view_result_btn}")
         tap(view_result_btn[0], view_result_btn[1])
