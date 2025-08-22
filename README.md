@@ -88,22 +88,29 @@ pip install -r requirements.txt
 4. **Install Umamusume** in the emulator
 5. **Test ADB connection**: `adb devices` (should show your emulator)
 
-#### 6. Configure ADB Settings (Interactive Setup)
 
-Run the interactive ADB setup helper:
-```bash
-python setup_adb.py
-```
+#### 6. Configuration Files Setup
 
-This script will:
-- ✅ **Detect ADB installation** and available devices
-- 🎯 **Auto-configure device connection** (emulator detection)
-- ⚙️ **Set optimal timing parameters** (input delay, screenshot timeout)
-- 📝 **Update config.json** automatically with ADB settings
-- 📱 **Display device info** (model, Android version, screen resolution)
+**Important:** The bot uses configuration files that you can customize. To avoid conflicts when updating:
 
-**Manual Configuration Alternative:**
-If you prefer manual setup, you can edit the `adb_config` section in your `config.json`:
+1. **Copy the example files** to create your working copies:
+   ```bash
+   copy config.example.json config.json
+   copy event_priority.example.json event_priority.json
+   copy training_score.example.json training_score.json
+   ```
+
+2. **Customize your copies** - these will be preserved when you pull updates
+3. **Never commit your customized config files** - they're already in `.gitignore`
+
+**Available Configuration Files:**
+- `config.json` - Main bot settings (training priorities, ADB settings, etc.)
+- `event_priority.json` - Event choice preferences (good vs bad choices)
+- `training_score.json` - Training scoring rules and weights
+
+#### 7. Configure ADB Settings (Interactive Setup)
+
+Edit the `adb_config` section in your `config.json ` using the address you got from your Emulator:
 ```json
 {
   "adb_config": {
@@ -115,7 +122,6 @@ If you prefer manual setup, you can edit the `adb_config` section in your `confi
   }
 }
 ```
-
 ### BEFORE YOU START
 
 Make sure these conditions are met:
@@ -199,6 +205,7 @@ You can edit your configuration in `config.json`
 `prioritize_g1_race` (boolean)
 - If `true`, the bot will prioritize G1 races except during July and August (summer).
 - Useful for fan farming.
+- **Warning**: It will do G1 race no matter what
 
 `retry_race` (boolean)
 - Controls whether the bot automatically retries failed races.
@@ -274,7 +281,8 @@ You can edit your configuration in `config.json`
 
 Make sure the values match exactly as expected, typos might cause errors.
 
-### 🆕 **Training Score Configuration**
+
+### **Training Score Configuration**
 
 The bot uses a configurable scoring system defined in `training_score.json`:
 
@@ -300,8 +308,32 @@ The bot uses a configurable scoring system defined in `training_score.json`:
   }
 }
 ```
+### Training Logic
 
-### 🆕 **Skill Configuration**
+The bot uses an advanced training logic system with intelligent scoring:
+
+#### **Training Scoring Algorithm**
+- **Support Card Analysis**: Evaluates support cards by type and bond level
+- **Rainbow Training Detection**: Identifies and prioritizes rainbow training opportunities
+- **Hint Bonus System**: Adds score bonuses for training hints
+- **Failure Rate Integration**: Considers failure rates in final training decisions
+- **Stat Cap Filtering**: Automatically excludes stats that have reached their caps
+
+#### **Scoring Formula**
+```
+Training Score = Support Card Score + Hint Bonus
+```
+
+#### **Decision Making Process**
+1. **Stat Cap Filtering**: Remove stats that have reached their configured caps
+2. **Failure Rate Filtering**: Exclude options above `maximum_failure` threshold
+3. **Score Threshold Filtering**: Apply `min_score` and `min_wit_score` requirements
+4. **Scoring Evaluation**: Calculate scores for all eligible training options
+5. **Tie-Breaking**: Use priority order from `priority_stat` configuration
+6. **Final Selection**: Choose training with highest score
+
+
+### **Skill Configuration**
 
 The bot now includes a comprehensive skill management system controlled by a json file:
 
@@ -338,7 +370,7 @@ The bot now includes a comprehensive skill management system controlled by a jso
 
 **Example**:`** "Professor of Curvature": "Corner Adept"`
 
-### 🆕 **Multiple Skill File Templates**
+### **Multiple Skill File Templates**
 
 The bot now supports multiple skill configuration files, allowing you to create different skill builds and switch between them easily:
 
@@ -432,79 +464,14 @@ The bot automatically selects the best event choice based on your configured pri
 - Used for tie-breaking when multiple options have the same good choices
 
 ### Start
-
-#### 1. Test Your Setup
-```bash
-# Test ADB connection
-adb devices
-
-# Test bot configuration (optional)
-python test_adb_setup.py
-```
-You should see your emulator listed (e.g., `emulator-5554`, `127.0.0.1:5555`)
-
-#### 2. Start the Bot
+#### 1. Start the Bot (Make sure you done the config)
 ```bash
 python main_adb.py
 ```
 
-#### 3. Stop the Bot
+#### 2. Stop the Bot
 - Press `Ctrl + C` in your terminal to stop the bot
 - Or close the terminal window
-
-### Training Logic
-
-The bot uses an advanced training logic system with intelligent scoring:
-
-#### **Training Scoring Algorithm**
-- **Support Card Analysis**: Evaluates support cards by type and bond level
-- **Rainbow Training Detection**: Identifies and prioritizes rainbow training opportunities
-- **Hint Bonus System**: Adds score bonuses for training hints
-- **Failure Rate Integration**: Considers failure rates in final training decisions
-- **Stat Cap Filtering**: Automatically excludes stats that have reached their caps
-
-#### **Scoring Formula**
-```
-Training Score = Support Card Score + Hint Bonus
-```
-
-#### **Decision Making Process**
-1. **Stat Cap Filtering**: Remove stats that have reached their configured caps
-2. **Failure Rate Filtering**: Exclude options above `maximum_failure` threshold
-3. **Score Threshold Filtering**: Apply `min_score` and `min_wit_score` requirements
-4. **Scoring Evaluation**: Calculate scores for all eligible training options
-5. **Tie-Breaking**: Use priority order from `priority_stat` configuration
-6. **Final Selection**: Choose training with highest score
-
-
-#### Race Prioritization
-
-When `prioritize_g1_race` is enabled:
-- The bot will prioritize racing over training when G1 races are available
-- Automatically skips July and August (summer break) for racing
-- Auto Skill Management: Checks skill points before race days and either auto-purchases skills or prompts based on `skill_purchase` setting
-
-### Troubleshooting
-
-#### 🔧 Setup Issues
-**ADB Connection Problems:**
-```bash
-# Re-run the setup script to check configuration
-python setup_adb.py
-
-# Test the setup
-python test_adb_setup.py
-
-# Manually check ADB
-adb devices
-adb shell wm size  # Should show 1080x1920
-```
-
-**Common Solutions:**
-- Restart emulator and run `python setup_adb.py` again
-- Check emulator resolution is set to 1080x1920 (portrait)
-- Ensure ADB debugging is enabled in emulator settings
-- Try different ADB device address if using manual configuration
 
 ### Known Issues
 
@@ -514,20 +481,14 @@ adb shell wm size  # Should show 1080x1920
 - Performance depends on emulator performance and host system resources
 
 #### 🎮 Game Logic
-- Some Uma that has special event/target goals (like Restricted Train Goldship). So please avoid using Goldship for training right now to keep your 12 million yen safe.
+- Some Uma that has special event/target goals (like Restricted Train Goldship). So please avoid using Goldship for training right now to keep your 12 billion yen safe.
 - Tesseract OCR might misread failure chance (e.g., reads 33% as 3%) and proceeds with training anyway
-- Sometimes it misdetects debuffs and clicks the infirmary unnecessarily (not a big deal)
 - If you bring a friend support card (like Tazuna/Aoi Kiryuin) and do recreation, the bot can't decide whether to date with the friend support card or the Uma
 - The bot will skip "3 consecutive races warning" prompt for now
-- The bot stuck when "Criteria not met" prompt appears
 
 ### TODO
-
-- ~~Add Race Strategy option~~
 - Do race that doesn't have trophy yet
-- ~~Improve Tesseract OCR accuracy for failure chance detection~~
 - Add consecutive races limit
-- Add auto retry for failed races
 - Add fans tracking/goal for Senior year (Valentine day, Fan Fest and Holiday Season)
 - Add option to do race in Summer (July - August)
 - ~~Add better event options handling~~
@@ -535,8 +496,10 @@ adb shell wm size  # Should show 1080x1920
 - ~~Auto-purchase skills~~
 - ~~Add energy bar detection and management~~
 - ~~Add new advanced training scoring algorithm~~
+- ~~Add auto retry for failed races~~
+- ~~Improve Tesseract OCR accuracy for failure chance detection~~
+- ~~Add Race Strategy option~~
 
 ### Contribute
-
 If you run into any issues or something doesn't work as expected, feel free to open an issue.
 Contributions are also very welcome, I would truly appreciate any support to help improve this project further.

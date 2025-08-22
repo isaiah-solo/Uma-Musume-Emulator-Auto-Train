@@ -14,6 +14,11 @@ test_*.png
 test_*.jpg
 TEST_*.md
 
+# User configuration files (use .example files as templates)
+config.json
+event_priority.json
+training_score.json
+
 # Debug images and temporary files
 debug_*.png
 debug_*.jpg
