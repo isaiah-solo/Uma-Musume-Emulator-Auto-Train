@@ -1095,10 +1095,15 @@ def career_lobby():
         # Mood check
         debug_print("[DEBUG] Checking mood...")
         if mood_index < minimum_mood:
-            debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}), doing recreation")
-            print("[INFO] Mood is low, trying recreation to increase mood")
-            do_recreation()
-            continue
+            # Check if energy is too high (>90%) before doing recreation
+            if energy_percentage > 90:
+                debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}) but energy too high ({energy_percentage:.1f}% > 90%), skipping recreation")
+                print(f"[INFO] Mood is low but energy is too high ({energy_percentage:.1f}% > 90%), skipping recreation")
+            else:
+                debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}), doing recreation")
+                print("[INFO] Mood is low, trying recreation to increase mood")
+                do_recreation()
+                continue
         else:
             debug_print(f"[DEBUG] Mood is good ({mood_index} >= {minimum_mood})")
 
