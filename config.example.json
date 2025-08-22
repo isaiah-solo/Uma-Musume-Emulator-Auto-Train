@@ -9,14 +9,19 @@
 
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
+  
+  "strategy": "PACE",
   "prioritize_g1_race": false,
+  "retry_race": true,
 
   "skill_point_cap": 400,
   "skill_purchase": "auto",
   "skill_file": "skills_example.json",
   "enable_skill_point_check": true,
 
-  "min_support": 2,
+  "min_energy": 30,
+  "min_score": 1.0,
+  "min_wit_score": 1.0,
   "do_race_when_bad_training": true,
 
   "stat_caps": {

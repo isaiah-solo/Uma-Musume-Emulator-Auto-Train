@@ -122,6 +122,40 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
+def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
+    """Detect presence of a hint icon within the support card search region.
+
+    Args:
+        template_path: Path to the hint icon template image.
+        confidence: Minimum confidence threshold for template matching.
+
+    Returns:
+        True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
+    """
+    try:
+        screenshot = take_screenshot()
+
+        # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
+        left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+        region_cv = (left, top, right - left, bottom - top)
+        debug_print(f"[DEBUG] Checking hint in region: {region_cv} using template: {template_path}")
+
+        if DEBUG_MODE:
+            try:
+                screenshot.crop(SUPPORT_CARD_ICON_REGION).save("debug_hint_search_region.png")
+                debug_print("[DEBUG] Saved hint search region to debug_hint_search_region.png")
+            except Exception:
+                pass
+
+        matches = match_template(screenshot, template_path, confidence, region_cv)
+
+        found = bool(matches and len(matches) > 0)
+        debug_print(f"[DEBUG] Hint icon found: {found}")
+        return found
+    except Exception as e:
+        debug_print(f"[DEBUG] check_hint failed: {e}")
+        return False
+
 def check_failure(train_type):
     """
     Check failure rate for a specific training type using direct region OCR.
@@ -614,4 +648,268 @@ def check_skill_points_cap():
         
         return True
     
-    return True 
+    return True
+
+def check_current_stats():
+    """
+    Check current character stats using OCR on the stat regions.
+    
+    Returns:
+        dict: Dictionary of current stats with keys: spd, sta, pwr, guts, wit
+    """
+    from utils.constants_phone import SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION
+    from utils.adb_screenshot import take_screenshot
+    import pytesseract
+    from PIL import Image, ImageEnhance
+    
+    stats = {}
+    stat_regions = {
+        'spd': SPD_REGION,
+        'sta': STA_REGION,
+        'pwr': PWR_REGION,
+        'guts': GUTS_REGION,
+        'wit': WIT_REGION
+    }
+    
+    for stat_name, region in stat_regions.items():
+        try:
+            # Take screenshot and crop to stat region
+            screenshot = take_screenshot()
+            stat_img = screenshot.crop(region)
+            
+            # Enhance image for better OCR
+            stat_img = stat_img.resize((stat_img.width * 2, stat_img.height * 2), Image.BICUBIC)
+            stat_img = stat_img.convert("L")  # Convert to grayscale
+            stat_img = ImageEnhance.Contrast(stat_img).enhance(2.0)  # Increase contrast
+            
+            # OCR the stat value
+            stat_text = pytesseract.image_to_string(stat_img, config='--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789').strip()
+            
+            # Try to extract the number
+            if stat_text:
+                # Remove any non-digit characters and take the first number
+                import re
+                numbers = re.findall(r'\d+', stat_text)
+                if numbers:
+                    stats[stat_name] = int(numbers[0])
+                    debug_print(f"[DEBUG] {stat_name.upper()} stat: {stats[stat_name]}")
+                else:
+                    stats[stat_name] = 0
+                    debug_print(f"[DEBUG] Failed to extract {stat_name.upper()} stat from text: '{stat_text}'")
+            else:
+                stats[stat_name] = 0
+                debug_print(f"[DEBUG] No text found for {stat_name.upper()} stat")
+                
+        except Exception as e:
+            debug_print(f"[DEBUG] Error reading {stat_name.upper()} stat: {e}")
+            stats[stat_name] = 0
+    
+    debug_print(f"[DEBUG] Current stats: {stats}")
+    return stats
+
+def calculate_training_score(support_detail, hint_found, training_type):
+    """
+    Calculate training score based on support cards, bond levels, and hints.
+    
+    Args:
+        support_detail: Dictionary of support card details with bond levels
+        hint_found: Boolean indicating if hint is present
+        training_type: The type of training being evaluated
+    
+    Returns:
+        float: Calculated score for the training
+    """
+    score = 0.0
+    
+    # Score support cards based on bond levels
+    for card_type, entries in support_detail.items():
+        for entry in entries:
+            level = entry['bond_level']
+            is_rainbow = (card_type == training_type and level >= 4)
+            
+            if is_rainbow:
+                score += 1.0  # Rainbow support (same type, bond >= 4)
+            else:
+                if level < 4:
+                    score += 0.7  # Not rainbow, bond < 4
+                # bond >= 4 for non-rainbow gets 0.0 points
+    
+    # Add hint bonus
+    if hint_found:
+        score += 0.3
+    
+    return round(score, 2)
+
+def check_energy_bar():
+    """
+    Check the energy bar fill percentage using the same logic as energy_detector.py.
+    
+    Returns:
+        float: Energy percentage (0.0 to 100.0)
+    """
+    try:
+        import cv2
+        import numpy as np
+        
+        # Take screenshot and crop to energy bar region (updated coordinates from user)
+        screenshot = take_screenshot()
+        x, y, width, height = 294, 203, 648, 102
+        cropped = screenshot.crop((x, y, x + width, y + height))
+        
+        # Convert to numpy array and handle RGBA -> RGB
+        cropped_np = np.array(cropped, dtype=np.uint8)
+        if cropped_np.shape[2] == 4:
+            cropped_np = cropped_np[:, :, :3]  # Keep only RGB channels
+        
+        # Step 1: Find the white border (253, 253, 253)
+        white_tolerance = 5
+        white_lower = np.array([253 - white_tolerance, 253 - white_tolerance, 253 - white_tolerance])
+        white_upper = np.array([253 + white_tolerance, 253 + white_tolerance, 253 + white_tolerance])
+        white_mask = cv2.inRange(cropped_np, white_lower, white_upper)
+        
+        # Step 2: Find the rounded rectangle contour and create an interior mask
+        contours, _ = cv2.findContours(white_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            debug_print("[DEBUG] No energy bar contour found")
+            return 0.0
+        
+        # Find the largest contour (should be the energy bar's outer white border)
+        largest_contour = max(contours, key=cv2.contourArea)
+        
+        # Create a mask for the area enclosed by the white border
+        border_mask = np.zeros(cropped_np.shape[:2], dtype=np.uint8)
+        cv2.drawContours(border_mask, [largest_contour], -1, 255, cv2.FILLED)
+        
+        # Erode the border mask to get the interior (remove the border itself)
+        kernel = np.ones((5,5), np.uint8)
+        interior_mask = cv2.erode(border_mask, kernel, iterations=1)
+        
+        # Step 3: Count gray pixels vs total pixels in the interior using horizontal line analysis
+        # Create mask for gray pixels (117, 117, 117)
+        gray_tolerance = 10
+        gray_lower = np.array([117 - gray_tolerance, 117 - gray_tolerance, 117 - gray_tolerance])
+        gray_upper = np.array([117 + gray_tolerance, 117 + gray_tolerance, 117 + gray_tolerance])
+        gray_mask = cv2.inRange(cropped_np, gray_lower, gray_upper)
+        
+        # Apply interior mask to only consider gray pixels inside the rounded rectangle
+        gray_pixels_inside = cv2.bitwise_and(gray_mask, interior_mask)
+        
+        # Horizontal line analysis
+        contours_interior, _ = cv2.findContours(interior_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours_interior:
+            debug_print("[DEBUG] No interior contour found")
+            return 0.0
+        
+        x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
+        
+        # Use the middle horizontal line for analysis
+        middle_y = y_rect + h_rect // 2
+        
+        # Ensure middle_y is within bounds
+        if not (0 <= middle_y < interior_mask.shape[0]):
+            debug_print("[DEBUG] Middle Y coordinate out of bounds")
+            return 0.0
+        
+        # Extract the horizontal line from both interior and gray masks
+        interior_line = interior_mask[middle_y, :]
+        gray_line = gray_pixels_inside[middle_y, :]
+        
+        # Find the leftmost and rightmost points of the bar on this line
+        interior_points = np.where(interior_line > 0)[0]
+        if len(interior_points) > 0:
+            leftmost = interior_points[0]
+            rightmost = interior_points[-1]
+            total_width = rightmost - leftmost + 1
+            
+            # Count gray pixels in this horizontal line within the bar's width
+            gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
+            gray_width = len(gray_points)
+            filled_width = total_width - gray_width
+            
+            # Calculate fill percentage based on horizontal line
+            fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
+            
+            debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
+            return fill_percentage
+        else:
+            debug_print("[DEBUG] No interior points found on analysis line")
+            return 0.0
+            
+    except Exception as e:
+        debug_print(f"[DEBUG] Energy bar check failed: {e}")
+        return 0.0
+
+def choose_best_training(training_results, config):
+    """
+    Choose the best training based on scoring algorithm and stat caps.
+    
+    Args:
+        training_results: Dictionary of training results with scores, failure rates, etc.
+        config: Configuration dictionary with thresholds and priorities
+    
+    Returns:
+        str: Best training type to choose, or None if no suitable training
+    """
+    maximum_failure = config.get("maximum_failure", 15)
+    min_score = config.get("min_score", 1.0)
+    min_wit_score = config.get("min_wit_score", 1.0)
+    priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
+    
+    # Get current stats for stat cap filtering
+    current_stats = check_current_stats()
+    print(f"[INFO] Current stats: {current_stats}")
+    debug_print(f"[DEBUG] Current stats for stat cap filtering: {current_stats}")
+    
+    # Filter by stat caps first
+    from core.logic import filter_by_stat_caps
+    filtered_results = filter_by_stat_caps(training_results, current_stats)
+    print(f"[INFO] Training options after stat cap filtering: {list(filtered_results.keys())}")
+    debug_print(f"[DEBUG] Training results after stat cap filtering: {list(filtered_results.keys())}")
+    
+    # Filter eligible trainings based on failure rate and score
+    eligible = []
+    for training_type, data in filtered_results.items():
+        if data["failure"] > maximum_failure:
+            print(f"[INFO] {training_type.upper()} filtered out: failure rate {data['failure']}% > {maximum_failure}%")
+            debug_print(f"[DEBUG] {training_type.upper()} filtered out due to high failure rate: {data['failure']}% > {maximum_failure}%")
+            continue
+        
+        # Apply appropriate score threshold
+        threshold = min_wit_score if training_type == "wit" else min_score
+        if data["score"] < threshold:
+            print(f"[INFO] {training_type.upper()} filtered out: score {data['score']} < {threshold}")
+            debug_print(f"[DEBUG] {training_type.upper()} filtered out due to low score: {data['score']} < {threshold}")
+            continue
+        
+        eligible.append((training_type, data))
+        print(f"[INFO] {training_type.upper()} eligible: failure={data['failure']}%, score={data['score']}")
+        debug_print(f"[DEBUG] {training_type.upper()} is eligible: failure={data['failure']}%, score={data['score']}")
+    
+    if not eligible:
+        print("[INFO] No eligible training found after all filtering")
+        debug_print("[DEBUG] No eligible training found after all filtering")
+        return None
+    
+    # Find training with highest score
+    max_score = max(d["score"] for _, d in eligible)
+    tied_trainings = [t for t, d in eligible if d["score"] == max_score]
+    
+    if len(tied_trainings) == 1:
+        chosen = tied_trainings[0]
+        chosen_data = next(d for t, d in eligible if t == chosen)
+        print(f"[INFO] Selected {chosen.upper()} training: highest score {max_score} (failure: {chosen_data['failure']}%)")
+        debug_print(f"[DEBUG] Single best training found: {chosen.upper()} with score {max_score}")
+        return chosen
+    
+    # Tie-breaker: use priority order from config
+    print(f"[INFO] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
+    debug_print(f"[DEBUG] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
+    order_index = {name: i for i, name in enumerate(priority_order)}
+    chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
+    chosen_data = next(d for t, d in eligible if t == chosen)
+    print(f"[INFO] Tie broken: {chosen.upper()} selected based on priority order (score: {max_score}, failure: {chosen_data['failure']}%)")
+    debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order")
+    
+    return chosen 

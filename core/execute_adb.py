@@ -4,26 +4,76 @@ import os
 import random
 from PIL import ImageStat
 
-from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template
+from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template, max_match_confidence
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
-    MOOD_LIST, EVENT_REGION, RACE_CARD_REGION
+    MOOD_LIST, EVENT_REGION, RACE_CARD_REGION, SUPPORT_CARD_ICON_REGION
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement
-from core.logic import do_something, do_something_fallback, all_training_unsafe, MAX_FAILURE
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
+
+# Import event handling functions
+from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
 
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
+    RETRY_RACE = config.get("retry_race", True)
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
+
+# Support icon templates for detailed detection
+SUPPORT_ICON_PATHS = {
+    "spd": "assets/icons/support_card_type_spd.png",
+    "sta": "assets/icons/support_card_type_sta.png",
+    "pwr": "assets/icons/support_card_type_pwr.png",
+    "guts": "assets/icons/support_card_type_guts.png",
+    "wit": "assets/icons/support_card_type_wit.png",
+    "friend": "assets/icons/support_card_type_friend.png",
+}
+
+# Bond color classification helpers
+BOND_SAMPLE_OFFSET = (-2, 116)
+BOND_LEVEL_COLORS = {
+    5: (255, 235, 120),
+    4: (255, 173, 30),
+    3: (162, 230, 30),
+    2: (42, 192, 255),
+    1: (109, 108, 117),
+}
+
+def _classify_bond_level(rgb_tuple):
+    r, g, b = rgb_tuple
+    best_level, best_dist = 1, float('inf')
+    for level, (cr, cg, cb) in BOND_LEVEL_COLORS.items():
+        dr, dg, db = r - cr, g - cg, b - cb
+        dist = dr*dr + dg*dg + db*db
+        if dist < best_dist:
+            best_dist, best_level = dist, level
+    return best_level
+
+def _filtered_template_matches(screenshot, template_path, region_cv, confidence=0.8):
+    raw = match_template(screenshot, template_path, confidence, region_cv)
+    if not raw:
+        return []
+    filtered = []
+    for (x, y, w, h) in raw:
+        cx, cy = x + w // 2, y + h // 2
+        duplicate = False
+        for (ex, ey, ew, eh) in filtered:
+            ecx, ecy = ex + ew // 2, ey + eh // 2
+            if abs(cx - ecx) < 30 and abs(cy - ecy) < 30:
+                duplicate = True
+                break
+        if not duplicate:
+            filtered.append((x, y, w, h))
+    return filtered
 
 def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
     """
@@ -109,717 +159,7 @@ def claw_machine():
     return True
 
 
-def count_event_choices():
-    """
-    Count how many event choice icons are found on screen.
-    Uses event_choice_1.png as template to find all U-shaped icons.
-    Filters matches by brightness to avoid dim/false positives.
-    Returns:
-        tuple: (count, locations) - number of unique bright choices found and their locations
-    """
-    template_path = "assets/icons/event_choice_1.png"
-    
-    if not os.path.exists(template_path):
-        debug_print(f"[DEBUG] Template not found: {template_path}")
-        return 0, []
-    
-    try:
-        debug_print(f"[DEBUG] Searching for event choices using: {template_path}")
-        # Search for all instances of the template in the event choice region
-        event_choice_region = (6, 450, 126, 1776)
-        locations = locate_all_on_screen(template_path, confidence=0.45, region=event_choice_region)
-        debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
-        if not locations:
-            debug_print("[DEBUG] No event choice locations found")
-            return 0, []
-        # Sort locations by y, then x (top to bottom, left to right)
-        locations = sorted(locations, key=lambda loc: (loc[1], loc[0]))
-        unique_locations = []
-        for i, location in enumerate(locations):
-            x, y, w, h = location
-            center = (x + w//2, y + h//2)
-            if not unique_locations:
-                unique_locations.append(location)
-                continue
-            # Only compare to the last accepted unique match
-            last_x, last_y, last_w, last_h = unique_locations[-1]
-            last_center = (last_x + last_w//2, last_y + last_h//2)
-            distance = ((center[0] - last_center[0]) ** 2 + (center[1] - last_center[1]) ** 2) ** 0.5
-            if distance >= 150:  # Increased from 30 to 150 to separate different choice rows
-                unique_locations.append(location)
-        # Compute brightness and filter
-        screenshot = take_screenshot()
-        grayscale = screenshot.convert("L")
-        bright_threshold = 160.0
-        bright_locations = []
-        for (x, y, w, h) in unique_locations:
-            try:
-                region_img = grayscale.crop((x, y, x + w, y + h))
-                avg_brightness = ImageStat.Stat(region_img).mean[0]
-                debug_print(f"[DEBUG] Choice at ({x},{y},{w},{h}) brightness: {avg_brightness:.1f}")
-                if avg_brightness > bright_threshold:
-                    bright_locations.append((x, y, w, h))
-            except Exception:
-                # If brightness calc fails, skip this location
-                continue
-
-        debug_print(f"[DEBUG] Final unique bright locations: {len(bright_locations)} (threshold: {bright_threshold})")
-        return len(bright_locations), bright_locations
-    except Exception as e:
-        print(f"❌ Error counting event choices: {str(e)}")
-        return 0, []
-
-def load_event_priorities():
-    """Load event priority configuration from event_priority.json"""
-    try:
-        if os.path.exists("event_priority.json"):
-            with open("event_priority.json", "r", encoding="utf-8") as f:
-                priorities = json.load(f)
-            return priorities
-        else:
-            print("Warning: event_priority.json not found")
-            return {"Good_choices": [], "Bad_choices": []}
-    except Exception as e:
-        print(f"Error loading event priorities: {e}")
-        return {"Good_choices": [], "Bad_choices": []}
-
-def analyze_event_options(options, priorities):
-    """
-    Analyze event options and recommend the best choice based on priorities.
-    
-    Args:
-        options: Dict of option_name -> option_reward
-        priorities: Dict with "Good_choices" and "Bad_choices" lists
-    
-    Returns:
-        Dict with recommendation info:
-        {
-            "recommended_option": str,
-            "recommendation_reason": str,
-            "option_analysis": dict,
-            "all_options_bad": bool
-        }
-    """
-    good_choices = priorities.get("Good_choices", [])
-    bad_choices = priorities.get("Bad_choices", [])
-    
-    option_analysis = {}
-    all_options_bad = True
-    
-    # Analyze each option
-    for option_name, option_reward in options.items():
-        reward_lower = option_reward.lower()
-        
-        # Check for good choices
-        good_matches = []
-        for good_choice in good_choices:
-            if good_choice.lower() in reward_lower:
-                good_matches.append(good_choice)
-        
-        # Check for bad choices
-        bad_matches = []
-        for bad_choice in bad_choices:
-            if bad_choice.lower() in reward_lower:
-                bad_matches.append(bad_choice)
-        
-        option_analysis[option_name] = {
-            "reward": option_reward,
-            "good_matches": good_matches,
-            "bad_matches": bad_matches,
-            "has_good": len(good_matches) > 0,
-            "has_bad": len(bad_matches) > 0
-        }
-        
-        # If any option has good choices, not all options are bad
-        if len(good_matches) > 0:
-            all_options_bad = False
-    
-    # Check if ALL options have bad choices (regardless of good choices)
-    all_options_have_bad = all(analysis["has_bad"] for analysis in option_analysis.values())
-    
-    # Determine recommendation
-    recommended_option = None
-    recommendation_reason = ""
-    
-    if all_options_have_bad:
-        # If all options have bad choices, ignore bad choices and pick based on good choice priority
-        best_options = []  # Store all options with the same best priority
-        best_priority = -1
-        
-        for option_name, analysis in option_analysis.items():
-            # Find the highest priority good choice in this option
-            for good_choice in analysis["good_matches"]:
-                try:
-                    priority = good_choices.index(good_choice)
-                    if priority < best_priority or best_priority == -1:
-                        # New best priority found, reset the list
-                        best_priority = priority
-                        best_options = [option_name]
-                    elif priority == best_priority:
-                        # Same priority, add to the list
-                        if option_name not in best_options:
-                            best_options.append(option_name)
-                except ValueError:
-                    continue
-        
-        if best_options:
-            # If we have multiple options with the same priority, use tie-breaking
-            if len(best_options) > 1:
-                # Since all options have bad choices, ignore bad choices and prefer option with more good choices
-                best_option = None
-                max_good_choices = -1
-                
-                for option_name in best_options:
-                    good_count = len(option_analysis[option_name]["good_matches"])
-                    if good_count > max_good_choices:
-                        max_good_choices = good_count
-                        best_option = option_name
-                
-                # If still tied, choose the first option (top choice)
-                if best_option is None:
-                    best_option = best_options[0]
-                
-                recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then top choice)."
-            else:
-                best_option = best_options[0]
-                recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Recommended based on highest priority good choice: '{option_analysis[best_option]['good_matches'][0]}'"
-        else:
-            # No good choices found, pick the option with the least bad choices
-            best_option = None
-            min_bad_choices = 999
-            
-            for option_name, analysis in option_analysis.items():
-                bad_count = len(analysis["bad_matches"])
-                if bad_count < min_bad_choices:
-                    min_bad_choices = bad_count
-                    best_option = option_name
-            
-            if best_option:
-                recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Selected option with least bad choices: {len(option_analysis[best_option]['bad_matches'])} bad choices"
-            else:
-                recommendation_reason = "All options have bad choices. No recommendation possible."
-    else:
-        # Normal case: some options don't have bad choices - avoid bad choices completely
-        best_options = []
-        best_priority = -1
-        
-        for option_name, analysis in option_analysis.items():
-            # ONLY consider options that have good choices AND NO bad choices
-            if analysis["has_good"] and not analysis["has_bad"]:
-                # Find the highest priority good choice in this option
-                for good_choice in analysis["good_matches"]:
-                    try:
-                        priority = good_choices.index(good_choice)
-                        if priority < best_priority or best_priority == -1:
-                            # New best priority found, reset the list
-                            best_priority = priority
-                            best_options = [option_name]
-                        elif priority == best_priority:
-                            # Same priority, add to the list
-                            if option_name not in best_options:
-                                best_options.append(option_name)
-                    except ValueError:
-                        continue
-        
-        if best_options:
-            # If we have multiple options with the same priority, use tie-breaking
-            if len(best_options) > 1:
-                # Prefer option with more good choices, then fewer bad choices
-                best_option = None
-                max_good_choices = -1
-                min_bad_choices = 999
-                
-                for option_name in best_options:
-                    good_count = len(option_analysis[option_name]["good_matches"])
-                    bad_count = len(option_analysis[option_name]["bad_matches"])
-                    
-                    if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
-                        max_good_choices = good_count
-                        min_bad_choices = bad_count
-                        best_option = option_name
-                
-                recommended_option = best_option
-                recommendation_reason = f"Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then fewer bad choices)."
-            else:
-                best_option = best_options[0]
-                recommended_option = best_option
-                recommendation_reason = f"Recommended based on highest priority good choice: '{option_analysis[best_option]['good_matches'][0]}'"
-        else:
-            # No clean options (good without bad) found, try options with good choices even if they have bad choices
-            debug_print("[DEBUG] No clean options found, considering options with good choices despite bad choices...")
-            fallback_options = []
-            best_priority = -1
-            
-            for option_name, analysis in option_analysis.items():
-                if analysis["has_good"]:  # Has good choices (ignoring bad choices for now)
-                    # Find the highest priority good choice in this option
-                    for good_choice in analysis["good_matches"]:
-                        try:
-                            priority = good_choices.index(good_choice)
-                            if priority < best_priority or best_priority == -1:
-                                # New best priority found, reset the list
-                                best_priority = priority
-                                fallback_options = [option_name]
-                            elif priority == best_priority:
-                                # Same priority, add to the list
-                                if option_name not in fallback_options:
-                                    fallback_options.append(option_name)
-                        except ValueError:
-                            continue
-            
-            if fallback_options:
-                # Choose from fallback options, prefer fewer bad choices
-                best_option = None
-                min_bad_choices = 999
-                
-                for option_name in fallback_options:
-                    bad_count = len(option_analysis[option_name]["bad_matches"])
-                    if bad_count < min_bad_choices:
-                        min_bad_choices = bad_count
-                        best_option = option_name
-                
-                recommended_option = best_option
-                recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices: {min_bad_choices} bad choices"
-            else:
-                # Absolutely no good choices found, pick the option with the least bad choices
-                best_option = None
-                min_bad_choices = 999
-                
-                for option_name, analysis in option_analysis.items():
-                    bad_count = len(analysis["bad_matches"])
-                    if bad_count < min_bad_choices:
-                        min_bad_choices = bad_count
-                        best_option = option_name
-                
-                if best_option:
-                    recommended_option = best_option
-                    recommendation_reason = f"No good choices found. Selected option with least bad choices: {len(option_analysis[best_option]['bad_matches'])} bad choices"
-                else:
-                    recommendation_reason = "No good choices found. No recommendation possible."
-    
-    return {
-        "recommended_option": recommended_option,
-        "recommendation_reason": recommendation_reason,
-        "option_analysis": option_analysis,
-        "all_options_bad": all_options_bad
-    }
-
-def generate_event_variations(event_name):
-    """
-    Generate variations of an event name for better matching.
-    
-    Args:
-        event_name: The base event name
-    
-    Returns:
-        List of event name variations
-    """
-    variations = [event_name]
-    
-    # Add common variations
-    if " " in event_name:
-        # Split by spaces and create combinations
-        parts = event_name.split()
-        variations.extend(parts)
-        
-        # Add combinations of parts
-        for i in range(len(parts)):
-            for j in range(i + 1, len(parts) + 1):
-                combination = " ".join(parts[i:j])
-                if combination not in variations:
-                    variations.append(combination)
-    
-    # Add lowercase versions
-    variations.append(event_name.lower())
-    
-    # Add versions without special characters
-    clean_name = event_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
-    if clean_name not in variations:
-        variations.append(clean_name)
-    
-    return variations
-
-def search_events(event_variations):
-    """Search for matching events in databases (same as original PC version)"""
-    found_events = {}
-    import re
-
-    def normalize_for_match(name: str) -> str:
-        # Lowercase, remove chain symbols and trim
-        n = (name or "").lower()
-        n = n.replace("(❯)", "").replace("(❯❯)", "").replace("(❯❯❯)", "").strip()
-        return n
-
-    def strip_punct_spaces(name: str) -> str:
-        # Keep letters, numbers, star, and spaces; drop the rest
-        return re.sub(r"[^a-z0-9☆\s]", "", name)
-
-    def nospace(name: str) -> str:
-        # Remove all spaces and punctuation entirely for permissive matching
-        return re.sub(r"[^a-z0-9☆]", "", name)
-
-    def is_match(db_name_raw: str, search_raw: str) -> bool:
-        dbn = normalize_for_match(db_name_raw)
-        srch = normalize_for_match(search_raw)
-        if not dbn or not srch:
-            return False
-        # Guard: ignore trivial variations like just a star or single short token
-        srch_tokens = [t for t in strip_punct_spaces(srch).split() if t]
-        if (len(srch) < 3) or (len(srch_tokens) == 1 and len(srch_tokens[0]) < 3) or (srch.strip() == '☆'):
-            return False
-        # Exact match
-        if dbn == srch:
-            return True
-        # Substring match ignoring punctuation (handles names like "Acupuncture (Just an Acupuncturist, No Worries! ☆)")
-        dbn_np = strip_punct_spaces(dbn).replace("  ", " ").strip()
-        srch_np = strip_punct_spaces(srch).replace("  ", " ").strip()
-        if srch_np and (srch_np in dbn_np or dbn_np in srch_np):
-            return True
-        # Substring match ignoring all spaces/punct
-        dbn_ns = nospace(dbn)
-        srch_ns = nospace(srch)
-        if srch_ns and (srch_ns in dbn_ns or dbn_ns in srch_ns):
-            return True
-        # Token containment (all search tokens in db tokens)
-        db_tokens = set([t for t in dbn_np.split() if t])
-        srch_tokens = set([t for t in srch_np.split() if t])
-        if srch_tokens and srch_tokens.issubset(db_tokens):
-            return True
-        return False
-    
-    # Load support card events
-    support_events = []
-    if os.path.exists("assets/events/support_card.json"):
-        with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-            support_events = json.load(f)
-    
-    # Load uma data events
-    uma_events = []
-    if os.path.exists("assets/events/uma_data.json"):
-        with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-            uma_data = json.load(f)
-            # Extract all UmaEvents from all characters
-            for character in uma_data:
-                if "UmaEvents" in character:
-                    uma_events.extend(character["UmaEvents"])
-    
-    # Load ura finale events
-    ura_events = []
-    if os.path.exists("assets/events/ura_finale.json"):
-        with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-            ura_events = json.load(f)
-    
-    # Search in support card events
-    for event in support_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Support Card", "options": {}}
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in uma events
-    for event in uma_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Uma Data", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Both"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in ura finale events
-    for event in ura_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Ura Finale", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Support Card + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Uma Data":
-                    found_events[event_name_key]["source"] = "Uma Data + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Both":
-                    found_events[event_name_key]["source"] = "All Sources"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    return found_events
-
-def handle_event_choice():
-    """
-    Main function to handle event detection and choice selection.
-    This function should be called when an event is detected.
-    
-    Returns:
-        tuple: (choice_number, success, choice_locations) - choice number, success status, and found locations
-    """
-    # Define the region for event name detection
-    event_region = EVENT_REGION
-    
-    print("Event detected, scan event")
-    
-    try:
-        # Wait for event to stabilize (1.5 seconds)
-        time.sleep(1.5)
-
-        # Re-validate that this is a choices event before OCR (avoid scanning non-choice dialogs)
-        recheck_count, recheck_locations = count_event_choices()
-        debug_print(f"[DEBUG] Recheck choices after delay: {recheck_count}")
-        if recheck_count == 0:
-            print("[INFO] Event choices not visible after delay, skipping analysis")
-            return 1, False, []
-
-        # Capture the event name
-        from utils.adb_screenshot import capture_region
-        from core.ocr import extract_event_name_text
-        event_image = capture_region(event_region)
-        event_name = extract_event_name_text(event_image)
-        event_name = event_name.strip()
-        
-        if not event_name:
-            print("No text detected in event region")
-            # Choices were visible and stabilized earlier; provide locations for fallback top-choice click
-            return 1, False, recheck_locations
-        
-        print(f"Event found: {event_name}")
-
-        # Prefer exact name lookup to ensure options align with the specific event instance
-        def search_events_exact(name):
-            results = {}
-            # Support Card
-            if os.path.exists("assets/events/support_card.json"):
-                with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-                    for ev in json.load(f):
-                        if ev.get("EventName") == name:
-                            entry = results.setdefault(name, {"source": "Support Card", "options": {}})
-                            # Merge options across duplicate entries of the same event
-                            entry["options"].update(ev.get("EventOptions", {}))
-            # Uma Data
-            if os.path.exists("assets/events/uma_data.json"):
-                with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-                    for character in json.load(f):
-                        for ev in character.get("UmaEvents", []):
-                            if ev.get("EventName") == name:
-                                entry = results.setdefault(name, {"source": "Uma Data", "options": {}})
-                                # Merge source labels
-                                if entry["source"] == "Support Card":
-                                    entry["source"] = "Both"
-                                elif entry["source"].startswith("Support Card +"):
-                                    entry["source"] = entry["source"].replace("Support Card +", "Both +")
-                                entry["options"].update(ev.get("EventOptions", {}))
-            # Ura Finale
-            if os.path.exists("assets/events/ura_finale.json"):
-                with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-                    for ev in json.load(f):
-                        if ev.get("EventName") == name:
-                            entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
-                            if entry["source"] == "Support Card":
-                                entry["source"] = "Support Card + Ura Finale"
-                            elif entry["source"] == "Uma Data":
-                                entry["source"] = "Uma Data + Ura Finale"
-                            elif entry["source"] == "Both":
-                                entry["source"] = "All Sources"
-                            entry["options"].update(ev.get("EventOptions", {}))
-            return results
-
-        found_events = search_events_exact(event_name)
-        if not found_events:
-            # Fallback variations-based search
-            event_variations = generate_event_variations(event_name)
-            found_events = search_events(event_variations)
-        
-        # Count event choices on screen
-        choices_found, choice_locations = count_event_choices()
-        
-        # Load event priorities
-        priorities = load_event_priorities()
-        
-        if found_events:
-            # Event found in database
-            event_name_key = list(found_events.keys())[0]
-            event_data = found_events[event_name_key]
-            options = event_data["options"]
-            
-            print(f"Source: {event_data['source']}")
-            print("Options:")
-            
-            if options:
-                # Analyze options with priorities
-                analysis = analyze_event_options(options, priorities)
-                
-                for option_name, option_reward in options.items():
-                    # Replace all line breaks with ', '
-                    reward_single_line = option_reward.replace("\r\n", ", ").replace("\n", ", ").replace("\r", ", ")
-                    
-                    # Add analysis indicators
-                    option_analysis = analysis["option_analysis"][option_name]
-                    indicators = []
-                    if option_analysis["has_good"]:
-                        indicators.append("✅ Good")
-                    if option_analysis["has_bad"]:
-                        indicators.append("❌ Bad")
-                    if option_name == analysis["recommended_option"]:
-                        indicators.append("🎯 RECOMMENDED")
-                    
-                    indicator_text = f" [{', '.join(indicators)}]" if indicators else ""
-                    print(f"  {option_name}: {reward_single_line}{indicator_text}")
-                
-                # Print recommendation
-                print(f"Recommend: {analysis['recommended_option']}")
-                
-                # Determine which choice to select based on recommendation and choice count
-                expected_options = len(options)
-                recommended_option = analysis["recommended_option"]
-                
-                # If no recommendation, default to first choice
-                if recommended_option is None:
-                    print("No recommendation found, defaulting to first choice")
-                    choice_number = 1
-                else:
-                    # Map recommended option to choice number
-                    choice_number = 1  # Default to first choice
-                    
-                    if expected_options == 2:
-                        if "top" in recommended_option.lower():
-                            choice_number = 1
-                        elif "bottom" in recommended_option.lower():
-                            choice_number = 2
-                    elif expected_options == 3:
-                        if "top" in recommended_option.lower():
-                            choice_number = 1
-                        elif "middle" in recommended_option.lower():
-                            choice_number = 2
-                        elif "bottom" in recommended_option.lower():
-                            choice_number = 3
-                    elif expected_options >= 4:
-                        # For 4+ choices, look for "Option 1", "Option 2", etc.
-                        import re
-                        option_match = re.search(r'option\s*(\d+)', recommended_option.lower())
-                        if option_match:
-                            choice_number = int(option_match.group(1))
-                
-                # Verify choice number is valid
-                if choice_number > choices_found:
-                    print(f"Warning: Recommended choice {choice_number} exceeds available choices ({choices_found})")
-                    choice_number = 1  # Fallback to first choice
-                
-                print(f"Choose choice: {choice_number}")
-                return choice_number, True, choice_locations
-            else:
-                print("No valid options found in database")
-                return 1, False, choice_locations
-        else:
-            # Unknown event
-            print("Unknown event - not found in database")
-            print(f"Choices found: {choices_found}")
-            return 1, False, choice_locations  # Default to first choice for unknown events
-    
-    except Exception as e:
-        print(f"Error during event handling: {e}")
-        # If choices are visible, return their locations to allow fallback top-choice click
-        try:
-            _, fallback_locations = count_event_choices()
-        except Exception:
-            fallback_locations = []
-        return 1, False, fallback_locations  # Default to first choice on error
-
-def click_event_choice(choice_number, choice_locations=None):
-    """
-    Click on the specified event choice using pre-found locations.
-    
-    Args:
-        choice_number: The choice number to click (1, 2, 3, etc.)
-        choice_locations: Pre-found locations from count_event_choices() (optional)
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    try:
-        # Use pre-found locations if provided, otherwise search again
-        if choice_locations is None:
-            debug_print("[DEBUG] No pre-found locations, searching for event choices...")
-            event_choice_region = (6, 450, 126, 1776)
-            choice_locations = locate_all_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
-            
-            if not choice_locations:
-                print("No event choice icons found")
-                return False
-            
-            # Filter out duplicates
-            unique_locations = []
-            for location in choice_locations:
-                x, y, w, h = location
-                center = (x + w//2, y + h//2)
-                is_duplicate = False
-                
-                for existing in unique_locations:
-                    ex, ey, ew, eh = existing
-                    existing_center = (ex + ew//2, ey + eh//2)
-                    distance = ((center[0] - existing_center[0]) ** 2 + (center[1] - existing_center[1]) ** 2) ** 0.5
-                    if distance < 30:  # Within 30 pixels
-                        is_duplicate = True
-                        break
-                
-                if not is_duplicate:
-                    unique_locations.append(location)
-            
-            # Sort locations by Y coordinate (top to bottom)
-            unique_locations.sort(key=lambda loc: loc[1])
-        else:
-            debug_print("[DEBUG] Using pre-found choice locations")
-            unique_locations = choice_locations
-        
-        # Click the specified choice
-        if 1 <= choice_number <= len(unique_locations):
-            target_location = unique_locations[choice_number - 1]
-            x, y, w, h = target_location
-            center = (x + w//2, y + h//2)
-            
-            print(f"Clicking choice {choice_number} at position {center}")
-            tap(center[0], center[1])
-            return True
-        else:
-            print(f"Invalid choice number: {choice_number} (available: 1-{len(unique_locations)})")
-            return False
-    
-    except Exception as e:
-        print(f"Error clicking event choice: {e}")
-        return False
-
+# Event handling functions moved to core/event_handling.py
 def is_racing_available(year):
     """Check if racing is available based on the current year/month"""
     # No races in Pre-Debut
@@ -858,7 +198,8 @@ def go_to_training():
     return click("assets/buttons/training_btn.png", minSearch=10)
 
 def check_training():
-    """Check training results with support cards and failure rates using fixed coordinates"""
+    """Check training results using fixed coordinates, collecting support counts,
+    bond levels and hint presence in one hover pass before computing failure rates."""
     debug_print("[DEBUG] Checking training options...")
     
     # Fixed coordinates for each training type
@@ -886,29 +227,98 @@ def check_training():
         swipe(start_x, start_y, end_x, end_y, duration_ms=200)  # Longer duration for hover effect
         time.sleep(0.3)  # Wait for hover effect to register
         
-        # Step 2: Check support cards while hovering
+        # Step 2: One pass: capture screenshot, evaluate support counts, bond levels, and hint
+        screenshot = take_screenshot()
+        left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+        region_cv = (left, top, right - left, bottom - top)
+
+        # Support counts
         support_counts = check_support_card()
         total_support = sum(support_counts.values())
-        debug_print(f"[DEBUG] Support cards detected: {support_counts} (total: {total_support})")
-        
 
-        
+        # Bond levels per type
+        detailed_support = {}
+        rgb_img = screenshot.convert("RGB")
+        width, height = rgb_img.size
+        dx, dy = BOND_SAMPLE_OFFSET
+        for t_key, tpl in SUPPORT_ICON_PATHS.items():
+            matches = _filtered_template_matches(screenshot, tpl, region_cv, confidence=0.8)
+            if not matches:
+                continue
+            entries = []
+            for (x, y, w, h) in matches:
+                cx, cy = int(x + w // 2), int(y + h // 2)
+                sx, sy = cx + dx, cy + dy
+                sx = max(0, min(width - 1, sx))
+                sy = max(0, min(height - 1, sy))
+                r, g, b = rgb_img.getpixel((sx, sy))
+                level = _classify_bond_level((r, g, b))
+                entries.append({
+                    "bbox": [int(x), int(y), int(w), int(h)],
+                    "center": [cx, cy],
+                    "bond_sample_point": [int(sx), int(sy)],
+                    "bond_color": [int(r), int(g), int(b)],
+                    "bond_level": int(level),
+                })
+            if entries:
+                detailed_support[t_key] = entries
+
+        # Hint
+        hint_found = check_hint()
+
+        # Calculate score for this training type
+        from core.state_adb import calculate_training_score
+        score = calculate_training_score(detailed_support, hint_found, key)
+
+        debug_print(f"[DEBUG] Support counts: {support_counts} | hint_found={hint_found} | score={score}")
+
         debug_print(f"[DEBUG] Checking failure rate for {key.upper()} training...")
         failure_chance, confidence = check_failure(key)
         
         results[key] = {
             "support": support_counts,
+            "support_detail": detailed_support,
+            "hint": bool(hint_found),
             "total_support": total_support,
             "failure": failure_chance,
-            "confidence": confidence
+            "confidence": confidence,
+            "score": score
         }
         
-        print(f"[{key.upper()}] → {support_counts}, Fail: {failure_chance}% - Confident: {confidence:.2f}")
+        # Use clean format matching training_score_test.py exactly
+        print(f"\n[{key.upper()}]")
+        
+        # Show support card details (similar to test script)
+        if detailed_support:
+            support_lines = []
+            for card_type, entries in detailed_support.items():
+                for idx, entry in enumerate(entries, start=1):
+                    level = entry['bond_level']
+                    is_rainbow = (card_type == key and level >= 4)
+                    label = f"{card_type.upper()}{idx}: {level}"
+                    if is_rainbow:
+                        label += " (Rainbow)"
+                    support_lines.append(label)
+            print(", ".join(support_lines))
+        else:
+            print("-")
+        
+        print(f"hint={hint_found}")
+        print(f"Fail: {failure_chance}% - Confident: {confidence:.2f}")
+        print(f"Score: {score}")
         
 
     
     debug_print("[DEBUG] Going back from training screen...")
     click("assets/buttons/back_btn.png")
+    
+    # Print overall summary
+    print("\n=== Overall ===")
+    for k in ["spd", "sta", "pwr", "guts", "wit"]:
+        if k in results:
+            data = results[k]
+            print(f"{k.upper()}: Score={data['score']:.2f}, Fail={data['failure']}% - Confident: {data['confidence']:.2f}")
+    
     return results
 
 def do_train(train):
@@ -946,19 +356,43 @@ def do_train(train):
 def do_rest():
     """Perform rest action"""
     debug_print("[DEBUG] Performing rest action...")
-    rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.8)
-    rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.8)
+    print("[INFO] Performing rest action...")
+    
+    # Rest button is in the lobby, not on training screen
+    # If we're on training screen, go back to lobby first
+    from utils.adb_recognizer import locate_on_screen
+    back_btn = locate_on_screen("assets/buttons/back_btn.png", confidence=0.8)
+    if back_btn:
+        debug_print("[DEBUG] Going back to lobby to find rest button...")
+        print("[INFO] Going back to lobby to find rest button...")
+        from utils.adb_input import tap
+        tap(back_btn[0], back_btn[1])
+        time.sleep(1.0)  # Wait for lobby to load
+    
+    # Now look for rest buttons in the lobby
+    rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.5)
+    rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.5)
+    
+    debug_print(f"[DEBUG] Rest button found: {rest_btn}")
+    debug_print(f"[DEBUG] Summer rest button found: {rest_summer_btn}")
     
     if rest_btn:
-        debug_print(f"[DEBUG] Found rest button at {rest_btn}")
+        debug_print(f"[DEBUG] Clicking rest button at {rest_btn}")
+        print(f"[INFO] Clicking rest button at {rest_btn}")
+        from utils.adb_input import tap
         tap(rest_btn[0], rest_btn[1])
         debug_print("[DEBUG] Clicked rest button")
+        print("[INFO] Rest button clicked")
     elif rest_summer_btn:
-        debug_print(f"[DEBUG] Found summer rest button at {rest_summer_btn}")
+        debug_print(f"[DEBUG] Clicking summer rest button at {rest_summer_btn}")
+        print(f"[INFO] Clicking summer rest button at {rest_summer_btn}")
+        from utils.adb_input import tap
         tap(rest_summer_btn[0], rest_summer_btn[1])
         debug_print("[DEBUG] Clicked summer rest button")
+        print("[INFO] Summer rest button clicked")
     else:
-        debug_print("[DEBUG] No rest button found")
+        debug_print("[DEBUG] No rest button found in lobby")
+        print("[WARNING] No rest button found in lobby")
 
 def do_recreation():
     """Perform recreation action"""
@@ -989,6 +423,8 @@ def do_race(prioritize_g1=False):
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
         time.sleep(1)
+        # If race failed screen appears, handle retry before proceeding
+        handle_race_retry_if_failed()
         after_race()
         return True
     else:
@@ -1047,6 +483,8 @@ def race_day():
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
+        # If race failed screen appears, handle retry before proceeding
+        handle_race_retry_if_failed()
         after_race()
         return True
     return False
@@ -1187,10 +625,156 @@ def race_select(prioritize_g1=False):
         debug_print("[DEBUG] No suitable race found")
     return found
 
+def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
+    """Check and ensure strategy matches config before race."""
+    debug_print("[DEBUG] Checking strategy before race...")
+    
+    try:
+        screenshot = take_screenshot()
+        
+        templates = {
+            "front": "assets/icons/front.png",
+            "late": "assets/icons/late.png", 
+            "pace": "assets/icons/pace.png",
+            "end": "assets/icons/end.png",
+        }
+        
+        # Find brightest strategy using existing project functions
+        best_match = None
+        best_brightness = 0
+        
+        for name, path in templates.items():
+            try:
+                # Use existing match_template function
+                matches = match_template(screenshot, path, confidence=0.5, region=region)
+                if matches:
+                    # Get confidence for best match
+                    confidence = max_match_confidence(screenshot, path, region)
+                    if confidence:
+                        # Check brightness of the matched region
+                        x, y, w, h = matches[0]
+                        roi = screenshot.convert("L").crop((x, y, x + w, y + h))
+                        from PIL import ImageStat
+                        bright = float(ImageStat.Stat(roi).mean[0])
+                        
+                        if bright >= 160 and bright > best_brightness:
+                            best_match = (name, matches[0], confidence, bright)
+                            best_brightness = bright
+            except Exception:
+                continue
+        
+        if not best_match:
+            debug_print("[DEBUG] No strategy found with brightness >= 160")
+            return False
+        
+        strategy_name, bbox, conf, bright = best_match
+        current_strategy = strategy_name.upper()
+        
+        # Load expected strategy from config
+        try:
+            with open("config.json", "r", encoding="utf-8") as f:
+                config = json.load(f)
+            expected_strategy = config.get("strategy", "").upper()
+        except Exception:
+            debug_print("[DEBUG] Cannot read config.json")
+            return False
+        
+        matches = current_strategy == expected_strategy
+        debug_print(f"[DEBUG] Current: {current_strategy}, Expected: {expected_strategy}, Match: {matches}")
+        
+        if matches:
+            debug_print("[DEBUG] Strategy matches config, proceeding with race")
+            return True
+        
+        # Strategy doesn't match, try to change it
+        debug_print(f"[DEBUG] Strategy mismatch, changing to {expected_strategy}")
+        
+        if change_strategy_before_race(expected_strategy):
+            # Recheck after change
+            new_strategy, new_matches = check_strategy_before_race(region)
+            if new_matches:
+                debug_print("[DEBUG] Strategy successfully changed")
+                return True
+            else:
+                debug_print("[DEBUG] Strategy change failed")
+                return False
+        else:
+            debug_print("[DEBUG] Failed to change strategy")
+            return False
+            
+    except Exception as e:
+        debug_print(f"[DEBUG] Error checking strategy: {e}")
+        return False
+
+
+def change_strategy_before_race(expected_strategy: str) -> bool:
+    """Change strategy to the expected one before race."""
+    debug_print(f"[DEBUG] Changing strategy to: {expected_strategy}")
+    
+    # Strategy coordinates mapping
+    strategy_coords = {
+        "FRONT": (882, 1159),
+        "PACE": (645, 1159),
+        "LATE": (414, 1159),
+        "END": (186, 1162),
+    }
+    
+    if expected_strategy not in strategy_coords:
+        debug_print(f"[DEBUG] Unknown strategy: {expected_strategy}")
+        return False
+    
+    try:
+        # Step 1: Find and tap strategy_change.png
+        debug_print("[DEBUG] Looking for strategy change button...")
+        change_btn = wait_for_image("assets/buttons/strategy_change.png", timeout=10, confidence=0.8)
+        if not change_btn:
+            debug_print("[DEBUG] Strategy change button not found")
+            return False
+        
+        debug_print(f"[DEBUG] Found strategy change button at {change_btn}")
+        tap(change_btn[0], change_btn[1])
+        debug_print("[DEBUG] Tapped strategy change button")
+        
+        # Step 2: Wait for confirm.png to appear
+        debug_print("[DEBUG] Waiting for confirm button to appear...")
+        confirm_btn = wait_for_image("assets/buttons/confirm.png", timeout=10, confidence=0.8)
+        if not confirm_btn:
+            debug_print("[DEBUG] Confirm button not found after strategy change")
+            return False
+        
+        debug_print(f"[DEBUG] Confirm button appeared at {confirm_btn}")
+        
+        # Step 3: Tap on the specified coordinate for the right strategy
+        target_x, target_y = strategy_coords[expected_strategy]
+        debug_print(f"[DEBUG] Tapping strategy position: ({target_x}, {target_y}) for {expected_strategy}")
+        tap(target_x, target_y)
+        debug_print(f"[DEBUG] Tapped strategy position for {expected_strategy}")
+        
+        # Step 4: Tap confirm.png from found location
+        debug_print("[DEBUG] Confirming strategy change...")
+        tap(confirm_btn[0], confirm_btn[1])
+        debug_print("[DEBUG] Tapped confirm button")
+        
+        # Wait a moment for the change to take effect
+        time.sleep(2)
+        
+        debug_print(f"[DEBUG] Strategy change completed for {expected_strategy}")
+        return True
+        
+    except Exception as e:
+        debug_print(f"[DEBUG] Error during strategy change: {e}")
+        return False
+
+
 def race_prep():
     """Prepare for race"""
     debug_print("[DEBUG] Preparing for race...")
+    
     view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
+        
+    # Check and ensure strategy matches config before race
+    if not check_strategy_before_race():
+        debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
     if view_result_btn:
         debug_print(f"[DEBUG] Found view results button at {view_result_btn}")
         tap(view_result_btn[0], view_result_btn[1])
@@ -1202,6 +786,47 @@ def race_prep():
         debug_print("[DEBUG] Race preparation complete")
     else:
         debug_print("[DEBUG] View results button not found")
+
+def handle_race_retry_if_failed():
+    """Detect race failure on race day and retry based on config.
+
+    Recognizes failure by detecting `assets/icons/clock.png` on screen.
+    If `retry_race` is true in config, taps `assets/buttons/try_again.png`, waits 5s,
+    and calls `race_prep()` again. Returns True if a retry was performed, False otherwise.
+    """
+    try:
+        # Check for failure indicator (clock icon)
+        clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+        if not clock:
+            return False
+
+        print("[INFO] Race failed detected (clock icon).")
+
+        if not RETRY_RACE:
+            print("[INFO] retry_race is disabled. Stopping automation.")
+            raise SystemExit(0)
+
+        # Try to click Try Again button
+        try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
+        if try_again:
+            print("[INFO] Clicking Try Again button.")
+            tap(try_again[0], try_again[1])
+        else:
+            print("[INFO] Try Again button not found. Attempting helper click...")
+            # Fallback: attempt generic click using click helper
+            click("assets/buttons/try_again.png", confidence=0.8, minSearch=10)
+
+        # Wait before re-prepping the race
+        print("[INFO] Waiting 5 seconds before retrying the race...")
+        time.sleep(5)
+        print("[INFO] Re-preparing race...")
+        race_prep()
+        return True
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"[ERROR] handle_race_retry_if_failed error: {e}")
+        return False
 
 def after_race():
     """Handle post-race actions"""
@@ -1384,6 +1009,13 @@ def career_lobby():
         print(f"G1 Race Requirement: {goal_data['requires_g1_races']}")
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
+        # Check energy bar before proceeding with training decisions
+        debug_print("[DEBUG] Checking energy bar...")
+        energy_percentage = check_energy_bar()
+        min_energy = config.get("min_energy", 30)
+        
+        print(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)")
+        
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
         debug_print("[DEBUG] Checking goal criteria...")
@@ -1444,6 +1076,8 @@ def career_lobby():
             
             race_prep()
             time.sleep(1)
+            # If race failed screen appears, handle retry before proceeding
+            handle_race_retry_if_failed()
             after_race()
             continue
         else:
@@ -1461,10 +1095,15 @@ def career_lobby():
         # Mood check
         debug_print("[DEBUG] Checking mood...")
         if mood_index < minimum_mood:
-            debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}), doing recreation")
-            print("[INFO] Mood is low, trying recreation to increase mood")
-            do_recreation()
-            continue
+            # Check if energy is too high (>90%) before doing recreation
+            if energy_percentage > 90:
+                debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}) but energy too high ({energy_percentage:.1f}% > 90%), skipping recreation")
+                print(f"[INFO] Mood is low but energy is too high ({energy_percentage:.1f}% > 90%), skipping recreation")
+            else:
+                debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}), doing recreation")
+                print("[INFO] Mood is low, trying recreation to increase mood")
+                do_recreation()
+                continue
         else:
             debug_print(f"[DEBUG] Mood is good ({mood_index} >= {minimum_mood})")
 
@@ -1478,7 +1117,7 @@ def career_lobby():
                 continue
             else:
                 print("G1 Race Result: No G1 Race Found")
-                # If there is no G1 race, go back and do training
+                # If there is no G1 race, go back and do training instead
                 click("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
                 time.sleep(0.5)
         else:
@@ -1486,6 +1125,13 @@ def career_lobby():
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
+        
+        # Check energy before proceeding with training
+        if energy_percentage < min_energy:
+            print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
+            do_rest()
+            continue
+            
         if not go_to_training():
             print("[INFO] Training button is not found.")
             continue
@@ -1495,82 +1141,67 @@ def career_lobby():
         time.sleep(0.5)
         results_training = check_training()
         
-        debug_print("[DEBUG] Deciding best training action...")
-        best_training = do_something(results_training)
-        debug_print(f"[DEBUG] Best training decision: {best_training}")
-        if best_training == "PRIORITIZE_RACE":
-            debug_print("[DEBUG] Training logic suggests prioritizing race...")
-            # Check if it's Pre-Debut - if so, don't prioritize racing
-            year_parts = year.split(" ")
-            if is_pre_debut_year(year):
-                debug_print(f"[DEBUG] {year} detected, skipping race prioritization (no races available)")
-                print(f"[INFO] {year} detected. Skipping race prioritization and proceeding to training.")
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-                continue
-            
-            # Check if it's Finale Season - no races available, fall back to training without min_support
-            if year == "Finale Season":
-                debug_print("[DEBUG] Finale Season detected, no races available")
-                print("[INFO] Finale Season detected. No races available. Proceeding to training without minimum support requirements.")
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-                continue
-            
-            print("[INFO] Prioritizing race due to insufficient support cards.")
-            
-            # Check if all training options are unsafe before attempting race
-            debug_print("[DEBUG] Checking if all training options are unsafe...")
-            if all_training_unsafe(results_training):
-                debug_print(f"[DEBUG] All training options have failure rate > {MAX_FAILURE}%")
-                print(f"[INFO] All training options have failure rate > {MAX_FAILURE}%. Skipping race and choosing to rest.")
-                do_rest()
-                continue
-            
-            # Check if racing is available (no races in July/August)
-            debug_print("[DEBUG] Checking if racing is available...")
-            if not is_racing_available(year):
-                debug_print("[DEBUG] Racing not available (summer break)")
-                print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
-                do_rest()
-                continue
-            
-            print("Training Race Check: Looking for race due to insufficient support cards...")
-            race_found = do_race()
-            if race_found:
-                print("Training Race Result: Found Race")
-                continue
-            else:
-                print("Training Race Result: No Race Found")
-                # If no race found, go back to training logic
-                print("[INFO] No race found. Returning to training logic.")
-                click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
-                time.sleep(0.5)
-                # Re-evaluate training without race prioritization
-                best_training = do_something_fallback(results_training)
-                debug_print(f"[DEBUG] Fallback training decision: {best_training}")
-                if best_training:
-                    do_train(best_training)
-                else:
-                    do_rest()
-        elif best_training:
-            debug_print(f"[DEBUG] Performing {best_training} training...")
+        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
+        
+        # Load config for scoring thresholds
+        try:
+            with open("config.json", "r", encoding="utf-8") as file:
+                training_config = json.load(file)
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
+        
+        # Use new scoring algorithm to choose best training
+        from core.state_adb import choose_best_training
+        best_training = choose_best_training(results_training, training_config)
+        
+        if best_training:
+            debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
+            print(f"[INFO] Selected {best_training.upper()} training based on scoring algorithm")
             do_train(best_training)
         else:
-            debug_print("[DEBUG] No suitable training found, doing rest...")
-            do_rest()
+            debug_print("[DEBUG] No suitable training found based on scoring criteria")
+            print("[INFO] No suitable training found based on scoring criteria.")
+            
+            # Check if we should prioritize racing when no good training is available
+            do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
+            
+            if do_race_when_bad_training:
+                # Check if all training options have failure rates above maximum
+                from core.logic import all_training_unsafe
+                max_failure = training_config.get('maximum_failure', 15)
+                debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
+                debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
+                
+                if all_training_unsafe(results_training, max_failure):
+                    debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
+                    print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
+                    do_rest()
+                else:
+                    # Check if racing is available (no races in July/August)
+                    if not is_racing_available(year):
+                        debug_print("[DEBUG] Racing not available (summer break)")
+                        print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
+                        do_rest()
+                    else:
+                        print("[INFO] Prioritizing race due to insufficient training scores.")
+                        print("Training Race Check: Looking for race due to insufficient training scores...")
+                        race_found = do_race()
+                        if race_found:
+                            print("Training Race Result: Found Race")
+                            continue
+                        else:
+                            print("Training Race Result: No Race Found")
+                            # If no race found, go back and rest
+                            click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to rest.")
+                            time.sleep(0.5)
+                            do_rest()
+            else:
+                print("[INFO] Race prioritization disabled. Choosing to rest.")
+                do_rest()
+        
         debug_print("[DEBUG] Waiting before next iteration...")
-        time.sleep(1) 
+        time.sleep(1)
 
 def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 
