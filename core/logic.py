@@ -8,7 +8,6 @@ with open("config.json", "r", encoding="utf-8") as file:
 PRIORITY_STAT = config["priority_stat"]
 MAX_FAILURE = config["maximum_failure"]
 STAT_CAPS = config["stat_caps"]
-MIN_SUPPORT = config.get("min_support", 0)
 DO_RACE_WHEN_BAD_TRAINING = config.get("do_race_when_bad_training", True)
 MIN_CONFIDENCE = 0.5  # Minimum confidence threshold for training decisions (currently used for retry logic)
 
@@ -16,18 +15,6 @@ MIN_CONFIDENCE = 0.5  # Minimum confidence threshold for training decisions (cur
 def get_stat_priority(stat_key: str) -> int:
   return PRIORITY_STAT.index(stat_key) if stat_key in PRIORITY_STAT else 999
 
-# Check if any training has enough support cards
-def has_sufficient_support(results):
-  for stat, data in results.items():
-    if int(data["failure"]) <= MAX_FAILURE:
-      # Special handling for WIT - requires at least 2 support cards regardless of MIN_SUPPORT
-      if stat == "wit":
-        if data["total_support"] >= 2:
-          return True
-      # For non-WIT stats, check against MIN_SUPPORT
-      elif data["total_support"] >= MIN_SUPPORT:
-        return True
-  return False
 
 # Check if all training options have failure rates above maximum
 def all_training_unsafe(results, maximum_failure=None):
@@ -39,7 +26,13 @@ def all_training_unsafe(results, maximum_failure=None):
   return True
 
 def filter_by_stat_caps(results, current_stats):
-  return {
-    stat: data for stat, data in results.items()
-    if current_stats.get(stat, 0) < STAT_CAPS.get(stat, 1200)
-  }
+  filtered = {}
+  for stat, data in results.items():
+    current_stat_value = current_stats.get(stat, 0)
+    stat_cap = STAT_CAPS.get(stat, 1200)
+    if current_stat_value < stat_cap:
+      filtered[stat] = data
+    else:
+      print(f"[INFO] {stat.upper()} training filtered out: current {current_stat_value} >= cap {stat_cap}")
+  
+  return filtered
