@@ -31,14 +31,12 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Prioritizes G1 races if available for fan farming
 - **Auto Skill Purchase**: Automatically purchases skills when skill points exceed cap
 - Stat caps to prevent overtraining specific stats
-- Improved training logic with better support card handling
-- Minimum support card requirements for training (Read Logic)
-- Intelligent Event Choice Selection: Automatically analyzes event options and selects the best choice based on configured priorities
-- Automated Claw Machine: Automatically detects and handles claw machine mini-games with randomized timing (99% Failure rate bruh)
+- **Intelligent Event Choice Selection**: Automatically analyzes event options and selects the best choice based on configured priorities
+- **Automated Claw Machine**: Automatically detects and handles claw machine mini-games with randomized timing (99% Failure rate bruh)
 - **Energy Bar Detection**: Automatically monitors energy levels (adaptive even with max energy increasing events) and skips training when energy is too low
 - **Advanced Training Scoring**: Uses support card bond levels, hints, and failure rates to calculate optimal training choices
 - **Smart Race Strategy Management**: Automatically checks and adjusts race strategy before races
-- Automatic Race Retry: Auto use clock to retry the race
+- **Automatic Race Retry**: Auto use clock to retry the race 
 
 ## Getting Started
 
@@ -213,7 +211,7 @@ You can edit your configuration in `config.json`
 - **Warning**: It will do G1 race no matter what
 
 `retry_race` (boolean)
-- Controls whether the bot automatically retries failed races.
+- Controls whether the bot automatically retries failed races,. **MAKE SURE YOUR HAVE MORE THAN 3 CLOCKS**
 - **`true`**: Automatically retries failed races (recommended)
 - **`false`**: Stops automation when a race fails
 - **Default**: `true`
