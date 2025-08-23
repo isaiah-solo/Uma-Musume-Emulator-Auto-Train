@@ -57,8 +57,8 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 #### 1. Clone Repository
 
 ```bash
-git clone https://github.com/Kisegami/umamusume-auto-train/
-cd umamusume-auto-train
+git clone https://github.com/Kisegami/umamusume-auto-train/](https://github.com/Kisegami/Uma-Musume-Emulator-Auto-Train/
+cd Uma-Musume-Emulator-Auto-Train
 ```
 
 #### 2. Install Python Dependencies
