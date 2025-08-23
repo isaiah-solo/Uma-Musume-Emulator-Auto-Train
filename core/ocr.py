@@ -1,9 +1,21 @@
-import pytesseract
-from PIL import Image, ImageOps, ImageEnhance
-import numpy as np
 import cv2
+import numpy as np
+import pytesseract
 import os
+import sys
+from PIL import Image, ImageOps, ImageEnhance
 import json
+
+# Fix Windows console encoding for Unicode support
+if os.name == 'nt':  # Windows
+    try:
+        # Set console to UTF-8 mode
+        os.system('chcp 65001 > nul')
+        # Also try to set stdout encoding
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
 
 # Configure Tesseract to use the custom trained data
 tessdata_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tessdata')
@@ -18,6 +30,18 @@ def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
+
+def safe_print(message):
+    """Safely print messages that might contain Unicode characters"""
+    try:
+        print(message)
+    except UnicodeEncodeError:
+        # Fallback: print without problematic characters
+        try:
+            safe_message = message.encode('ascii', errors='replace').decode('ascii')
+            print(safe_message)
+        except:
+            print("Error: Could not display message due to encoding issues")
 
 # Try to find tesseract executable automatically
 try:

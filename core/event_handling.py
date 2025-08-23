@@ -2,7 +2,19 @@ import os
 import json
 import re
 import time
+import sys
 from PIL import ImageStat
+
+# Fix Windows console encoding for Unicode support
+if os.name == 'nt':  # Windows
+    try:
+        # Set console to UTF-8 mode
+        os.system('chcp 65001 > nul')
+        # Also try to set stdout encoding
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
 
 from utils.adb_recognizer import locate_all_on_screen, match_template
 from utils.adb_screenshot import take_screenshot, capture_region
@@ -16,7 +28,19 @@ with open("config.json", "r", encoding="utf-8") as config_file:
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
+        safe_print(message)
+
+def safe_print(message):
+    """Safely print messages that might contain Unicode characters"""
+    try:
         print(message)
+    except UnicodeEncodeError:
+        # Fallback: print without problematic characters
+        try:
+            safe_message = message.encode('ascii', errors='replace').decode('ascii')
+            print(safe_message)
+        except:
+            print("Error: Could not display message due to encoding issues")
 
 def count_event_choices():
     """
@@ -75,7 +99,7 @@ def count_event_choices():
         debug_print(f"[DEBUG] Final unique bright locations: {len(bright_locations)} (threshold: {bright_threshold})")
         return len(bright_locations), bright_locations
     except Exception as e:
-        print(f"❌ Error counting event choices: {str(e)}")
+        safe_print(f"❌ Error counting event choices: {str(e)}")
         return 0, []
 
 def load_event_priorities():
@@ -86,10 +110,10 @@ def load_event_priorities():
                 priorities = json.load(f)
             return priorities
         else:
-            print("Warning: event_priority.json not found")
+            safe_print("Warning: event_priority.json not found")
             return {"Good_choices": [], "Bad_choices": []}
     except Exception as e:
-        print(f"Error loading event priorities: {e}")
+        safe_print(f"Error loading event priorities: {e}")
         return {"Good_choices": [], "Bad_choices": []}
 
 def analyze_event_options(options, priorities):
@@ -174,22 +198,61 @@ def analyze_event_options(options, priorities):
         if best_options:
             # If we have multiple options with the same priority, use tie-breaking
             if len(best_options) > 1:
-                # Since all options have bad choices, ignore bad choices and prefer option with more good choices
+                # Enhanced tie-breaking: consider second-highest priority good choice
                 best_option = None
+                best_second_priority = -1
                 max_good_choices = -1
                 
                 for option_name in best_options:
-                    good_count = len(option_analysis[option_name]["good_matches"])
-                    if good_count > max_good_choices:
-                        max_good_choices = good_count
+                    analysis = option_analysis[option_name]
+                    good_count = len(analysis["good_matches"])
+                    
+                    # Find the second-highest priority good choice (skip the highest priority one)
+                    second_priority = -1
+                    if len(analysis["good_matches"]) > 1:
+                        # Sort good matches by priority and get the second one
+                        good_priorities = []
+                        for good_choice in analysis["good_matches"]:
+                            try:
+                                priority = good_choices.index(good_choice)
+                                good_priorities.append(priority)
+                            except ValueError:
+                                continue
+                        if len(good_priorities) > 1:
+                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
+                            second_priority = good_priorities[1]  # Get second-highest priority
+                    
+                    # Determine if this option is better
+                    is_better = False
+                    if best_option is None:
+                        is_better = True
+                    elif second_priority != -1 and best_second_priority != -1:
+                        # Both have second priorities - prefer the one with higher priority (lower number)
+                        if second_priority < best_second_priority:
+                            is_better = True
+                        elif second_priority == best_second_priority:
+                            # Same second priority, prefer more good choices
+                            if good_count > max_good_choices:
+                                is_better = True
+                    else:
+                        # Fall back to original logic if second priorities aren't available
+                        if good_count > max_good_choices:
+                            is_better = True
+                    
+                    if is_better:
                         best_option = option_name
+                        best_second_priority = second_priority
+                        max_good_choices = good_count
                 
-                # If still tied, choose the first option (top choice)
+                # If still tied after enhanced tie-breaking, choose the first option (top choice)
                 if best_option is None:
                     best_option = best_options[0]
                 
                 recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then top choice)."
+                if best_second_priority != -1:
+                    recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}', then more good choices, then top choice)."
+                else:
+                    recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then top choice)."
             else:
                 best_option = best_options[0]
                 recommended_option = best_option
@@ -236,22 +299,60 @@ def analyze_event_options(options, priorities):
         if best_options:
             # If we have multiple options with the same priority, use tie-breaking
             if len(best_options) > 1:
-                # Prefer option with more good choices, then fewer bad choices
+                # Enhanced tie-breaking: consider second-highest priority good choice
                 best_option = None
+                best_second_priority = -1
                 max_good_choices = -1
                 min_bad_choices = 999
                 
                 for option_name in best_options:
-                    good_count = len(option_analysis[option_name]["good_matches"])
-                    bad_count = len(option_analysis[option_name]["bad_matches"])
+                    analysis = option_analysis[option_name]
+                    good_count = len(analysis["good_matches"])
+                    bad_count = len(analysis["bad_matches"])
                     
-                    if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
+                    # Find the second-highest priority good choice (skip the highest priority one)
+                    second_priority = -1
+                    if len(analysis["good_matches"]) > 1:
+                        # Sort good matches by priority and get the second one
+                        good_priorities = []
+                        for good_choice in analysis["good_matches"]:
+                            try:
+                                priority = good_choices.index(good_choice)
+                                good_priorities.append(priority)
+                            except ValueError:
+                                continue
+                        if len(good_priorities) > 1:
+                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
+                            second_priority = good_priorities[1]  # Get second-highest priority
+                    
+                    # Determine if this option is better
+                    is_better = False
+                    if best_option is None:
+                        is_better = True
+                    elif second_priority != -1 and best_second_priority != -1:
+                        # Both have second priorities - prefer the one with higher priority (lower number)
+                        if second_priority < best_second_priority:
+                            is_better = True
+                        elif second_priority == best_second_priority:
+                            # Same second priority, fall back to other criteria
+                            if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
+                                is_better = True
+                    else:
+                        # Fall back to original logic if second priorities aren't available
+                        if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
+                            is_better = True
+                    
+                    if is_better:
+                        best_option = option_name
+                        best_second_priority = second_priority
                         max_good_choices = good_count
                         min_bad_choices = bad_count
-                        best_option = option_name
                 
                 recommended_option = best_option
-                recommendation_reason = f"Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then fewer bad choices)."
+                if best_second_priority != -1:
+                    recommendation_reason = f"Multiple options have same priority good choice. Selected based on enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}', then more good choices, then fewer bad choices)."
+                else:
+                    recommendation_reason = f"Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then fewer bad choices)."
             else:
                 best_option = best_options[0]
                 recommended_option = best_option
@@ -280,25 +381,63 @@ def analyze_event_options(options, priorities):
                             continue
             
             if fallback_options:
-                # Choose from fallback options, prefer fewer bad choices
+                # Enhanced fallback tie-breaking: consider second-highest priority good choice
                 best_option = None
+                best_second_priority = -1
                 min_bad_choices = 999
                 
                 for option_name in fallback_options:
-                    bad_count = len(option_analysis[option_name]["bad_matches"])
-                    if bad_count < min_bad_choices:
-                        min_bad_choices = bad_count
+                    analysis = option_analysis[option_name]
+                    bad_count = len(analysis["bad_matches"])
+                    
+                    # Find the second-highest priority good choice (skip the highest priority one)
+                    second_priority = -1
+                    if len(analysis["good_matches"]) > 1:
+                        # Sort good matches by priority and get the second one
+                        good_priorities = []
+                        for good_choice in analysis["good_matches"]:
+                            try:
+                                priority = good_choices.index(good_choice)
+                                good_priorities.append(priority)
+                            except ValueError:
+                                continue
+                        if len(good_priorities) > 1:
+                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
+                            second_priority = good_priorities[1]  # Get second-highest priority
+                    
+                    # Determine if this option is better
+                    is_better = False
+                    if best_option is None:
+                        is_better = True
+                    elif second_priority != -1 and best_second_priority != -1:
+                        # Both have second priorities - prefer the one with higher priority (lower number)
+                        if second_priority < best_second_priority:
+                            is_better = True
+                        elif second_priority == best_second_priority:
+                            # Same second priority, prefer fewer bad choices
+                            if bad_count < min_bad_choices:
+                                is_better = True
+                    else:
+                        # Fall back to original logic if second priorities aren't available
+                        if bad_count < min_bad_choices:
+                            is_better = True
+                    
+                    if is_better:
                         best_option = option_name
+                        best_second_priority = second_priority
+                        min_bad_choices = bad_count
                 
-                recommended_option = best_option
-                recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices: {min_bad_choices} bad choices"
+                if best_second_priority != -1:
+                    recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices, enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}'): {min_bad_choices} bad choices"
+                else:
+                    recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices: {min_bad_choices} bad choices"
             else:
                 # Absolutely no good choices found, pick the option with the least bad choices
                 best_option = None
                 min_bad_choices = 999
                 
                 for option_name, analysis in option_analysis.items():
-                    bad_count = len(analysis["bad_matches"])
+                    bad_count = len(option_analysis[option_name]["bad_matches"])
                     if bad_count < min_bad_choices:
                         min_bad_choices = bad_count
                         best_option = option_name
@@ -500,7 +639,7 @@ def handle_event_choice():
     from utils.constants_phone import EVENT_REGION
     event_region = EVENT_REGION
     
-    print("Event detected, scan event")
+    safe_print("Event detected, scan event")
     
     try:
         # Wait for event to stabilize (1.5 seconds)
@@ -510,7 +649,7 @@ def handle_event_choice():
         recheck_count, recheck_locations = count_event_choices()
         debug_print(f"[DEBUG] Recheck choices after delay: {recheck_count}")
         if recheck_count == 0:
-            print("[INFO] Event choices not visible after delay, skipping analysis")
+            safe_print("[INFO] Event choices not visible after delay, skipping analysis")
             return 1, False, []
 
         # Capture the event name
@@ -519,11 +658,11 @@ def handle_event_choice():
         event_name = event_name.strip()
         
         if not event_name:
-            print("No text detected in event region")
+            safe_print("No text detected in event region")
             # Choices were visible and stabilized earlier; provide locations for fallback top-choice click
             return 1, False, recheck_locations
         
-        print(f"Event found: {event_name}")
+        safe_print(f"Event found: {event_name}")
 
         # Prefer exact name lookup to ensure options align with the specific event instance
         def search_events_exact(name):
@@ -582,8 +721,8 @@ def handle_event_choice():
             event_data = found_events[event_name_key]
             options = event_data["options"]
             
-            print(f"Source: {event_data['source']}")
-            print("Options:")
+            safe_print(f"Source: {event_data['source']}")
+            safe_print("Options:")
             
             if options:
                 # Analyze options with priorities
@@ -604,10 +743,10 @@ def handle_event_choice():
                         indicators.append("🎯 RECOMMENDED")
                     
                     indicator_text = f" [{', '.join(indicators)}]" if indicators else ""
-                    print(f"  {option_name}: {reward_single_line}{indicator_text}")
+                    safe_print(f"  {option_name}: {reward_single_line}{indicator_text}")
                 
                 # Print recommendation
-                print(f"Recommend: {analysis['recommended_option']}")
+                safe_print(f"Recommend: {analysis['recommended_option']}")
                 
                 # Determine which choice to select based on recommendation and choice count
                 expected_options = len(options)
@@ -615,7 +754,7 @@ def handle_event_choice():
                 
                 # If no recommendation, default to first choice
                 if recommended_option is None:
-                    print("No recommendation found, defaulting to first choice")
+                    safe_print("No recommendation found, defaulting to first choice")
                     choice_number = 1
                 else:
                     # Map recommended option to choice number
@@ -641,22 +780,29 @@ def handle_event_choice():
                 
                 # Verify choice number is valid
                 if choice_number > choices_found:
-                    print(f"Warning: Recommended choice {choice_number} exceeds available choices ({choices_found})")
+                    safe_print(f"Warning: Recommended choice {choice_number} exceeds available choices ({choices_found})")
                     choice_number = 1  # Fallback to first choice
                 
-                print(f"Choose choice: {choice_number}")
+                safe_print(f"Choose choice: {choice_number}")
                 return choice_number, True, choice_locations
             else:
-                print("No valid options found in database")
+                safe_print("No valid options found in database")
                 return 1, False, choice_locations
         else:
             # Unknown event
-            print("Unknown event - not found in database")
-            print(f"Choices found: {choices_found}")
+            safe_print("Unknown event - not found in database")
+            safe_print(f"Choices found: {choices_found}")
             return 1, False, choice_locations  # Default to first choice for unknown events
     
     except Exception as e:
-        print(f"Error during event handling: {e}")
+        # Handle Unicode characters in error messages gracefully
+        try:
+            error_msg = str(e)
+            safe_print(f"Error during event handling: {error_msg}")
+        except UnicodeEncodeError:
+            # Fallback: print error without problematic characters
+            safe_print(f"Error during event handling: {repr(e)}")
+        
         # If choices are visible, return their locations to allow fallback top-choice click
         try:
             _, fallback_locations = count_event_choices()
@@ -685,7 +831,7 @@ def click_event_choice(choice_number, choice_locations=None):
             choice_locations = locate_all_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
             
             if not choice_locations:
-                print("No event choice icons found")
+                safe_print("No event choice icons found")
                 return False
             
             # Filter out duplicates
@@ -718,13 +864,13 @@ def click_event_choice(choice_number, choice_locations=None):
             x, y, w, h = target_location
             center = (x + w//2, y + h//2)
             
-            print(f"Clicking choice {choice_number} at position {center}")
+            safe_print(f"Clicking choice {choice_number} at position {center}")
             tap(center[0], center[1])
             return True
         else:
-            print(f"Invalid choice number: {choice_number} (available: 1-{len(unique_locations)})")
+            safe_print(f"Invalid choice number: {choice_number} (available: 1-{len(unique_locations)})")
             return False
     
     except Exception as e:
-        print(f"Error clicking event choice: {e}")
+        safe_print(f"Error clicking event choice: {e}")
         return False

@@ -1,7 +1,19 @@
 import json
 import os
+import sys
 from difflib import SequenceMatcher
 from utils.skill_recognizer import scan_all_skills_with_scroll
+
+# Fix Windows console encoding for Unicode support
+if os.name == 'nt':  # Windows
+    try:
+        # Set console to UTF-8 mode
+        os.system('chcp 65001 > nul')
+        # Also try to set stdout encoding
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
 
 # Load config for debug mode
 try:

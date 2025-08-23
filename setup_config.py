@@ -10,6 +10,17 @@ import os
 import shutil
 import sys
 
+# Fix Windows console encoding for Unicode support
+if os.name == 'nt':  # Windows
+    try:
+        # Set console to UTF-8 mode
+        os.system('chcp 65001 > nul')
+        # Also try to set stdout encoding
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
+
 def copy_example_files():
     """Copy example configuration files to working copies"""
     

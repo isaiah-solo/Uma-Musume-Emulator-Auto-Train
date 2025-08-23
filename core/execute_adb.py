@@ -2,7 +2,19 @@ import time
 import json
 import os
 import random
+import sys
 from PIL import ImageStat
+
+# Fix Windows console encoding for Unicode support
+if os.name == 'nt':  # Windows
+    try:
+        # Set console to UTF-8 mode
+        os.system('chcp 65001 > nul')
+        # Also try to set stdout encoding
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+    except:
+        pass
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template, max_match_confidence
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
@@ -1000,13 +1012,14 @@ def career_lobby():
         goal_data = check_goal_name_with_g1_requirement()
         criteria_text = check_criteria()
         
-        print("\n=======================================================================================\n")
-        print(f"Year: {year}")
-        print(f"Mood: {mood}")
-        print(f"Turn: {turn}")
-        print(f"Goal Name: {goal_data['text']}")
-        print(f"Status: {criteria_text}")
-        print(f"G1 Race Requirement: {goal_data['requires_g1_races']}")
+        log_and_flush("", "INFO")
+        log_and_flush("=== GAME STATUS ===", "INFO")
+        log_and_flush(f"Year: {year}", "INFO")
+        log_and_flush(f"Mood: {mood}", "INFO")
+        log_and_flush(f"Turn: {turn}", "INFO")
+        log_and_flush(f"Goal Name: {goal_data['text']}", "INFO")
+        log_and_flush(f"Status: {criteria_text}", "INFO")
+        log_and_flush(f"G1 Race Requirement: {goal_data['requires_g1_races']}", "INFO")
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
         # Check energy bar before proceeding with training decisions
@@ -1014,7 +1027,16 @@ def career_lobby():
         energy_percentage = check_energy_bar()
         min_energy = config.get("min_energy", 30)
         
-        print(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)")
+        log_and_flush(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)", "INFO")
+        
+        # Get and display current stats
+        try:
+            from core.state_adb import check_current_stats
+            current_stats = check_current_stats()
+            stats_str = f"SPD: {current_stats.get('spd', 0)}, STA: {current_stats.get('sta', 0)}, PWR: {current_stats.get('pwr', 0)}, GUTS: {current_stats.get('guts', 0)}, WIT: {current_stats.get('wit', 0)}"
+            log_and_flush(f"Current stats: {stats_str}", "INFO")
+        except Exception as e:
+            debug_print(f"[DEBUG] Could not get current stats: {e}")
         
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
@@ -1128,12 +1150,12 @@ def career_lobby():
         
         # Check energy before proceeding with training
         if energy_percentage < min_energy:
-            print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
+            log_and_flush(f"Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest", "WARNING")
             do_rest()
             continue
             
         if not go_to_training():
-            print("[INFO] Training button is not found.")
+            log_and_flush("Training button is not found.", "WARNING")
             continue
 
         # Last, do training
@@ -1252,3 +1274,8 @@ def check_goal_criteria(criteria_data, year, turn):
         "requires_g1_races": requires_g1_races,
         "should_prioritize_g1_races": should_prioritize_g1_races
     } 
+
+def log_and_flush(message, level="INFO"):
+    """Log message and flush immediately for real-time GUI capture"""
+    print(f"[{level}] {message}")
+    sys.stdout.flush() 
