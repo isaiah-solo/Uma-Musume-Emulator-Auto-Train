@@ -335,6 +335,23 @@ Training Score = Support Card Score + Hint Bonus
 5. **Tie-Breaking**: Use priority order from `priority_stat` configuration
 6. **Final Selection**: Choose training with highest score
 
+#### **Updated Training Logic (v2.0)**
+The bot now implements smarter training decision making:
+
+**When `do_race_when_bad_training` is FALSE:**
+- **No score filtering**: All training options that pass failure rate checks are considered
+- **Best training selection**: Chooses the training with the highest score among failure-eligible options
+- **Optimal for rest scenarios**: When you want the bot to always choose the best available training
+
+**When `do_race_when_bad_training` is TRUE:**
+- **Score filtering enabled**: Applies `min_score` and `min_wit_score` thresholds
+- **Special WIT handling**: WIT training always checks `min_wit_score` since it has much lower failure rates
+- **Race prioritization**: If no training meets score requirements, the bot will prioritize racing instead of resting
+
+**Key Benefits:**
+- **Flexible training**: Choose between always training optimally or being selective about training quality
+- **WIT optimization**: Special handling for WIT training's naturally lower failure rates
+- **Better resource management**: Avoid unnecessary rest when good training options exist
 
 ### **Skill Configuration**
 

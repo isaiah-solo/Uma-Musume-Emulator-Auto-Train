@@ -22,6 +22,8 @@
   "min_energy": 30,
   "min_score": 1.0,
   "min_wit_score": 1.0,
+  // When true: applies min_score filtering and prioritizes racing over rest when no good training found
+  // When false: no score filtering, always chooses best available training (optimal for rest scenarios)
   "do_race_when_bad_training": true,
 
   "stat_caps": {

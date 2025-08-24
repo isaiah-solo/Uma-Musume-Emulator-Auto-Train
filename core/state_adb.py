@@ -855,6 +855,7 @@ def choose_best_training(training_results, config):
     maximum_failure = config.get("maximum_failure", 15)
     min_score = config.get("min_score", 1.0)
     min_wit_score = config.get("min_wit_score", 1.0)
+    do_race_when_bad_training = config.get("do_race_when_bad_training", True)
     priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
     
     # Get current stats for stat cap filtering
@@ -868,37 +869,79 @@ def choose_best_training(training_results, config):
     print(f"[INFO] Training options after stat cap filtering: {list(filtered_results.keys())}")
     debug_print(f"[DEBUG] Training results after stat cap filtering: {list(filtered_results.keys())}")
     
-    # Filter eligible trainings based on failure rate and score
-    eligible = []
+    # Filter eligible trainings based on failure rate first
+    eligible_by_failure = []
     for training_type, data in filtered_results.items():
         if data["failure"] > maximum_failure:
             print(f"[INFO] {training_type.upper()} filtered out: failure rate {data['failure']}% > {maximum_failure}%")
             debug_print(f"[DEBUG] {training_type.upper()} filtered out due to high failure rate: {data['failure']}% > {maximum_failure}%")
             continue
         
-        # Apply appropriate score threshold
-        threshold = min_wit_score if training_type == "wit" else min_score
-        if data["score"] < threshold:
-            print(f"[INFO] {training_type.upper()} filtered out: score {data['score']} < {threshold}")
-            debug_print(f"[DEBUG] {training_type.upper()} filtered out due to low score: {data['score']} < {threshold}")
-            continue
-        
-        eligible.append((training_type, data))
-        print(f"[INFO] {training_type.upper()} eligible: failure={data['failure']}%, score={data['score']}")
-        debug_print(f"[DEBUG] {training_type.upper()} is eligible: failure={data['failure']}%, score={data['score']}")
+        eligible_by_failure.append((training_type, data))
+        print(f"[INFO] {training_type.upper()} eligible by failure rate: failure={data['failure']}%, score={data['score']}")
+        debug_print(f"[DEBUG] {training_type.upper()} is eligible by failure rate: failure={data['failure']}%, score={data['score']}")
     
-    if not eligible:
-        print("[INFO] No eligible training found after all filtering")
-        debug_print("[DEBUG] No eligible training found after all filtering")
+    if not eligible_by_failure:
+        print("[INFO] No eligible training found after failure rate filtering")
+        debug_print("[DEBUG] No eligible training found after failure rate filtering")
         return None
     
-    # Find training with highest score
-    max_score = max(d["score"] for _, d in eligible)
-    tied_trainings = [t for t, d in eligible if d["score"] == max_score]
+    # If do_race_when_bad_training is false, just choose the best training without score filtering
+    if not do_race_when_bad_training:
+        # Find training with highest score among failure-eligible options
+        max_score = max(d["score"] for _, d in eligible_by_failure)
+        tied_trainings = [t for t, d in eligible_by_failure if d["score"] == max_score]
+        
+        if len(tied_trainings) == 1:
+            chosen = tied_trainings[0]
+            chosen_data = next(d for t, d in eligible_by_failure if t == chosen)
+            print(f"[INFO] Selected {chosen.upper()} training: highest score {max_score} (failure: {chosen_data['failure']}%) - no score filtering applied")
+            debug_print(f"[DEBUG] Single best training found without score filtering: {chosen.upper()} with score {max_score}")
+            return chosen
+        
+        # Tie-breaker: use priority order from config
+        print(f"[INFO] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
+        debug_print(f"[DEBUG] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
+        order_index = {name: i for i, name in enumerate(priority_order)}
+        chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
+        chosen_data = next(d for t, d in eligible_by_failure if t == chosen)
+        print(f"[INFO] Tie broken: {chosen.upper()} selected based on priority order (score: {max_score}, failure: {chosen_data['failure']}%) - no score filtering applied")
+        debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order without score filtering")
+        return chosen
+    
+    # Apply score filtering only when do_race_when_bad_training is true
+    eligible_by_score = []
+    for training_type, data in eligible_by_failure:
+        # Special case for WIT: always check min_wit_score since WIT has much lower failure rate
+        if training_type == "wit":
+            threshold = min_wit_score
+            if data["score"] < threshold:
+                print(f"[INFO] WIT filtered out: score {data['score']} < {threshold} (WIT always has lower failure rate)")
+                debug_print(f"[DEBUG] WIT filtered out due to low score: {data['score']} < {threshold}")
+                continue
+        else:
+            # For other stats, apply min_score threshold
+            if data["score"] < min_score:
+                print(f"[INFO] {training_type.upper()} filtered out: score {data['score']} < {min_score}")
+                debug_print(f"[DEBUG] {training_type.upper()} filtered out due to low score: {data['score']} < {min_score}")
+                continue
+        
+        eligible_by_score.append((training_type, data))
+        print(f"[INFO] {training_type.upper()} eligible by score: failure={data['failure']}%, score={data['score']}")
+        debug_print(f"[DEBUG] {training_type.upper()} is eligible by score: failure={data['failure']}%, score={data['score']}")
+    
+    if not eligible_by_score:
+        print("[INFO] No eligible training found after score filtering")
+        debug_print("[DEBUG] No eligible training found after score filtering")
+        return None
+    
+    # Find training with highest score among score-eligible options
+    max_score = max(d["score"] for _, d in eligible_by_score)
+    tied_trainings = [t for t, d in eligible_by_score if d["score"] == max_score]
     
     if len(tied_trainings) == 1:
         chosen = tied_trainings[0]
-        chosen_data = next(d for t, d in eligible if t == chosen)
+        chosen_data = next(d for t, d in eligible_by_score if t == chosen)
         print(f"[INFO] Selected {chosen.upper()} training: highest score {max_score} (failure: {chosen_data['failure']}%)")
         debug_print(f"[DEBUG] Single best training found: {chosen.upper()} with score {max_score}")
         return chosen
@@ -908,7 +951,7 @@ def choose_best_training(training_results, config):
     debug_print(f"[DEBUG] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
     order_index = {name: i for i, name in enumerate(priority_order)}
     chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
-    chosen_data = next(d for t, d in eligible if t == chosen)
+    chosen_data = next(d for t, d in eligible_by_score if t == chosen)
     print(f"[INFO] Tie broken: {chosen.upper()} selected based on priority order (score: {max_score}, failure: {chosen_data['failure']}%)")
     debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order")
     
