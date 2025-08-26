@@ -380,7 +380,16 @@ def do_rest():
         from utils.adb_input import tap
         tap(back_btn[0], back_btn[1])
         time.sleep(1.0)  # Wait for lobby to load
-    
+    tazuna_hint = locate_on_screen("assets/hints/@tazuna_hint.png", confidence=0.7)
+    if not tazuna_hint:
+        debug_print("[DEBUG] @tazuna_hint.png not found, taking screenshot again to ensure we are in the lobby...")
+        time.sleep(0.7)
+        # Take a new screenshot and try again
+        from utils.adb_screenshot import take_screenshot
+        take_screenshot()
+        tazuna_hint = locate_on_screen("assets/hints/@tazuna_hint.png", confidence=0.7)
+        if not tazuna_hint:
+            debug_print("[WARNING] Still not in lobby after retrying screenshot. Rest button search may fail.")
     # Now look for rest buttons in the lobby
     rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.5)
     rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.5)
@@ -435,8 +444,6 @@ def do_race(prioritize_g1=False):
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
         time.sleep(1)
-        # If race failed screen appears, handle retry before proceeding
-        handle_race_retry_if_failed()
         after_race()
         return True
     else:
@@ -803,37 +810,57 @@ def handle_race_retry_if_failed():
     """Detect race failure on race day and retry based on config.
 
     Recognizes failure by detecting `assets/icons/clock.png` on screen.
-    If `retry_race` is true in config, taps `assets/buttons/try_again.png`, waits 5s,
-    and calls `race_prep()` again. Returns True if a retry was performed, False otherwise.
+    If `retry_race` is true in config, continuously taps `assets/buttons/try_again.png`, waits 5s,
+    and calls `race_prep()` again until success.
+    Returns True if retries were performed, False otherwise.
     """
     try:
-        # Check for failure indicator (clock icon)
-        clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
-        if not clock:
-            return False
-
-        print("[INFO] Race failed detected (clock icon).")
-
         if not RETRY_RACE:
             print("[INFO] retry_race is disabled. Stopping automation.")
             raise SystemExit(0)
 
-        # Try to click Try Again button
-        try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
-        if try_again:
-            print("[INFO] Clicking Try Again button.")
-            tap(try_again[0], try_again[1])
-        else:
-            print("[INFO] Try Again button not found. Attempting helper click...")
-            # Fallback: attempt generic click using click helper
-            click("assets/buttons/try_again.png", confidence=0.8, minSearch=10)
+        retry_count = 0
+        
+        while True:
+            # Check for failure indicator (clock icon)
+            clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+            # Check for success indicator (next button)
+            next_btn = locate_on_screen("assets/buttons/next_btn.png", confidence=0.8)
+            
+            if next_btn:
+                if retry_count > 0:
+                    print(f"[INFO] Race succeeded after {retry_count} retry attempts!")
+                else:
+                    print("[INFO] Race succeeded on first attempt!")
+                return retry_count > 0
+                
+            if not clock:
+                # No clock and no next button - wait a bit and check again
+                time.sleep(1)
+                continue
 
-        # Wait before re-prepping the race
-        print("[INFO] Waiting 5 seconds before retrying the race...")
-        time.sleep(5)
-        print("[INFO] Re-preparing race...")
-        race_prep()
-        return True
+            retry_count += 1
+            print(f"[INFO] Race failed detected (clock icon). Retry attempt {retry_count}")
+
+            # Try to click Try Again button
+            try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
+            if try_again:
+                print(f"[INFO] Clicking Try Again button (attempt {retry_count}).")
+                tap(try_again[0], try_again[1])
+            else:
+                print(f"[INFO] Try Again button not found on attempt {retry_count}. Attempting helper click...")
+                # Fallback: attempt generic click using click helper
+                click("assets/buttons/try_again.png", confidence=0.8, minSearch=10)
+
+            # Wait before re-prepping the race
+            print(f"[INFO] Waiting 5 seconds before retry attempt {retry_count}...")
+            time.sleep(5)
+            print(f"[INFO] Re-preparing race (attempt {retry_count})...")
+            race_prep()
+            
+            # Wait a bit for the race to potentially complete
+            time.sleep(2)
+        
     except SystemExit:
         raise
     except Exception as e:
@@ -851,13 +878,12 @@ def after_race():
         time.sleep(1)
         debug_print("[DEBUG] Retrying next button search after screen tap...")
         click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+        time.sleep(1)
     
     time.sleep(4)
     
     # Try to click second next button with fallback mechanism
     if not click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10):
-        debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
-        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
         time.sleep(1)
         debug_print("[DEBUG] Retrying next2 button search after screen tap...")
         click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
@@ -881,9 +907,27 @@ def career_lobby():
     while True:
         debug_print("\n[DEBUG] ===== Starting new loop iteration =====")
         
-        # Batch UI check - take one screenshot and check multiple elements
-        debug_print("[DEBUG] Performing batch UI element check...")
+        # Take screenshot first for all checks
+        debug_print("[DEBUG] Taking screenshot for UI element checks...")
         screenshot = take_screenshot()
+        
+        # Check for career restart first (highest priority) - quick check only
+        debug_print("[DEBUG] Quick check for Complete Career screen...")
+        try:
+            # Quick check for Complete Career button without importing full module
+            complete_career_matches = match_template(screenshot, "assets/buttons/complete_career.png", confidence=0.8)
+            if complete_career_matches:
+                print("[INFO] Complete Career screen detected - starting restart workflow")
+                from core.restart_career import career_lobby_check
+                should_continue = career_lobby_check(screenshot)
+                if not should_continue:
+                    print("[INFO] Career restart workflow completed - stopping bot")
+                    return False
+        except Exception as e:
+            print(f"[ERROR] Career restart check failed: {e}")
+        
+        # Batch UI check - use existing screenshot for multiple elements
+        debug_print("[DEBUG] Performing batch UI element check...")
         
         # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
@@ -906,7 +950,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for events...")
         try:
             event_choice_region = (6, 450, 126, 1776)
-            event_matches = match_template(screenshot, "assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, "assets/icons/event_choice_1.png", confidence=0.7, region=event_choice_region)
             
             if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
@@ -950,6 +994,16 @@ def career_lobby():
             tap(center[0], center[1])
             continue
 
+        # Check cancel button
+        debug_print("[DEBUG] Checking for cancel button...")
+        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.6)
+        if cancel_matches:
+            x, y, w, h = cancel_matches[0]
+            center = (x + w//2, y + h//2)
+            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
+            tap(center[0], center[1])
+            continue
+
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
         next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.6)
@@ -960,15 +1014,6 @@ def career_lobby():
             tap(center[0], center[1])
             continue
 
-        # Check cancel button
-        debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.6)
-        if cancel_matches:
-            x, y, w, h = cancel_matches[0]
-            center = (x + w//2, y + h//2)
-            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
-            tap(center[0], center[1])
-            continue
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")

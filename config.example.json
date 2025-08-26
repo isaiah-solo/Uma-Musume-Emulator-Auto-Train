@@ -6,14 +6,12 @@
     "pwr",
     "guts"
   ],
-
   "minimum_mood": "GREAT",
   "maximum_failure": 15,
-  
   "strategy": "PACE",
+
   "prioritize_g1_race": false,
   "retry_race": true,
-
   "skill_point_cap": 400,
   "skill_purchase": "auto",
   "skill_file": "skills_example.json",
@@ -22,18 +20,15 @@
   "min_energy": 30,
   "min_score": 1.0,
   "min_wit_score": 1.0,
-  // When true: applies min_score filtering and prioritizes racing over rest when no good training found
-  // When false: no score filtering, always chooses best available training (optimal for rest scenarios)
-  "do_race_when_bad_training": true,
-
+  "do_race_when_bad_training": false,
+  
   "stat_caps": {
     "spd": 1100,
-    "sta": 1100,
+    "sta": 850,
     "pwr": 600,
     "guts": 600,
     "wit": 600
   },
-
   "adb_config": {
     "device_address": "127.0.0.1:7555",
     "adb_path": "adb",
@@ -41,6 +36,16 @@
     "input_delay": 0.5,
     "connection_timeout": 10
   },
-
+  "restart_career": {
+    "restart_enabled": true,
+    "restart_times": 2,
+    "total_fans_requirement": 0
+  },
+  "auto_start_career": {
+    "include_guests_legacy": false,
+    "support_speciality": "STA",
+    "support_rarity": "SSR",
+    "auto_charge_tp": true
+  },
   "debug_mode": false
 }

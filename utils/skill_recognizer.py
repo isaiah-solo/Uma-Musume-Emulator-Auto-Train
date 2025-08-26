@@ -854,6 +854,101 @@ def test_skill_listing():
     debug_print(f"[DEBUG] " + "=" * 70)
     debug_print("[DEBUG] Skill listing test completed!")
 
+def deduplicate_skills(skills_list, similarity_threshold=0.8):
+    """
+    Deduplicate skills based on name similarity to avoid purchasing duplicate skills.
+    
+    Args:
+        skills_list: List of skill dictionaries with 'name' and other fields
+        similarity_threshold: Minimum similarity ratio to consider skills as duplicates (0.0 to 1.0)
+    
+    Returns:
+        List of deduplicated skills
+    """
+    if not skills_list:
+        return []
+    
+    if len(skills_list) == 1:
+        return skills_list
+    
+    # Sort skills by price (cheaper first) to prioritize cheaper duplicates
+    sorted_skills = sorted(skills_list, key=lambda x: int(x.get('price', '0')) if x.get('price', '0').isdigit() else 0)
+    
+    deduplicated = []
+    seen_names = set()
+    
+    for skill in sorted_skills:
+        skill_name = skill.get('name', '').lower().strip()
+        
+        if not skill_name:
+            continue
+        
+        # Check if this skill name is similar to any already seen
+        is_duplicate = False
+        for seen_name in seen_names:
+            similarity = calculate_string_similarity(skill_name, seen_name)
+            if similarity >= similarity_threshold:
+                is_duplicate = True
+                debug_print(f"[DEBUG] Duplicate detected: '{skill['name']}' similar to '{seen_name}' (similarity: {similarity:.2f})")
+                break
+        
+        if not is_duplicate:
+            deduplicated.append(skill)
+            seen_names.add(skill_name)
+            debug_print(f"[DEBUG] Added unique skill: '{skill['name']}'")
+        else:
+            debug_print(f"[DEBUG] Skipped duplicate skill: '{skill['name']}'")
+    
+    debug_print(f"[DEBUG] Deduplication: {len(skills_list)} -> {len(deduplicated)} skills")
+    return deduplicated
+
+
+def calculate_string_similarity(str1, str2):
+    """
+    Calculate similarity between two strings using Levenshtein distance.
+    
+    Args:
+        str1, str2: Strings to compare
+    
+    Returns:
+        float: Similarity ratio (0.0 to 1.0, where 1.0 is identical)
+    """
+    if not str1 or not str2:
+        return 0.0
+    
+    if str1 == str2:
+        return 1.0
+    
+    # Calculate Levenshtein distance
+    def levenshtein_distance(s1, s2):
+        if len(s1) < len(s2):
+            return levenshtein_distance(s2, s1)
+        
+        if len(s2) == 0:
+            return len(s1)
+        
+        previous_row = list(range(len(s2) + 1))
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+        
+        return previous_row[-1]
+    
+    distance = levenshtein_distance(str1, str2)
+    max_length = max(len(str1), len(str2))
+    
+    if max_length == 0:
+        return 1.0
+    
+    similarity = 1.0 - (distance / max_length)
+    return similarity
+
+
 if __name__ == "__main__":
     # Run test when script is executed directly
     test_skill_listing()

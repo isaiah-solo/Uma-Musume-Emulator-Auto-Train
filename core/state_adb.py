@@ -888,15 +888,30 @@ def choose_best_training(training_results, config):
     
     # If do_race_when_bad_training is false, just choose the best training without score filtering
     if not do_race_when_bad_training:
-        # Find training with highest score among failure-eligible options
-        max_score = max(d["score"] for _, d in eligible_by_failure)
-        tied_trainings = [t for t, d in eligible_by_failure if d["score"] == max_score]
+        # Always apply min_wit_score filtering for WIT training regardless of do_race_when_bad_training setting
+        eligible_by_wit_score = []
+        for training_type, data in eligible_by_failure:
+            if training_type == "wit":
+                if data["score"] < min_wit_score:
+                    print(f"[INFO] WIT filtered out: score {data['score']} < {min_wit_score} (WIT always has lower failure rate)")
+                    debug_print(f"[DEBUG] WIT filtered out due to low score: {data['score']} < {min_wit_score}")
+                    continue
+            eligible_by_wit_score.append((training_type, data))
+        
+        if not eligible_by_wit_score:
+            print("[INFO] No eligible training found after WIT score filtering")
+            debug_print("[DEBUG] No eligible training found after WIT score filtering")
+            return None
+        
+        # Find training with highest score among WIT-score-eligible options
+        max_score = max(d["score"] for _, d in eligible_by_wit_score)
+        tied_trainings = [t for t, d in eligible_by_wit_score if d["score"] == max_score]
         
         if len(tied_trainings) == 1:
             chosen = tied_trainings[0]
-            chosen_data = next(d for t, d in eligible_by_failure if t == chosen)
-            print(f"[INFO] Selected {chosen.upper()} training: highest score {max_score} (failure: {chosen_data['failure']}%) - no score filtering applied")
-            debug_print(f"[DEBUG] Single best training found without score filtering: {chosen.upper()} with score {max_score}")
+            chosen_data = next(d for t, d in eligible_by_wit_score if t == chosen)
+            print(f"[INFO] Selected {chosen.upper()} training: highest score {max_score} (failure: {chosen_data['failure']}%) - WIT score filtering applied")
+            debug_print(f"[DEBUG] Single best training found with WIT score filtering: {chosen.upper()} with score {max_score}")
             return chosen
         
         # Tie-breaker: use priority order from config
@@ -904,9 +919,9 @@ def choose_best_training(training_results, config):
         debug_print(f"[DEBUG] {len(tied_trainings)} trainings tied with score {max_score}: {tied_trainings}")
         order_index = {name: i for i, name in enumerate(priority_order)}
         chosen = min(tied_trainings, key=lambda x: order_index.get(x, 999))
-        chosen_data = next(d for t, d in eligible_by_failure if t == chosen)
-        print(f"[INFO] Tie broken: {chosen.upper()} selected based on priority order (score: {max_score}, failure: {chosen_data['failure']}%) - no score filtering applied")
-        debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order without score filtering")
+        chosen_data = next(d for t, d in eligible_by_wit_score if t == chosen)
+        print(f"[INFO] Tie broken: {chosen.upper()} selected based on priority order (score: {max_score}, failure: {chosen_data['failure']}%) - WIT score filtering applied")
+        debug_print(f"[DEBUG] Tie broken in favor of {chosen.upper()} based on priority order with WIT score filtering")
         return chosen
     
     # Apply score filtering only when do_race_when_bad_training is true
