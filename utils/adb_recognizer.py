@@ -133,12 +133,6 @@ def locate_all_on_screen(template_path, confidence=0.8, region=None):
     
     return matches if matches else []
 
-def locate_center_on_screen(template_path, confidence=0.8, region=None):
-    """
-    Locate template on screen and return center coordinates (alias for locate_on_screen)
-    """
-    return locate_on_screen(template_path, confidence, region)
-
 def is_image_on_screen(template_path, confidence=0.8, region=None):
     """
     Check if template image is present on screen
