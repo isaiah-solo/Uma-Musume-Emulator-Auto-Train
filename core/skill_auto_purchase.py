@@ -1,8 +1,8 @@
 import time
 import os
 import json
-from utils.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
-from utils.skill_purchase_optimizer import fuzzy_match_skill_name
+from core.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
+from core.skill_purchase_optimizer import fuzzy_match_skill_name
 from utils.adb_screenshot import run_adb_command
 
 # Load config for debug mode

@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.adb_recognizer import match_template
 from utils.adb_screenshot import take_screenshot
 from utils.adb_input import tap
-from utils.skill_auto_purchase import click_image_button
+from core.skill_auto_purchase import click_image_button
 from core.ocr import extract_text, extract_number
 
 
@@ -94,11 +94,11 @@ def execute_skill_purchase_workflow(available_points: int):
     print("=== Auto Skill Purchase Workflow ===")
     
     # Import here to avoid circular imports
-    from utils.skill_auto_purchase import click_image_button
-    from utils.skill_recognizer import scan_all_skills_with_scroll
-    from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
-    from utils.skill_auto_purchase import execute_skill_purchases
-    from utils.skill_recognizer import deduplicate_skills
+    from core.skill_auto_purchase import click_image_button
+    from core.skill_recognizer import scan_all_skills_with_scroll
+    from core.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
+    from core.skill_auto_purchase import execute_skill_purchases
+    from core.skill_recognizer import deduplicate_skills
     
     # Tap end skill button
     if not click_image_button("assets/buttons/end_skill.png", "end skill button", max_attempts=5):

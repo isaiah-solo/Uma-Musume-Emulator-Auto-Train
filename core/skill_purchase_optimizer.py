@@ -2,7 +2,7 @@ import json
 import os
 import sys
 from difflib import SequenceMatcher
-from utils.skill_recognizer import scan_all_skills_with_scroll
+from core.skill_recognizer import scan_all_skills_with_scroll
 
 # Fix Windows console encoding for Unicode support
 if os.name == 'nt':  # Windows
