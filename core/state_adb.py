@@ -22,6 +22,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     DEBUG_MODE = config.get("debug_mode", False)
 
 from utils.log import debug_print
+from utils.template_matching import deduplicated_matches
 
 # Get Stat
 def stat_state():
@@ -78,26 +79,7 @@ def check_support_card(threshold=0.85):
         
         # Use single threshold for faster detection
         matches = match_template(screenshot, icon_path, 0.8, region_cv)
-        filtered_matches = []
-        
-        if matches:
-            # Efficient duplicate filtering
-            for match in matches:
-                x, y, w, h = match
-                center_x, center_y = x + w//2, y + h//2
-                
-                # Check if this match is too close to existing matches
-                is_duplicate = False
-                for existing in filtered_matches:
-                    ex, ey, ew, eh = existing
-                    existing_center_x, existing_center_y = ex + ew//2, ey + eh//2
-                    # If centers are within 30 pixels, consider it a duplicate
-                    if abs(center_x - existing_center_x) < 30 and abs(center_y - existing_center_y) < 30:
-                        is_duplicate = True
-                        break
-                
-                if not is_duplicate:
-                    filtered_matches.append(match)
+        filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
             
             debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches)})")
             

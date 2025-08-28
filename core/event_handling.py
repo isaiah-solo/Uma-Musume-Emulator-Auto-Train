@@ -20,6 +20,7 @@ from utils.adb_recognizer import locate_all_on_screen, match_template
 from utils.adb_screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
 from utils.log import debug_print, safe_print
+from utils.template_matching import deduplicated_matches
 
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
@@ -53,19 +54,7 @@ def count_event_choices():
             return 0, []
         # Sort locations by y, then x (top to bottom, left to right)
         locations = sorted(locations, key=lambda loc: (loc[1], loc[0]))
-        unique_locations = []
-        for i, location in enumerate(locations):
-            x, y, w, h = location
-            center = (x + w//2, y + h//2)
-            if not unique_locations:
-                unique_locations.append(location)
-                continue
-            # Only compare to the last accepted unique match
-            last_x, last_y, last_w, last_h = unique_locations[-1]
-            last_center = (last_x + last_w//2, last_y + last_h//2)
-            distance = ((center[0] - last_center[0]) ** 2 + (center[1] - last_center[1]) ** 2) ** 0.5
-            if distance >= 150:  # Increased from 30 to 150 to separate different choice rows
-                unique_locations.append(location)
+        unique_locations = deduplicated_matches(locations, threshold=150)
         # Compute brightness and filter
         screenshot = take_screenshot()
         grayscale = screenshot.convert("L")

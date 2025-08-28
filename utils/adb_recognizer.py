@@ -147,26 +147,4 @@ def is_image_on_screen(template_path, confidence=0.8, region=None):
     """
     return locate_on_screen(template_path, confidence, region) is not None
 
-def wait_for_image(template_path, timeout=10, confidence=0.8, region=None):
-    """
-    Wait for image to appear on screen
-    
-    Args:
-        template_path: Path to template image
-        timeout: Maximum time to wait in seconds
-        confidence: Minimum confidence threshold
-        region: Region to search in (x, y, width, height)
-    
-    Returns:
-        (x, y) center coordinates or None if timeout
-    """
-    import time
-    start_time = time.time()
-    
-    while time.time() - start_time < timeout:
-        result = locate_on_screen(template_path, confidence, region)
-        if result:
-            return result
-        time.sleep(0.1)
-    
-    return None 
+ 

@@ -36,6 +36,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     RETRY_RACE = config.get("retry_race", True)
 
 from utils.log import debug_print
+from utils.template_matching import deduplicated_matches, wait_for_image
 
 # Support icon templates for detailed detection
 SUPPORT_ICON_PATHS = {
@@ -71,18 +72,7 @@ def _filtered_template_matches(screenshot, template_path, region_cv, confidence=
     raw = match_template(screenshot, template_path, confidence, region_cv)
     if not raw:
         return []
-    filtered = []
-    for (x, y, w, h) in raw:
-        cx, cy = x + w // 2, y + h // 2
-        duplicate = False
-        for (ex, ey, ew, eh) in filtered:
-            ecx, ecy = ex + ew // 2, ey + eh // 2
-            if abs(cx - ecx) < 30 and abs(cy - ecy) < 30:
-                duplicate = True
-                break
-        if not duplicate:
-            filtered.append((x, y, w, h))
-    return filtered
+    return deduplicated_matches(raw, threshold=30)
 
 def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
     """

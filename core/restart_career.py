@@ -209,22 +209,7 @@ def load_config():
         return {}
 
 
-def wait_for_image(template_path, timeout=30, confidence=0.8):
-    """Wait for an image to appear on screen with timeout."""
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            screenshot = take_screenshot()
-            matches = match_template(screenshot, template_path, confidence)
-            if matches:
-                return matches[0]
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"Error waiting for {template_path}: {e}")
-            time.sleep(0.5)
-    
-    print(f"Timeout waiting for {template_path}")
-    return None
+from utils.template_matching import wait_for_image
 
 
 def filter_support():
@@ -447,11 +432,9 @@ def start_career() -> bool:
         print("Skip button...")
         skip_matches = wait_for_image("assets/buttons/skip_btn.png", timeout=30, confidence=0.8)
         if skip_matches:
-            x, y, w, h = skip_matches
-            center = (x + w//2, y + h//2)
-            tap(center[0], center[1])
+            tap(skip_matches[0], skip_matches[1])
             time.sleep(0.1)
-            tap(center[0], center[1])
+            tap(skip_matches[0], skip_matches[1])
             time.sleep(0.5)
         else:
             return False
