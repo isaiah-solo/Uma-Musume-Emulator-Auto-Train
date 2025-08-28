@@ -19,28 +19,14 @@ if os.name == 'nt':  # Windows
 from utils.adb_recognizer import locate_all_on_screen, match_template
 from utils.adb_screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
+from utils.log import debug_print, safe_print
 
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
 
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        safe_print(message)
-
-def safe_print(message):
-    """Safely print messages that might contain Unicode characters"""
-    try:
-        print(message)
-    except UnicodeEncodeError:
-        # Fallback: print without problematic characters
-        try:
-            safe_message = message.encode('ascii', errors='replace').decode('ascii')
-            print(safe_message)
-        except:
-            print("Error: Could not display message due to encoding issues")
+ 
 
 def count_event_choices():
     """

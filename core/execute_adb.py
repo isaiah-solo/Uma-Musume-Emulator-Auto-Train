@@ -35,10 +35,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     DEBUG_MODE = config.get("debug_mode", False)
     RETRY_RACE = config.get("retry_race", True)
 
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
+from utils.log import debug_print
 
 # Support icon templates for detailed detection
 SUPPORT_ICON_PATHS = {

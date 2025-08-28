@@ -21,10 +21,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
 
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
+from utils.log import debug_print
 
 # Get Stat
 def stat_state():

@@ -7,18 +7,7 @@ import re
 import json
 from utils.adb_screenshot import take_screenshot, run_adb_command
 
-# Load config for debug mode
-try:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    DEBUG_MODE = config.get("debug_mode", False)
-except:
-    DEBUG_MODE = False
-
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
+from utils.log import debug_print
 
 try:
     import pytesseract

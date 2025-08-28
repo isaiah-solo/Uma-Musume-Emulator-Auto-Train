@@ -4,24 +4,14 @@ import json
 from core.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
 from core.skill_purchase_optimizer import fuzzy_match_skill_name
 from utils.adb_screenshot import run_adb_command
+from utils.log import debug_print
 
-# Load config for debug mode
-try:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    DEBUG_MODE = config.get("debug_mode", False)
-except:
-    DEBUG_MODE = False
 
 # Global cache for skill points to avoid re-detection
 _skill_points_cache = None
 _cache_timestamp = 0
 _cache_lifetime = 300  # Cache valid for 5 minutes
 
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
 
 def cache_skill_points(points: int):
     """Cache skill points for reuse (called from race day detection)"""

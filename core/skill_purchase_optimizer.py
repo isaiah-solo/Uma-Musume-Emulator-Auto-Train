@@ -3,6 +3,7 @@ import os
 import sys
 from difflib import SequenceMatcher
 from core.skill_recognizer import scan_all_skills_with_scroll
+from utils.log import debug_print
 
 # Fix Windows console encoding for Unicode support
 if os.name == 'nt':  # Windows
@@ -15,18 +16,7 @@ if os.name == 'nt':  # Windows
     except:
         pass
 
-# Load config for debug mode
-try:
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    DEBUG_MODE = config.get("debug_mode", False)
-except:
-    DEBUG_MODE = False
-
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
+# debug_print is imported from utils.log
 
 def load_skill_config(config_path=None):
     """

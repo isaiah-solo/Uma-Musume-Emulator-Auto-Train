@@ -26,22 +26,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
 
-def debug_print(message):
-    """Print debug message only if DEBUG_MODE is enabled"""
-    if DEBUG_MODE:
-        print(message)
-
-def safe_print(message):
-    """Safely print messages that might contain Unicode characters"""
-    try:
-        print(message)
-    except UnicodeEncodeError:
-        # Fallback: print without problematic characters
-        try:
-            safe_message = message.encode('ascii', errors='replace').decode('ascii')
-            print(safe_message)
-        except:
-            print("Error: Could not display message due to encoding issues")
+from utils.log import debug_print, safe_print
 
 # Try to find tesseract executable automatically
 try:
