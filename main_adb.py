@@ -16,7 +16,8 @@ if os.name == 'nt':  # Windows
     except:
         pass
 
-from utils.adb_screenshot import run_adb_command, get_screen_size, load_config
+from utils.adb_screenshot import get_screen_size, load_config
+from utils.adb import run_adb
 from core.execute_adb import career_lobby
 
 # Configure logging for real-time output
@@ -94,12 +95,12 @@ def get_device_info():
         log_and_flush("Device screen size: " + str(width) + "x" + str(height), "INFO")
         
         # Get device model
-        model = run_adb_command(['shell', 'getprop', 'ro.product.model'])
+        model = run_adb(['shell', 'getprop', 'ro.product.model'])
         if model:
             log_and_flush("Device model: " + model, "INFO")
         
         # Get Android version
-        version = run_adb_command(['shell', 'getprop', 'ro.build.version.release'])
+        version = run_adb(['shell', 'getprop', 'ro.build.version.release'])
         if version:
             log_and_flush("Android version: " + version, "INFO")
             

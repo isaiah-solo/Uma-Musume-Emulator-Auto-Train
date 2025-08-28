@@ -4,6 +4,7 @@ import os
 import json
 from PIL import Image, ImageEnhance
 import numpy as np
+from utils.adb import run_adb
 
 def load_config():
     """Load ADB configuration from config.json"""
@@ -16,36 +17,13 @@ def load_config():
         return {}
 
 def run_adb_command(command, binary=False):
-    """Run ADB command and return result"""
-    try:
-        adb_config = load_config()
-        adb_path = adb_config.get('adb_path', 'adb')
-        device_address = adb_config.get('device_address', '')
-        
-        # Build the full command
-        full_command = [adb_path]
-        if device_address:
-            full_command.extend(['-s', device_address])
-        full_command.extend(command)
-        
-        # Run the command
-        if binary:
-            result = subprocess.run(full_command, capture_output=True, check=True)
-            return result.stdout
-        else:
-            result = subprocess.run(full_command, capture_output=True, text=True, check=True)
-            return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"ADB command failed: {e}")
-        return None
-    except Exception as e:
-        print(f"Error running ADB command: {e}")
-        return None
+    """Backward-compatible wrapper to utils.adb.run_adb."""
+    return run_adb(command, binary=binary, add_input_delay=False)
 
 def take_screenshot():
     """Take a screenshot using ADB and return PIL Image"""
     try:
-        result = run_adb_command(['shell', 'screencap'], binary=True)
+        result = run_adb(['shell', 'screencap'], binary=True, add_input_delay=False)
         if result is None:
             raise Exception("Failed to take screenshot")
         
@@ -181,7 +159,7 @@ def get_screen_size():
     """Get the screen size of the connected device"""
     try:
         # Get screen size using wm size command
-        result = run_adb_command(['shell', 'wm', 'size'])
+        result = run_adb(['shell', 'wm', 'size'])
         if result:
             # Parse output like "Physical size: 1080x1920"
             if 'Physical size:' in result:

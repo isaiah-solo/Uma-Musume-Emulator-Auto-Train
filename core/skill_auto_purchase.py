@@ -3,7 +3,7 @@ import os
 import json
 from core.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
 from core.skill_purchase_optimizer import fuzzy_match_skill_name
-from utils.adb_screenshot import run_adb_command
+from utils.adb import run_adb
 from utils.log import debug_print
 
 
@@ -155,7 +155,7 @@ def click_skill_up_button(x, y):
     """
     try:
         click_command = ['shell', 'input', 'tap', str(x), str(y)]
-        result = run_adb_command(click_command)
+        result = run_adb(click_command)
         if result is not None:
             debug_print(f"[DEBUG] Clicked skill_up button at ({x}, {y})")
             return True

@@ -5,7 +5,8 @@ import os
 import time
 import re
 import json
-from utils.adb_screenshot import take_screenshot, run_adb_command
+from utils.adb_screenshot import take_screenshot
+from utils.adb import run_adb
 
 from utils.log import debug_print
 
@@ -89,7 +90,7 @@ def perform_swipe(start_x, start_y, end_x, end_y, duration=1000):
     """
     try:
         swipe_command = ['shell', 'input', 'swipe', str(start_x), str(start_y), str(end_x), str(end_y), str(duration)]
-        result = run_adb_command(swipe_command)
+        result = run_adb(swipe_command)
         if result is not None:
             debug_print(f"[DEBUG] Swiped from ({start_x}, {start_y}) to ({end_x}, {end_y})")
             return True
