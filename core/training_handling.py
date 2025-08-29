@@ -431,13 +431,14 @@ def check_failure(screenshot, train_type):
     debug_print(f"[DEBUG] No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
     return (100, 0.0)  # 100% failure rate when detection completely fails (prevents choosing unknown training)
 
-def choose_best_training(training_results, config):
+def choose_best_training(training_results, config, current_stats):
     """
     Choose the best training option based on scoring algorithm.
     
     Args:
         training_results (dict): Results from check_training()
         config (dict): Training configuration with thresholds
+        current_stats (dict): Current character stats to check against caps
         
     Returns:
         str: Best training type (spd, sta, pwr, guts, wit) or None
@@ -460,7 +461,7 @@ def choose_best_training(training_results, config):
     
     # Filter by minimum score requirements
     valid_options = {}
-    for k, v in safe_options.items():
+    for k, v in capped_options.items():
         score = v.get('score', 0)
         if k == 'wit' and score < min_wit_score:
             continue
@@ -470,6 +471,21 @@ def choose_best_training(training_results, config):
     
     if not valid_options:
         debug_print(f"[DEBUG] No training options meet minimum score requirements")
+        return None
+    
+    # Filter by stat caps BEFORE other filtering
+    from core.logic import filter_by_stat_caps
+    
+    # Safety check for current_stats
+    if not current_stats:
+        debug_print("[DEBUG] No current stats available, skipping stat cap filtering")
+        capped_options = safe_options
+    else:
+        debug_print(f"[DEBUG] Applying stat cap filtering with current stats: {current_stats}")
+        capped_options = filter_by_stat_caps(safe_options, current_stats)
+    
+    if not capped_options:
+        debug_print(f"[DEBUG] All training options filtered out by stat caps")
         return None
     
     # Sort by priority stat order and then by score

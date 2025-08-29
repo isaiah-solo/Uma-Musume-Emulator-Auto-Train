@@ -32,6 +32,14 @@ from core.event_handling import count_event_choices, load_event_priorities, anal
 # Import training handling functions
 from core.training_handling import go_to_training, check_training, do_train, check_support_card, check_failure, check_hint, choose_best_training, calculate_training_score
 
+# Import race handling functions
+from core.races_handling import (
+    do_race, race_day, race_select, check_strategy_before_race,
+    change_strategy_before_race, race_prep, handle_race_retry_if_failed,
+    after_race, is_racing_available, is_pre_debut_year,
+    locate_match_track_with_brightness
+)
+
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
@@ -41,46 +49,24 @@ with open("config.json", "r", encoding="utf-8") as config_file:
 from utils.log import debug_print
 from utils.template_matching import deduplicated_matches, wait_for_image
 
-def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
-    """
-    Find center of `assets/ui/match_track.png` that also passes brightness threshold.
-    Returns (x, y) center or None.
-    """
-    try:
-        screenshot = take_screenshot()
-        matches = match_template(screenshot, "assets/ui/match_track.png", confidence=confidence, region=region)
-        if not matches:
-            return None
-
-        grayscale = screenshot.convert("L")
-        for (x, y, w, h) in matches:
-            try:
-                roi = grayscale.crop((x, y, x + w, y + h))
-                avg_brightness = ImageStat.Stat(roi).mean[0]
-                debug_print(f"[DEBUG] match_track bbox=({x},{y},{w},{h}) brightness={avg_brightness:.1f} (thr {brightness_threshold})")
-                if avg_brightness > brightness_threshold:
-                    center = (x + w//2, y + h//2)
-                    return center
-            except Exception:
-                continue
-        return None
-    except Exception as e:
-        debug_print(f"[DEBUG] match_track locate error: {e}")
-        return None
-
-def is_infirmary_active_adb(button_location):
+def is_infirmary_active_adb(button_location, screenshot=None):
     """
     Check if the infirmary button is active (bright) or disabled (dark).
     Args:
         button_location: tuple (x, y, w, h) of the button location
+        screenshot: Optional PIL Image. If None, takes a new screenshot.
     Returns:
         bool: True if button is active (bright), False if disabled (dark)
     """
     try:
         x, y, w, h = button_location
         
-        # Take screenshot and crop the button region
-        screenshot = take_screenshot()
+        # Use provided screenshot or take new one if not provided
+        if screenshot is None:
+            from utils.adb_screenshot import take_screenshot
+            screenshot = take_screenshot()
+        
+        # Crop the button region from the screenshot
         button_region = screenshot.crop((x, y, x + w, y + h))
         
         # Convert to grayscale and calculate average brightness
@@ -96,7 +82,6 @@ def is_infirmary_active_adb(button_location):
     except Exception as e:
         print(f"[ERROR] Failed to check infirmary button brightness: {e}")
         return False
-
 
 def claw_machine():
     """Handle claw machine interaction"""
@@ -123,23 +108,6 @@ def claw_machine():
     
     print("[INFO] Claw machine interaction completed")
     return True
-
-
-# Event handling functions moved to core/event_handling.py
-def is_racing_available(year):
-    """Check if racing is available based on the current year/month"""
-    # No races in Pre-Debut
-    if is_pre_debut_year(year):
-        return False
-    # No races in Finale Season (final training period before URA)
-    if "Finale Season" in year:
-        return False
-    year_parts = year.split(" ")
-    # No races in July and August (summer break)
-    if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
-        return False
-    return True
-
 
 def do_rest():
     """Perform rest action"""
@@ -207,464 +175,6 @@ def do_recreation():
         debug_print("[DEBUG] Clicked summer recreation button")
     else:
         debug_print("[DEBUG] No recreation button found")
-
-def do_race(prioritize_g1=False):
-    """Perform race action"""
-    debug_print(f"[DEBUG] Performing race action (G1 priority: {prioritize_g1})...")
-    tap_on_image("assets/buttons/races_btn.png", min_search=10)
-    time.sleep(1.2)
-    tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=1)
-
-    found = race_select(prioritize_g1=prioritize_g1)
-    if found:
-        debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
-        race_prep()
-        time.sleep(1)
-        after_race()
-        return True
-    else:
-        debug_print("[DEBUG] No race found, going back")
-        tap_on_image("assets/buttons/back_btn.png", min_search=0.7)
-        return False
-
-def race_day():
-    """Handle race day"""
-    # Check skill points cap before race day (if enabled)
-    import json
-    
-    # Load config to check if skill point check is enabled
-    with open("config.json", "r", encoding="utf-8") as file:
-        config = json.load(file)
-    
-    enable_skill_check = config.get("enable_skill_point_check", True)
-    
-    if enable_skill_check:
-        print("[INFO] Race Day - Checking skill points cap...")
-        check_skill_points_cap()
-    
-    debug_print("[DEBUG] Clicking race day button...")
-    if tap_on_image("assets/buttons/race_day_btn.png", min_search=10):
-        debug_print("[DEBUG] Race day button clicked, clicking OK button...")
-        time.sleep(1.3)
-        tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=2)
-        time.sleep(1.0)  # Increased wait time
-        
-        # Try to find and click race button with better error handling
-        race_clicked = False
-        for attempt in range(3):  # Try up to 3 times
-            if tap_on_image("assets/buttons/race_btn.png", confidence=0.7, min_search=1):
-                debug_print(f"[DEBUG] Race button clicked successfully, attempt {attempt + 1}")
-                time.sleep(0.5)  # Wait between clicks
-                
-                # Click race button twice like in race_select
-                for j in range(2):
-                    if tap_on_image("assets/buttons/race_btn.png", confidence=0.7, min_search=1):
-                        debug_print(f"[DEBUG] Race button clicked {j+1} time(s)")
-                        time.sleep(0.5)
-                    else:
-                        debug_print(f"[DEBUG] Failed to click race button {j+1} time(s)")
-                
-                race_clicked = True
-                time.sleep(0.8)  # Wait for UI to respond
-                break
-            else:
-                debug_print(f"[DEBUG] Race button not found, attempt {attempt + 1}")
-                time.sleep(0.5)
-        
-        if not race_clicked:
-            debug_print("[ERROR] Failed to click race button after multiple attempts")
-            return False
-            
-        debug_print("[DEBUG] Starting race preparation...")
-        race_prep()
-        time.sleep(1)
-        # If race failed screen appears, handle retry before proceeding
-        handle_race_retry_if_failed()
-        after_race()
-        return True
-    return False
-
-def race_select(prioritize_g1=False):
-    """Select race"""
-    debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
-    
-    
-    def find_and_select_race():
-        """Helper function to find and select a race (G1 or normal)"""
-        # Wait for race list to load before detection
-        debug_print("[DEBUG] Waiting for race list to load...")
-        time.sleep(1.5)
-        
-        # Check initial screen first
-        if prioritize_g1:
-            debug_print("[DEBUG] Looking for G1 race.")
-            screenshot = take_screenshot()
-            race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
-            debug_print(f"[DEBUG] Initial G1 detection result: {race_cards}")
-            
-            if race_cards:
-                debug_print(f"[DEBUG] Found {len(race_cards)} G1 race card(s), searching for match_track within regions...")
-                for x, y, w, h in race_cards:
-                    # Search for match_track.png within the race card region
-                    region = (x, y, RACE_CARD_REGION[2], RACE_CARD_REGION[3])
-                    debug_print(f"[DEBUG] Searching region: {region}")
-                    match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
-                    if match_aptitude:
-                        debug_print(f"[DEBUG] ✅ Match track found at {match_aptitude} in region {region}")
-                    else:
-                        debug_print(f"[DEBUG] ❌ No match track found in region {region}")
-                    if match_aptitude:
-                        debug_print(f"[DEBUG] G1 race found at {match_aptitude}")
-                        tap(match_aptitude[0], match_aptitude[1])
-                        time.sleep(0.2)
-                        
-                        # Click race button twice like PC version
-                        for j in range(2):
-                            race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.6)
-                            if race_btn:
-                                debug_print(f"[DEBUG] Found race button at {race_btn}")
-                                tap(race_btn[0], race_btn[1])
-                                time.sleep(0.5)
-                            else:
-                                debug_print("[DEBUG] Race button not found")
-                        return True
-            else:
-                debug_print("[DEBUG] No G1 race cards found on initial screen, will try swiping...")
-        else:
-            debug_print("[DEBUG] Looking for race.")
-            match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
-            if match_aptitude:
-                debug_print(f"[DEBUG] Race found at {match_aptitude}")
-                tap(match_aptitude[0], match_aptitude[1])
-                time.sleep(0.2)
-                
-                # Click race button twice like PC version
-                for j in range(2):
-                    race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                    if race_btn:
-                        debug_print(f"[DEBUG] Found race button at {race_btn}")
-                        tap(race_btn[0], race_btn[1])
-                        time.sleep(0.5)
-                    else:
-                        debug_print("[DEBUG] Race button not found")
-                return True
-        
-        # If not found on initial screen, try scrolling up to 4 times
-        for scroll in range(4):
-            # Use direct swipe instead of scroll_down
-            from utils.adb_input import swipe
-            debug_print(f"[DEBUG] Swiping from (378,1425) to (378,1106) (attempt {scroll+1}/4)")
-            swipe(378, 1425, 378, 1106, duration_ms=500)
-            time.sleep(0.2)
-            
-            # Check for race again after each swipe
-            if prioritize_g1:
-                screenshot = take_screenshot()
-                race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
-                
-                if race_cards:
-                    debug_print(f"[DEBUG] Found {len(race_cards)} G1 race card(s) after swipe {scroll+1}")
-                    for i, (x, y, w, h) in enumerate(race_cards):
-                        debug_print(f"[DEBUG] G1 Race Card {i+1}: bbox=({x}, {y}, {w}, {h})")
-                        # Search for match_track.png within the race card region
-                        region = (x, y, RACE_CARD_REGION[2], RACE_CARD_REGION[3])
-                        debug_print(f"[DEBUG] Extended region: {region}")
-                        match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
-                        if match_aptitude:
-                            debug_print(f"[DEBUG] ✅ Match track found at {match_aptitude} in region {region}")
-                        else:
-                            debug_print(f"[DEBUG] ❌ No match track found in region {region}")
-                        if match_aptitude:
-                            debug_print(f"[DEBUG] G1 race found at {match_aptitude} after swipe {scroll+1}")
-                            tap(match_aptitude[0], match_aptitude[1])
-                            time.sleep(0.2)
-                            
-                            # Click race button twice like PC version
-                            for j in range(2):
-                                race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                                if race_btn:
-                                    debug_print(f"[DEBUG] Found race button at {race_btn}")
-                                    tap(race_btn[0], race_btn[1])
-                                    time.sleep(0.5)
-                                else:
-                                    debug_print("[DEBUG] Race button not found")
-                            return True
-                else:
-                    debug_print(f"[DEBUG] No G1 race cards found after swipe {scroll+1}")
-            else:
-                debug_print(f"[DEBUG] Looking for any race (non-G1) after swipe {scroll+1}")
-                match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
-                if match_aptitude:
-                    debug_print(f"[DEBUG] Race found at {match_aptitude} after swipe {scroll+1}")
-                    tap(match_aptitude[0], match_aptitude[1])
-                    time.sleep(0.2)
-                    
-                    # Click race button twice like PC version
-                    for j in range(2):
-                        race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                        if race_btn:
-                            debug_print(f"[DEBUG] Found race button at {race_btn}")
-                            tap(race_btn[0], race_btn[1])
-                            time.sleep(0.5)
-                        else:
-                            debug_print("[DEBUG] Race button not found")
-                    return True
-                else:
-                    debug_print(f"[DEBUG] No races found after swipe {scroll+1}")
-        
-        return False
-    
-    # Use the unified race finding logic
-    found = find_and_select_race()
-    if not found:
-        debug_print("[DEBUG] No suitable race found")
-    return found
-
-def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
-    """Check and ensure strategy matches config before race."""
-    debug_print("[DEBUG] Checking strategy before race...")
-    
-    try:
-        screenshot = take_screenshot()
-        
-        templates = {
-            "front": "assets/icons/front.png",
-            "late": "assets/icons/late.png", 
-            "pace": "assets/icons/pace.png",
-            "end": "assets/icons/end.png",
-        }
-        
-        # Find brightest strategy using existing project functions
-        best_match = None
-        best_brightness = 0
-        
-        for name, path in templates.items():
-            try:
-                # Use existing match_template function
-                matches = match_template(screenshot, path, confidence=0.5, region=region)
-                if matches:
-                    # Get confidence for best match
-                    confidence = max_match_confidence(screenshot, path, region)
-                    if confidence:
-                        # Check brightness of the matched region
-                        x, y, w, h = matches[0]
-                        roi = screenshot.convert("L").crop((x, y, x + w, y + h))
-                        from PIL import ImageStat
-                        bright = float(ImageStat.Stat(roi).mean[0])
-                        
-                        if bright >= 160 and bright > best_brightness:
-                            best_match = (name, matches[0], confidence, bright)
-                            best_brightness = bright
-            except Exception:
-                continue
-        
-        if not best_match:
-            debug_print("[DEBUG] No strategy found with brightness >= 160")
-            return False
-        
-        strategy_name, bbox, conf, bright = best_match
-        current_strategy = strategy_name.upper()
-        
-        # Load expected strategy from config
-        try:
-            with open("config.json", "r", encoding="utf-8") as f:
-                config = json.load(f)
-            expected_strategy = config.get("strategy", "").upper()
-        except Exception:
-            debug_print("[DEBUG] Cannot read config.json")
-            return False
-        
-        matches = current_strategy == expected_strategy
-        debug_print(f"[DEBUG] Current: {current_strategy}, Expected: {expected_strategy}, Match: {matches}")
-        
-        if matches:
-            debug_print("[DEBUG] Strategy matches config, proceeding with race")
-            return True
-        
-        # Strategy doesn't match, try to change it
-        debug_print(f"[DEBUG] Strategy mismatch, changing to {expected_strategy}")
-        
-        if change_strategy_before_race(expected_strategy):
-            # Recheck after change
-            new_strategy, new_matches = check_strategy_before_race(region)
-            if new_matches:
-                debug_print("[DEBUG] Strategy successfully changed")
-                return True
-            else:
-                debug_print("[DEBUG] Strategy change failed")
-                return False
-        else:
-            debug_print("[DEBUG] Failed to change strategy")
-            return False
-            
-    except Exception as e:
-        debug_print(f"[DEBUG] Error checking strategy: {e}")
-        return False
-
-
-def change_strategy_before_race(expected_strategy: str) -> bool:
-    """Change strategy to the expected one before race."""
-    debug_print(f"[DEBUG] Changing strategy to: {expected_strategy}")
-    
-    # Strategy coordinates mapping
-    strategy_coords = {
-        "FRONT": (882, 1159),
-        "PACE": (645, 1159),
-        "LATE": (414, 1159),
-        "END": (186, 1162),
-    }
-    
-    if expected_strategy not in strategy_coords:
-        debug_print(f"[DEBUG] Unknown strategy: {expected_strategy}")
-        return False
-    
-    try:
-        # Step 1: Find and tap strategy_change.png
-        debug_print("[DEBUG] Looking for strategy change button...")
-        change_btn = wait_for_image("assets/buttons/strategy_change.png", timeout=10, confidence=0.8)
-        if not change_btn:
-            debug_print("[DEBUG] Strategy change button not found")
-            return False
-        
-        debug_print(f"[DEBUG] Found strategy change button at {change_btn}")
-        tap(change_btn[0], change_btn[1])
-        debug_print("[DEBUG] Tapped strategy change button")
-        
-        # Step 2: Wait for confirm.png to appear
-        debug_print("[DEBUG] Waiting for confirm button to appear...")
-        confirm_btn = wait_for_image("assets/buttons/confirm.png", timeout=10, confidence=0.8)
-        if not confirm_btn:
-            debug_print("[DEBUG] Confirm button not found after strategy change")
-            return False
-        
-        debug_print(f"[DEBUG] Confirm button appeared at {confirm_btn}")
-        
-        # Step 3: Tap on the specified coordinate for the right strategy
-        target_x, target_y = strategy_coords[expected_strategy]
-        debug_print(f"[DEBUG] Tapping strategy position: ({target_x}, {target_y}) for {expected_strategy}")
-        tap(target_x, target_y)
-        debug_print(f"[DEBUG] Tapped strategy position for {expected_strategy}")
-        
-        # Step 4: Tap confirm.png from found location
-        debug_print("[DEBUG] Confirming strategy change...")
-        tap(confirm_btn[0], confirm_btn[1])
-        debug_print("[DEBUG] Tapped confirm button")
-        
-        # Wait a moment for the change to take effect
-        time.sleep(2)
-        
-        debug_print(f"[DEBUG] Strategy change completed for {expected_strategy}")
-        return True
-        
-    except Exception as e:
-        debug_print(f"[DEBUG] Error during strategy change: {e}")
-        return False
-
-
-def race_prep():
-    """Prepare for race"""
-    debug_print("[DEBUG] Preparing for race...")
-    
-    view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
-        
-    # Check and ensure strategy matches config before race
-    if not check_strategy_before_race():
-        debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
-    if view_result_btn:
-        debug_print(f"[DEBUG] Found view results button at {view_result_btn}")
-        tap(view_result_btn[0], view_result_btn[1])
-        time.sleep(0.5)
-        for i in range(1):
-            debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
-            triple_click(view_result_btn[0], view_result_btn[1], interval=0.01)
-            time.sleep(0.01)
-        debug_print("[DEBUG] Race preparation complete")
-    else:
-        debug_print("[DEBUG] View results button not found")
-
-def handle_race_retry_if_failed():
-    """Detect race failure on race day and retry based on config.
-
-    Recognizes failure by detecting `assets/icons/clock.png` on screen.
-    If `retry_race` is true in config, continuously taps `assets/buttons/try_again.png`, waits 5s,
-    and calls `race_prep()` again until success.
-    Returns True if retries were performed, False otherwise.
-    """
-    try:
-        if not RETRY_RACE:
-            print("[INFO] retry_race is disabled. Stopping automation.")
-            raise SystemExit(0)
-
-        retry_count = 0
-        
-        while True:
-            # Check for failure indicator (clock icon)
-            clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
-            # Check for success indicator (next button)
-            next_btn = locate_on_screen("assets/buttons/next_btn.png", confidence=0.8)
-            
-            if next_btn:
-                if retry_count > 0:
-                    print(f"[INFO] Race succeeded after {retry_count} retry attempts!")
-                else:
-                    print("[INFO] Race succeeded on first attempt!")
-                return retry_count > 0
-                
-            if not clock:
-                # No clock and no next button - wait a bit and check again
-                time.sleep(1)
-                continue
-
-            retry_count += 1
-            print(f"[INFO] Race failed detected (clock icon). Retry attempt {retry_count}")
-
-            # Try to click Try Again button
-            try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
-            if try_again:
-                print(f"[INFO] Clicking Try Again button (attempt {retry_count}).")
-                tap(try_again[0], try_again[1])
-            else:
-                print(f"[INFO] Try Again button not found on attempt {retry_count}. Attempting helper click...")
-                # Fallback: attempt generic click using click helper
-                tap_on_image("assets/buttons/try_again.png", confidence=0.8, min_search=10)
-
-            # Wait before re-prepping the race
-            print(f"[INFO] Waiting 5 seconds before retry attempt {retry_count}...")
-            time.sleep(5)
-            print(f"[INFO] Re-preparing race (attempt {retry_count})...")
-            race_prep()
-            
-            # Wait a bit for the race to potentially complete
-            time.sleep(2)
-        
-    except SystemExit:
-        raise
-    except Exception as e:
-        print(f"[ERROR] handle_race_retry_if_failed error: {e}")
-        return False
-
-def after_race():
-    """Handle post-race actions"""
-    debug_print("[DEBUG] Handling post-race actions...")
-    
-    # Try to click first next button with fallback mechanism
-    if not tap_on_image("assets/buttons/next_btn.png", confidence=0.7, min_search=10):
-        debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
-        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
-        time.sleep(1)
-        debug_print("[DEBUG] Retrying next button search after screen tap...")
-        tap_on_image("assets/buttons/next_btn.png", confidence=0.7, min_search=10)
-        time.sleep(1)
-    
-    time.sleep(4)
-    
-    # Try to click second next button with fallback mechanism
-    if not tap_on_image("assets/buttons/next2_btn.png", confidence=0.7, min_search=10):
-        time.sleep(1)
-        debug_print("[DEBUG] Retrying next2 button search after screen tap...")
-        tap_on_image("assets/buttons/next2_btn.png", confidence=0.7, min_search=10)
-    
-    debug_print("[DEBUG] Post-race actions complete")
 
 def career_lobby():
     """Main career lobby loop"""
@@ -790,7 +300,6 @@ def career_lobby():
             tap(center[0], center[1])
             continue
 
-
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
         tazuna_hint = locate_on_screen("assets/ui/tazuna_hint.png", confidence=0.8)
@@ -814,7 +323,7 @@ def career_lobby():
             center_x, center_y = x + w//2, y + h//2
             
             # Check if the button is actually active (bright) or just disabled (dark)
-            if is_infirmary_active_adb(debuffed_box):
+            if is_infirmary_active_adb(debuffed_box, screenshot):
                 tap(center_x, center_y)
                 print("[INFO] Character has debuff, go to infirmary instead.")
                 continue
@@ -845,7 +354,7 @@ def career_lobby():
         
         # Check energy bar before proceeding with training decisions
         debug_print("[DEBUG] Checking energy bar...")
-        energy_percentage = check_energy_bar()
+        energy_percentage = check_energy_bar(screenshot)
         min_energy = config.get("min_energy", 30)
         
         log_and_flush(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)", "INFO")
@@ -853,7 +362,7 @@ def career_lobby():
         # Get and display current stats
         try:
             from core.state_adb import check_current_stats
-            current_stats = check_current_stats()
+            current_stats = check_current_stats(screenshot)
             stats_str = f"SPD: {current_stats.get('spd', 0)}, STA: {current_stats.get('sta', 0)}, PWR: {current_stats.get('pwr', 0)}, GUTS: {current_stats.get('guts', 0)}, WIT: {current_stats.get('wit', 0)}"
             log_and_flush(f"Current stats: {stats_str}", "INFO")
         except Exception as e:
@@ -994,8 +503,9 @@ def career_lobby():
             print(f"Error loading config: {e}")
             training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
         
-        # Use new scoring algorithm to choose best training
-        best_training = choose_best_training(results_training, training_config)
+        # Use new scoring algorithm to choose best training (with stat cap filtering)
+        debug_print(f"[DEBUG] Choosing best training with stat cap filtering. Current stats: {current_stats}")
+        best_training = choose_best_training(results_training, training_config, current_stats)
         
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
@@ -1044,10 +554,6 @@ def career_lobby():
         
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(1)
-
-def is_pre_debut_year(year):
-    return ("Pre-Debut" in year or "PreDebut" in year or 
-            "PreeDebut" in year or "Pre" in year)
 
 def check_goal_criteria(criteria_data, year, turn):
     """

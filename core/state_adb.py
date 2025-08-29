@@ -434,9 +434,12 @@ def check_skill_points_cap():
     
     return True
 
-def check_current_stats():
+def check_current_stats(screenshot=None):
     """
     Check current character stats using OCR on the stat regions.
+    
+    Args:
+        screenshot: Optional PIL Image. If None, takes a new screenshot.
     
     Returns:
         dict: Dictionary of current stats with keys: spd, sta, pwr, guts, wit
@@ -445,6 +448,10 @@ def check_current_stats():
     from utils.adb_screenshot import take_screenshot
     import pytesseract
     from PIL import Image, ImageEnhance
+    
+    # Use provided screenshot or take new one if not provided
+    if screenshot is None:
+        screenshot = take_screenshot()
     
     stats = {}
     stat_regions = {
@@ -457,8 +464,7 @@ def check_current_stats():
     
     for stat_name, region in stat_regions.items():
         try:
-            # Take screenshot and crop to stat region
-            screenshot = take_screenshot()
+            # Crop to stat region from provided screenshot
             stat_img = screenshot.crop(region)
             
             # Enhance image for better OCR
@@ -493,9 +499,12 @@ def check_current_stats():
 
 
 
-def check_energy_bar():
+def check_energy_bar(screenshot=None):
     """
     Check the energy bar fill percentage using the same logic as energy_detector.py.
+    
+    Args:
+        screenshot: Optional PIL Image. If None, takes a new screenshot.
     
     Returns:
         float: Energy percentage (0.0 to 100.0)
@@ -503,9 +512,13 @@ def check_energy_bar():
     try:
         import cv2
         import numpy as np
+        from utils.adb_screenshot import take_screenshot
         
-        # Take screenshot and crop to energy bar region (updated coordinates from user)
-        screenshot = take_screenshot()
+        # Use provided screenshot or take new one if not provided
+        if screenshot is None:
+            screenshot = take_screenshot()
+        
+        # Crop to energy bar region (updated coordinates from user)
         x, y, width, height = 294, 203, 648, 102
         cropped = screenshot.crop((x, y, x + width, y + height))
         
