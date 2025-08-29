@@ -7,7 +7,7 @@ import re
 import os
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, is_image_on_screen, match_template, max_match_confidence
-from utils.adb_input import tap, triple_click, swipe, tap_on_image
+from utils.input import tap, triple_click, swipe, tap_on_image
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot
 from utils.constants_phone import *
 from utils.log import debug_print

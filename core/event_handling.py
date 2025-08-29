@@ -797,7 +797,7 @@ def click_event_choice(choice_number, choice_locations=None):
         bool: True if successful, False otherwise
     """
     try:
-        from utils.adb_input import tap
+        from utils.input import tap
         
         # Use pre-found locations if provided, otherwise search again
         if choice_locations is None:

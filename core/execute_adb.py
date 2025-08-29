@@ -17,7 +17,7 @@ if os.name == 'nt':  # Windows
         pass
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, is_image_on_screen, match_template, max_match_confidence
-from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press, tap_on_image
+from utils.input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press, tap_on_image
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
     MOOD_LIST, EVENT_REGION, RACE_CARD_REGION, SUPPORT_CARD_ICON_REGION
@@ -121,7 +121,7 @@ def do_rest():
     if back_btn:
         debug_print("[DEBUG] Going back to lobby to find rest button...")
         print("[INFO] Going back to lobby to find rest button...")
-        from utils.adb_input import tap
+        from utils.input import tap
         tap(back_btn[0], back_btn[1])
         time.sleep(1.0)  # Wait for lobby to load
     tazuna_hint = locate_on_screen("assets/hints/@tazuna_hint.png", confidence=0.7)
@@ -144,14 +144,14 @@ def do_rest():
     if rest_btn:
         debug_print(f"[DEBUG] Clicking rest button at {rest_btn}")
         print(f"[INFO] Clicking rest button at {rest_btn}")
-        from utils.adb_input import tap
+        from utils.input import tap
         tap(rest_btn[0], rest_btn[1])
         debug_print("[DEBUG] Clicked rest button")
         print("[INFO] Rest button clicked")
     elif rest_summer_btn:
         debug_print(f"[DEBUG] Clicking summer rest button at {rest_summer_btn}")
         print(f"[INFO] Clicking summer rest button at {rest_summer_btn}")
-        from utils.adb_input import tap
+        from utils.input import tap
         tap(rest_summer_btn[0], rest_summer_btn[1])
         debug_print("[DEBUG] Clicked summer rest button")
         print("[INFO] Summer rest button clicked")

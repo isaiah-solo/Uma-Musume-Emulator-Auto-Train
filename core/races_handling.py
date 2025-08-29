@@ -4,7 +4,7 @@ import random
 from PIL import ImageStat
 
 from utils.adb_recognizer import locate_on_screen, match_template
-from utils.adb_input import tap, triple_click, long_press, tap_on_image
+from utils.input import tap, triple_click, long_press, tap_on_image
 from utils.adb_screenshot import take_screenshot
 from utils.template_matching import wait_for_image
 from utils.log import debug_print
@@ -435,5 +435,5 @@ def after_race():
 
 def swipe(start_x, start_y, end_x, end_y, duration_ms=500):
     """Perform swipe gesture"""
-    from utils.adb_input import swipe as adb_swipe
+    from utils.input import swipe as adb_swipe
     adb_swipe(start_x, start_y, end_x, end_y, duration_ms)

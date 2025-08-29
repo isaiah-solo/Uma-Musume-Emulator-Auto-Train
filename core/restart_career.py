@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.adb_recognizer import match_template
 from utils.adb_screenshot import take_screenshot
-from utils.adb_input import tap
+from utils.input import tap
 from core.skill_auto_purchase import click_image_button
 from core.ocr import extract_text, extract_number
 
