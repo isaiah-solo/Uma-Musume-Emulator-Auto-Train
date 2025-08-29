@@ -107,8 +107,8 @@ def check_training():
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
         region_cv = (left, top, right - left, bottom - top)
 
-        # Support counts
-        support_counts = check_support_card()
+        # Support counts - pass screenshot to avoid taking new one
+        support_counts = check_support_card(screenshot)  # ✅ Pass screenshot
         total_support = sum(support_counts.values())
 
         # Bond levels per type
@@ -138,8 +138,8 @@ def check_training():
             if entries:
                 detailed_support[t_key] = entries
 
-        # Hint
-        hint_found = check_hint()
+        # Hint - pass screenshot to avoid taking new one
+        hint_found = check_hint(screenshot)  # ✅ Pass screenshot
 
         # Calculate score for this training type
         score = calculate_training_score(detailed_support, hint_found, key)
@@ -147,7 +147,8 @@ def check_training():
         debug_print(f"[DEBUG] Support counts: {support_counts} | hint_found={hint_found} | score={score}")
 
         debug_print(f"[DEBUG] Checking failure rate for {key.upper()} training...")
-        failure_chance, confidence = check_failure(key)
+        # Pass screenshot to avoid taking new ones
+        failure_chance, confidence = check_failure(screenshot, key)  # ✅ Pass screenshot
         
         results[key] = {
             "support": support_counts,
@@ -228,7 +229,7 @@ def do_train(train):
     debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
 
 # Training-related functions moved from state_adb.py
-def check_support_card(threshold=0.85):
+def check_support_card(screenshot, threshold=0.85):
     SUPPORT_ICONS = {
         "spd": "assets/icons/support_card_type_spd.png",
         "sta": "assets/icons/support_card_type_sta.png",
@@ -240,8 +241,8 @@ def check_support_card(threshold=0.85):
 
     count_result = {}
 
-    # Take a screenshot for template matching
-    screenshot = take_screenshot()
+    # Use provided screenshot instead of taking new one
+    # screenshot = take_screenshot()  # ❌ REMOVED
     
     # Save full screenshot for debugging only in debug mode
     if DEBUG_MODE:
@@ -286,7 +287,7 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
-def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
+def check_hint(screenshot, template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:
@@ -297,7 +298,8 @@ def check_hint(template_path: str = "assets/icons/hint.png", confidence: float =
         True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
     """
     try:
-        screenshot = take_screenshot()
+        # Use provided screenshot instead of taking new one
+        # screenshot = take_screenshot()  # ❌ REMOVED
 
         # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
@@ -320,10 +322,11 @@ def check_hint(template_path: str = "assets/icons/hint.png", confidence: float =
         debug_print(f"[DEBUG] check_hint failed: {e}")
         return False
 
-def check_failure(train_type):
+def check_failure(screenshot, train_type):
     """
-    Check failure rate for a specific training type using direct region OCR.
+    Check failure rate for a specific training type using provided screenshot instead of taking new ones.
     Args:
+        screenshot: PIL Image object to analyze
         train_type (str): One of 'spd', 'sta', 'pwr', 'guts', 'wit'
     Returns:
         (rate, confidence)
@@ -349,10 +352,12 @@ def check_failure(train_type):
         r"%\s*(\d{1,3})",  # "% 29" - reversed format
         r"(\d{1,3})",      # Just the number - fallback
     ]
+    
     # Step 1: Try white-specialized OCR 3 times
     for attempt in range(3):
         debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
-        img = enhanced_screenshot(region)
+        # Crop from provided screenshot instead of taking new one
+        img = screenshot.crop(region)  # ✅ Use provided screenshot instead of enhanced_screenshot()
         if DEBUG_MODE:
             img.save(f"debug_failure_{train_type}_white_attempt_{attempt+1}.png")
         
@@ -379,10 +384,12 @@ def check_failure(train_type):
         if attempt < 2:
             debug_print("[DEBUG] No valid percentage found, retrying...")
             time.sleep(0.1)
+    
     # Step 2: Try yellow threshold OCR 3 times
     for attempt in range(3):
         debug_print(f"[DEBUG] Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
-        raw_img = take_screenshot().crop(region)
+        # Crop from provided screenshot instead of taking new one
+        raw_img = screenshot.crop(region)  # ✅ Use provided screenshot instead of take_screenshot()
         raw_img = raw_img.resize((raw_img.width * 2, raw_img.height * 2), Image.BICUBIC)
         raw_img = raw_img.convert("RGB")
         raw_np = np.array(raw_img)
