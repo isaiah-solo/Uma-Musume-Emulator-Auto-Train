@@ -16,8 +16,8 @@ if os.name == 'nt':  # Windows
     except:
         pass
 
-from utils.adb_recognizer import locate_all_on_screen, match_template
-from utils.adb_screenshot import take_screenshot, capture_region
+from utils.recognizer import locate_all_on_screen, match_template
+from utils.screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
 from utils.log import debug_print, safe_print
 from utils.template_matching import deduplicated_matches

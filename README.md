@@ -486,7 +486,7 @@ The bot automatically selects the best event choice based on your configured pri
 ### Start
 #### 1. Start the Bot (Make sure you done the config)
 ```bash
-python main_adb.py
+python main.py
 ```
 
 #### 2. Stop the Bot

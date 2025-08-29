@@ -40,7 +40,7 @@ def _wrap_func(target, attr: str, label: str):
 
 def _install_static_screenshot(image_path: str):
     from PIL import Image
-    import utils.adb_screenshot as adb_shot
+    import utils.screenshot as adb_shot
 
     def take_screenshot_stub():
         t0 = time.perf_counter()
@@ -52,21 +52,21 @@ def _install_static_screenshot(image_path: str):
 
 
 def _install_profilers():
-    # adb_screenshot helpers
-    import utils.adb_screenshot as shot
+    # screenshot helpers
+    import utils.screenshot as shot
     if hasattr(shot, "enhanced_screenshot"):
-        _wrap_func(shot, "enhanced_screenshot", "adb_screenshot.enhanced_screenshot")
+        _wrap_func(shot, "enhanced_screenshot", "screenshot.enhanced_screenshot")
     if hasattr(shot, "capture_region"):
-        _wrap_func(shot, "capture_region", "adb_screenshot.capture_region")
+        _wrap_func(shot, "capture_region", "screenshot.capture_region")
     if hasattr(shot, "enhanced_screenshot_for_year"):
-        _wrap_func(shot, "enhanced_screenshot_for_year", "adb_screenshot.enhanced_screenshot_for_year")
+        _wrap_func(shot, "enhanced_screenshot_for_year", "screenshot.enhanced_screenshot_for_year")
     if hasattr(shot, "enhanced_screenshot_for_failure"):
-        _wrap_func(shot, "enhanced_screenshot_for_failure", "adb_screenshot.enhanced_screenshot_for_failure")
+        _wrap_func(shot, "enhanced_screenshot_for_failure", "screenshot.enhanced_screenshot_for_failure")
 
     # recognizer + OCR
-    import utils.adb_recognizer as recog
+    import utils.recognizer as recog
     if hasattr(recog, "match_template"):
-        _wrap_func(recog, "match_template", "adb_recognizer.match_template")
+        _wrap_func(recog, "match_template", "recognizer.match_template")
 
     # core OCR helpers
     import core.ocr as ocr
@@ -153,7 +153,7 @@ def main():
     _install_profilers()
 
     # Import after patching
-    from core.state_adb import (
+    from core.state import (
         check_mood,
         check_turn,
         check_current_year,

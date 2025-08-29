@@ -6,9 +6,9 @@ import pytesseract
 import re
 import os
 
-from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, is_image_on_screen, match_template, max_match_confidence
+from utils.recognizer import locate_on_screen, locate_all_on_screen, is_image_on_screen, match_template, max_match_confidence
 from utils.input import tap, triple_click, swipe, tap_on_image
-from utils.adb_screenshot import take_screenshot, enhanced_screenshot
+from utils.screenshot import take_screenshot, enhanced_screenshot
 from utils.constants_phone import *
 from utils.log import debug_print
 from utils.template_matching import wait_for_image, deduplicated_matches
@@ -228,7 +228,7 @@ def do_train(train):
     triple_click(train_coords[0], train_coords[1], interval=0.1)
     debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
 
-# Training-related functions moved from state_adb.py
+# Training-related functions moved from state.py
 def check_support_card(screenshot, threshold=0.85):
     SUPPORT_ICONS = {
         "spd": "assets/icons/support_card_type_spd.png",
@@ -333,7 +333,7 @@ def check_failure(screenshot, train_type):
     """
     debug_print(f"[DEBUG] ===== STARTING FAILURE DETECTION for {train_type.upper()} =====")
     from utils.constants_phone import FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
-    from utils.adb_screenshot import enhanced_screenshot, take_screenshot
+    from utils.screenshot import enhanced_screenshot, take_screenshot
     import numpy as np
     import pytesseract
     import re

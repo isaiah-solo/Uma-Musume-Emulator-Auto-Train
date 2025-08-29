@@ -1,6 +1,6 @@
 import json
 
-from core.state_adb import check_current_year, stat_state
+from core.state import check_current_year, stat_state
 from utils.log import debug_print
 
 with open("config.json", "r", encoding="utf-8") as file:

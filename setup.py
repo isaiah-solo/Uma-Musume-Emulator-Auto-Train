@@ -199,7 +199,7 @@ def setup_adb_config():
         print("\nNext steps:")
         print("1. Run: python test_adb_setup.py")
         print("2. Adjust regions in utils/constants_phone.py")
-        print("3. Run: python main_adb.py")
+        print("3. Run: python main.py")
         return True
     else:
         return False
@@ -209,8 +209,8 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == '--help':
         print("ADB Setup Helper Script")
         print("\nUsage:")
-        print("  python setup_adb.py          # Interactive setup")
-        print("  python setup_adb.py --help   # Show this help")
+        print("  python setup.py          # Interactive setup")
+        print("  python setup.py --help   # Show this help")
         print("\nThis script helps you configure ADB connection settings")
         print("for the Uma Auto Train project.")
         return

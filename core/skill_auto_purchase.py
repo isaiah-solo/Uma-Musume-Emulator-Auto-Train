@@ -3,7 +3,7 @@ import os
 import json
 from core.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
 from core.skill_purchase_optimizer import fuzzy_match_skill_name
-from utils.adb import run_adb
+from utils.device import run_adb
 from utils.log import debug_print
 
 
@@ -51,7 +51,7 @@ def extract_skill_points(screenshot=None):
 
     try:
         if screenshot is None:
-            from utils.adb_screenshot import take_screenshot
+            from utils.screenshot import take_screenshot
             screenshot = take_screenshot()
         
         # Skill points region: 825, 605, 936, 656 (width: 111, height: 51)

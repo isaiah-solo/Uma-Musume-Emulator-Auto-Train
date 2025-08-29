@@ -3,9 +3,9 @@ import json
 import random
 from PIL import ImageStat
 
-from utils.adb_recognizer import locate_on_screen, match_template
+from utils.recognizer import locate_on_screen, match_template
 from utils.input import tap, triple_click, long_press, tap_on_image
-from utils.adb_screenshot import take_screenshot
+from utils.screenshot import take_screenshot
 from utils.template_matching import wait_for_image
 from utils.log import debug_print
 
@@ -431,7 +431,7 @@ def after_race():
     
     debug_print("[DEBUG] Post-race actions complete")
 
-# check_skill_points_cap is imported from core.state_adb
+    # check_skill_points_cap is imported from core.state
 
 def swipe(start_x, start_y, end_x, end_y, duration_ms=500):
     """Perform swipe gesture"""

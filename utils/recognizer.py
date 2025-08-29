@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from PIL import Image
 import os
-from utils.adb_screenshot import take_screenshot
+from utils.screenshot import take_screenshot
 
 def match_template(screenshot, template_path, confidence=0.8, region=None):
     """

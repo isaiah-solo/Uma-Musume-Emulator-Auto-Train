@@ -11,7 +11,7 @@ if PROJECT_ROOT not in sys.path:
 
 
 def _install_static_screenshot(image_path: str):
-    """Monkey-patch utils.adb_screenshot.take_screenshot to return a fixed image.
+    """Monkey-patch utils.screenshot.take_screenshot to return a fixed image.
 
     All other helpers (enhanced_screenshot, capture_region, etc.) call take_screenshot
     internally, so this is sufficient to make the rest of the code operate on the
@@ -19,7 +19,7 @@ def _install_static_screenshot(image_path: str):
     """
     from PIL import Image  # Local import to avoid leaking at module import time
 
-    import utils.adb_screenshot as adb_shot
+    import utils.screenshot as adb_shot
 
     def take_screenshot_stub():
         img = Image.open(image_path).convert("RGBA")
@@ -34,7 +34,7 @@ def _status_checks() -> Dict[str, Tuple[Any, float]]:
     Returns a dict mapping name -> (value, elapsed_seconds).
     """
     from utils.constants_phone import MOOD_LIST
-    from core.state_adb import (
+    from core.state import (
         check_mood,
         check_turn,
         check_current_year,

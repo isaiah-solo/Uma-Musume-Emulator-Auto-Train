@@ -51,7 +51,7 @@ def copy_example_files():
     print("\nNext steps:")
     print("1. Edit the copied .json files to customize your settings")
     print("2. Your customizations will be preserved when pulling updates")
-    print("3. Run the bot with: python main_adb.py")
+    print("3. Run the bot with: python main.py")
     print("\nNote: The .example files are templates and won't be modified.")
 
 if __name__ == "__main__":

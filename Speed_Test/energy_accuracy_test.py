@@ -9,7 +9,7 @@ if PROJECT_ROOT not in sys.path:
 
 def _install_static_screenshot(image_path: str):
     from PIL import Image
-    import utils.adb_screenshot as adb_shot
+    import utils.screenshot as adb_shot
 
     def take_screenshot_stub():
         return Image.open(image_path).convert("RGBA")
@@ -29,7 +29,7 @@ def main():
 
     _install_static_screenshot(test_image)
 
-    from core.state_adb import check_energy_bar
+    from core.state import check_energy_bar
 
     results: List[float] = []
     successes = 0

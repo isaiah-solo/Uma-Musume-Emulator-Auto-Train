@@ -13,8 +13,8 @@ from typing import Dict, Any, Optional, Tuple
 # Add the project root to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.adb_recognizer import match_template
-from utils.adb_screenshot import take_screenshot
+from utils.recognizer import match_template
+from utils.screenshot import take_screenshot
 from utils.input import tap
 from core.skill_auto_purchase import click_image_button
 from core.ocr import extract_text, extract_number
@@ -303,7 +303,7 @@ def skip_check():
     
     for template_path, variant_name in skip_variants:
         if os.path.exists(template_path):
-            from utils.adb_recognizer import max_match_confidence
+            from utils.recognizer import max_match_confidence
             confidence = max_match_confidence(screenshot, template_path)
             if confidence and confidence > best_confidence:
                 best_confidence = confidence

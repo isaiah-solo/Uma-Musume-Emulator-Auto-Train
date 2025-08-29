@@ -58,7 +58,7 @@ def wait_for_image(template_path: str,
         (x, y) center coordinates if image found, None if timeout
     """
     import time
-    from utils.adb_recognizer import locate_on_screen
+    from utils.recognizer import locate_on_screen
     
     start_time = time.time()
     

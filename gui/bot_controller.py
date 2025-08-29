@@ -110,13 +110,13 @@ class BotController:
             self.main_window.add_log("Checking ADB connection...", "info")
             
             # Check if main script exists
-            if os.path.exists('main_adb.py'):
-                self.main_window.add_log("Found main_adb.py, starting automation...", "info")
+                    if os.path.exists('main.py'):
+            self.main_window.add_log("Found main.py, starting automation...", "info")
                 
                 try:
                     # Run the main ADB bot in a subprocess with unbuffered output
                     self.bot_process = subprocess.Popen(
-                        [sys.executable, '-u', 'main_adb.py'],  # -u for unbuffered output
+                        [sys.executable, '-u', 'main.py'],  # -u for unbuffered output
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         text=True,
@@ -168,7 +168,7 @@ class BotController:
                         except:
                             pass
             else:
-                self.main_window.add_log("main_adb.py not found", "error")
+                self.main_window.add_log("main.py not found", "error")
                 
         except Exception as e:
             self.main_window.add_log(f"Critical error in bot controller: {e}", "error")

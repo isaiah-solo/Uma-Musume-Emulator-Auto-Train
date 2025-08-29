@@ -5,8 +5,8 @@ import os
 import time
 import re
 import json
-from utils.adb_screenshot import take_screenshot
-from utils.adb import run_adb
+from utils.screenshot import take_screenshot
+from utils.device import run_adb
 
 from utils.log import debug_print
 

@@ -1,8 +1,8 @@
 import subprocess
 import time
 import json
-from utils.adb import run_adb
-from utils.adb_recognizer import locate_on_screen
+from utils.device import run_adb
+from utils.recognizer import locate_on_screen
 
 def load_config():
     """Load ADB configuration from config.json"""
