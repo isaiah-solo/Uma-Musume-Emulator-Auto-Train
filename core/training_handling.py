@@ -1,17 +1,29 @@
 import time
-from PIL import ImageStat
+import json
+from PIL import ImageStat, Image, ImageEnhance
+import numpy as np
+import pytesseract
+import re
+import os
 
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, is_image_on_screen, match_template, max_match_confidence
 from utils.adb_input import tap, triple_click, swipe, tap_on_image
-from utils.adb_screenshot import take_screenshot
+from utils.adb_screenshot import take_screenshot, enhanced_screenshot
 from utils.constants_phone import *
 from utils.log import debug_print
 from utils.template_matching import wait_for_image, deduplicated_matches
 
+# Load config for DEBUG_MODE
+try:
+    with open("config.json", "r", encoding="utf-8") as config_file:
+        config = json.load(config_file)
+        DEBUG_MODE = config.get("debug_mode", False)
+except Exception:
+    DEBUG_MODE = False
+
 
 
 # Import ADB state functions
-from core.state_adb import check_support_card, check_failure, check_hint, calculate_training_score
 
 
 
@@ -214,3 +226,303 @@ def do_train(train):
     debug_print(f"[DEBUG] Found {train.upper()} training at coordinates {train_coords}")
     triple_click(train_coords[0], train_coords[1], interval=0.1)
     debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
+
+# Training-related functions moved from state_adb.py
+def check_support_card(threshold=0.85):
+    SUPPORT_ICONS = {
+        "spd": "assets/icons/support_card_type_spd.png",
+        "sta": "assets/icons/support_card_type_sta.png",
+        "pwr": "assets/icons/support_card_type_pwr.png",
+        "guts": "assets/icons/support_card_type_guts.png",
+        "wit": "assets/icons/support_card_type_wit.png",
+        "friend": "assets/icons/support_card_type_friend.png"
+    }
+
+    count_result = {}
+
+    # Take a screenshot for template matching
+    screenshot = take_screenshot()
+    
+    # Save full screenshot for debugging only in debug mode
+    if DEBUG_MODE:
+        screenshot.save("debug_support_cards_screenshot.png")
+        debug_print(f"[DEBUG] Saved full screenshot to debug_support_cards_screenshot.png")
+
+    # Convert PIL region format (left, top, right, bottom) to OpenCV format (x, y, width, height)
+    left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+    region_cv = (left, top, right - left, bottom - top)
+    debug_print(f"[DEBUG] Searching in region: {region_cv} (PIL format: {SUPPORT_CARD_ICON_REGION})")
+    
+    # Crop and save the search region for debugging only in debug mode
+    if DEBUG_MODE:
+        search_region = screenshot.crop(SUPPORT_CARD_ICON_REGION)
+        search_region.save("debug_support_cards_search_region.png")
+        debug_print(f"[DEBUG] Saved search region to debug_support_cards_search_region.png")
+
+    for key, icon_path in SUPPORT_ICONS.items():
+        debug_print(f"\n[DEBUG] Testing {key.upper()} support card detection...")
+        
+        # Use single threshold for faster detection
+        matches = match_template(screenshot, icon_path, 0.8, region_cv)
+        filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
+        
+        debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches)})")
+        
+        # Show coordinates of each match
+        for i, match in enumerate(filtered_matches):
+            x, y, w, h = match
+            center_x, center_y = x + w//2, y + h//2
+            debug_print(f"[DEBUG]   {key.upper()} match {i+1}: center=({center_x}, {center_y}), bbox=({x}, {y}, {w}, {h})")
+        
+        # Skip expensive image annotation and only save debug images when DEBUG_MODE is true
+        if not filtered_matches:
+            debug_print(f"[DEBUG] No {key.upper()} support cards found")
+        
+        count_result[key] = len(filtered_matches) if filtered_matches else 0
+        
+        # Debug output for each support card type
+        if count_result[key] > 0:
+            debug_print(f"[DEBUG] {key.upper()} support cards found: {count_result[key]}")
+
+    return count_result
+
+def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
+    """Detect presence of a hint icon within the support card search region.
+
+    Args:
+        template_path: Path to the hint icon template image.
+        confidence: Minimum confidence threshold for template matching.
+
+    Returns:
+        True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
+    """
+    try:
+        screenshot = take_screenshot()
+
+        # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
+        left, top, right, bottom = SUPPORT_CARD_ICON_REGION
+        region_cv = (left, top, right - left, bottom - top)
+        debug_print(f"[DEBUG] Checking hint in region: {region_cv} using template: {template_path}")
+
+        if DEBUG_MODE:
+            try:
+                screenshot.crop(SUPPORT_CARD_ICON_REGION).save("debug_hint_search_region.png")
+                debug_print("[DEBUG] Saved hint search region to debug_hint_search_region.png")
+            except Exception:
+                pass
+
+        matches = match_template(screenshot, template_path, confidence, region_cv)
+
+        found = bool(matches and len(matches) > 0)
+        debug_print(f"[DEBUG] Hint icon found: {found}")
+        return found
+    except Exception as e:
+        debug_print(f"[DEBUG] check_hint failed: {e}")
+        return False
+
+def check_failure(train_type):
+    """
+    Check failure rate for a specific training type using direct region OCR.
+    Args:
+        train_type (str): One of 'spd', 'sta', 'pwr', 'guts', 'wit'
+    Returns:
+        (rate, confidence)
+    """
+    debug_print(f"[DEBUG] ===== STARTING FAILURE DETECTION for {train_type.upper()} =====")
+    from utils.constants_phone import FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
+    from utils.adb_screenshot import enhanced_screenshot, take_screenshot
+    import numpy as np
+    import pytesseract
+    import re
+    from PIL import ImageEnhance
+
+    region_map = {
+        'spd': FAILURE_REGION_SPD,
+        'sta': FAILURE_REGION_STA,
+        'pwr': FAILURE_REGION_PWR,
+        'guts': FAILURE_REGION_GUTS,
+        'wit': FAILURE_REGION_WIT
+    }
+    region = region_map[train_type]
+    percentage_patterns = [
+        r"(\d{1,3})\s*%",  # "29%", "29 %" - most reliable
+        r"%\s*(\d{1,3})",  # "% 29" - reversed format
+        r"(\d{1,3})",      # Just the number - fallback
+    ]
+    # Step 1: Try white-specialized OCR 3 times
+    for attempt in range(3):
+        debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        img = enhanced_screenshot(region)
+        if DEBUG_MODE:
+            img.save(f"debug_failure_{train_type}_white_attempt_{attempt+1}.png")
+        
+        # Get OCR data with confidence
+        ocr_data = pytesseract.image_to_data(np.array(img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
+        text = pytesseract.image_to_string(np.array(img), config='--oem 3 --psm 6').strip()
+        debug_print(f"[DEBUG] White OCR result: '{text}'")
+        
+        # Calculate average confidence from OCR data
+        confidences = [conf for conf in ocr_data['conf'] if conf != -1]
+        avg_confidence = (sum(confidences) / len(confidences) / 100.0) if confidences else 0.0
+        
+        for pattern in percentage_patterns:
+            match = re.search(pattern, text)
+            if match:
+                rate = int(match.group(1))
+                if 0 <= rate <= 100:
+                    debug_print(f"[DEBUG] Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
+                    if avg_confidence >= 0.7:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
+                        return (rate, avg_confidence)
+                    else:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
+        if attempt < 2:
+            debug_print("[DEBUG] No valid percentage found, retrying...")
+            time.sleep(0.1)
+    # Step 2: Try yellow threshold OCR 3 times
+    for attempt in range(3):
+        debug_print(f"[DEBUG] Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        raw_img = take_screenshot().crop(region)
+        raw_img = raw_img.resize((raw_img.width * 2, raw_img.height * 2), Image.BICUBIC)
+        raw_img = raw_img.convert("RGB")
+        raw_np = np.array(raw_img)
+        yellow_mask = (
+            (raw_np[:, :, 0] > 180) &  # High red
+            (raw_np[:, :, 1] > 120) &  # High green
+            (raw_np[:, :, 2] < 80)     # Low blue
+        )
+        yellow_result = np.zeros_like(raw_np)
+        yellow_result[yellow_mask] = [255, 255, 255]
+        yellow_img = Image.fromarray(yellow_result).convert("L")
+        yellow_img = ImageEnhance.Contrast(yellow_img).enhance(1.5)
+        if DEBUG_MODE:
+            yellow_img.save(f"debug_failure_{train_type}_yellow_attempt_{attempt+1}.png")
+        
+        # Get OCR data with confidence
+        ocr_data = pytesseract.image_to_data(np.array(yellow_img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
+        text = pytesseract.image_to_string(np.array(yellow_img), config='--oem 3 --psm 6').strip()
+        debug_print(f"[DEBUG] Yellow OCR result: '{text}'")
+        
+        # Calculate average confidence from OCR data
+        confidences = [conf for conf in ocr_data['conf'] if conf != -1]
+        avg_confidence = (sum(confidences) / len(confidences) / 100.0) if confidences else 0.0
+        
+        for pattern in percentage_patterns:
+            match = re.search(pattern, text)
+            if match:
+                rate = int(match.group(1))
+                if 0 <= rate <= 100:
+                    debug_print(f"[DEBUG] Found percentage: {rate}% (yellow) confidence: {avg_confidence:.2f} for {train_type.upper()}")
+                    if avg_confidence >= 0.7:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
+                        return (rate, avg_confidence)
+                    else:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
+        if attempt < 2:
+            debug_print("[DEBUG] No valid yellow percentage found, retrying...")
+            time.sleep(0.1)
+    debug_print(f"[DEBUG] No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
+    return (100, 0.0)  # 100% failure rate when detection completely fails (prevents choosing unknown training)
+
+def choose_best_training(training_results, config):
+    """
+    Choose the best training option based on scoring algorithm.
+    
+    Args:
+        training_results (dict): Results from check_training()
+        config (dict): Training configuration with thresholds
+        
+    Returns:
+        str: Best training type (spd, sta, pwr, guts, wit) or None
+    """
+    if not training_results:
+        return None
+    
+    max_failure = config.get("maximum_failure", 15)
+    min_score = config.get("min_score", 1.0)
+    min_wit_score = config.get("min_wit_score", 1.0)
+    priority_stat = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
+    
+    # Filter out training options with failure rates above maximum
+    safe_options = {k: v for k, v in training_results.items() 
+                   if v.get('failure', 100) <= max_failure}
+    
+    if not safe_options:
+        debug_print(f"[DEBUG] No training options with failure rate <= {max_failure}%")
+        return None
+    
+    # Filter by minimum score requirements
+    valid_options = {}
+    for k, v in safe_options.items():
+        score = v.get('score', 0)
+        if k == 'wit' and score < min_wit_score:
+            continue
+        if score < min_score:
+            continue
+        valid_options[k] = v
+    
+    if not valid_options:
+        debug_print(f"[DEBUG] No training options meet minimum score requirements")
+        return None
+    
+    # Sort by priority stat order and then by score
+    def sort_key(item):
+        k, v = item
+        priority_index = priority_stat.index(k) if k in priority_stat else len(priority_stat)
+        return (priority_index, -v.get('score', 0))  # Higher score first
+    
+    sorted_options = sorted(valid_options.items(), key=sort_key)
+    best_training = sorted_options[0][0]
+    
+    debug_print(f"[DEBUG] Best training selected: {best_training} (score: {sorted_options[0][1].get('score', 0):.2f})")
+    return best_training
+
+def calculate_training_score(support_detail, hint_found, training_type):
+    """
+    Calculate training score based on support cards, bond levels, and hints.
+    
+    Args:
+        support_detail: Dictionary of support card details with bond levels
+        hint_found: Boolean indicating if hint is present
+        training_type: The type of training being evaluated
+    
+    Returns:
+        float: Calculated score for the training
+    """
+    # Load scoring rules from training_score.json
+    scoring_rules = {}
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'training_score.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            scoring_rules = config.get('scoring_rules', {})
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"Warning: Could not load training_score.json: {e}")
+        # Fallback to default values if config file is not available
+        scoring_rules = {
+            "rainbow_support": {"points": 1.0},
+            "not_rainbow_support_low": {"points": 0.7},
+            "not_rainbow_support_high": {"points": 0.0},
+            "hint": {"points": 0.3}
+        }
+    
+    score = 0.0
+    
+    # Score support cards based on bond levels
+    for card_type, entries in support_detail.items():
+        for entry in entries:
+            level = entry['bond_level']
+            is_rainbow = (card_type == training_type and level >= 4)
+            
+            if is_rainbow:
+                score += scoring_rules.get("rainbow_support", {}).get("points", 1.0)
+            else:
+                if level < 4:
+                    score += scoring_rules.get("not_rainbow_support_low", {}).get("points", 0.7)
+                # bond >= 4 for non-rainbow gets points from not_rainbow_support_high (0.0)
+    
+    # Add hint bonus
+    if hint_found:
+        score += scoring_rules.get("hint", {}).get("points", 0.3)
+    
+    return round(score, 2)

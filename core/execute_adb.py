@@ -24,13 +24,13 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
+from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_current_stats, check_energy_bar
 
 # Import event handling functions
 from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
 
 # Import training handling functions
-from core.training_handling import go_to_training, check_training, do_train
+from core.training_handling import go_to_training, check_training, do_train, check_support_card, check_failure, check_hint, choose_best_training, calculate_training_score
 
 # Load config and check debug mode
 with open("config.json", "r", encoding="utf-8") as config_file:
@@ -995,7 +995,6 @@ def career_lobby():
             training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
         
         # Use new scoring algorithm to choose best training
-        from core.state_adb import choose_best_training
         best_training = choose_best_training(results_training, training_config)
         
         if best_training:
