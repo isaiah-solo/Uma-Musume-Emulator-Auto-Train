@@ -2,6 +2,7 @@ import subprocess
 import time
 import json
 from utils.adb import run_adb
+from utils.adb_recognizer import locate_on_screen
 
 def load_config():
     """Load ADB configuration from config.json"""
@@ -58,4 +59,17 @@ def click_at_coordinates(x, y):
 
 def move_to_and_click(x, y):
     """Move to coordinates and click (alias for tap)"""
-    return tap(x, y) 
+    return tap(x, y)
+
+def tap_on_image(img, confidence=0.8, min_search=1, text="", region=None):
+    """Find image on screen and tap on it with retry logic"""
+    for attempt in range(int(min_search)):
+        btn = locate_on_screen(img, confidence=confidence, region=region)
+        if btn:
+            if text:
+                print(text)
+            tap(btn[0], btn[1])
+            return True
+        if attempt < int(min_search) - 1:  # Don't sleep on last attempt
+            time.sleep(0.05)
+    return False 

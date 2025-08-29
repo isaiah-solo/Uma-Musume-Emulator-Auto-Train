@@ -81,14 +81,14 @@ def check_support_card(threshold=0.85):
         # Use single threshold for faster detection
         matches = match_template(screenshot, icon_path, 0.8, region_cv)
         filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
-            
-            debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches)})")
-            
-            # Show coordinates of each match
-            for i, match in enumerate(filtered_matches):
-                x, y, w, h = match
-                center_x, center_y = x + w//2, y + h//2
-                debug_print(f"[DEBUG]   {key.upper()} match {i+1}: center=({center_x}, {center_y}), bbox=({x}, {y}, {w}, {h})")
+        
+        debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches)})")
+        
+        # Show coordinates of each match
+        for i, match in enumerate(filtered_matches):
+            x, y, w, h = match
+            center_x, center_y = x + w//2, y + h//2
+            debug_print(f"[DEBUG]   {key.upper()} match {i+1}: center=({center_x}, {center_y}), bbox=({x}, {y}, {w}, {h})")
         
         # Skip expensive image annotation and only save debug images when DEBUG_MODE is true
         if not filtered_matches:
