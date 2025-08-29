@@ -1,6 +1,7 @@
 import re
 import time
 import json
+import os
 
 from PIL import Image, ImageEnhance
 from utils.adb_screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
@@ -698,6 +699,23 @@ def calculate_training_score(support_detail, hint_found, training_type):
     Returns:
         float: Calculated score for the training
     """
+    # Load scoring rules from training_score.json
+    scoring_rules = {}
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'training_score.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            scoring_rules = config.get('scoring_rules', {})
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"Warning: Could not load training_score.json: {e}")
+        # Fallback to default values if config file is not available
+        scoring_rules = {
+            "rainbow_support": {"points": 1.0},
+            "not_rainbow_support_low": {"points": 0.7},
+            "not_rainbow_support_high": {"points": 0.0},
+            "hint": {"points": 0.3}
+        }
+    
     score = 0.0
     
     # Score support cards based on bond levels
@@ -707,15 +725,15 @@ def calculate_training_score(support_detail, hint_found, training_type):
             is_rainbow = (card_type == training_type and level >= 4)
             
             if is_rainbow:
-                score += 1.0  # Rainbow support (same type, bond >= 4)
+                score += scoring_rules.get("rainbow_support", {}).get("points", 1.0)
             else:
                 if level < 4:
-                    score += 0.7  # Not rainbow, bond < 4
-                # bond >= 4 for non-rainbow gets 0.0 points
+                    score += scoring_rules.get("not_rainbow_support_low", {}).get("points", 0.7)
+                # bond >= 4 for non-rainbow gets points from not_rainbow_support_high (0.0)
     
     # Add hint bonus
     if hint_found:
-        score += 0.3
+        score += scoring_rules.get("hint", {}).get("points", 0.3)
     
     return round(score, 2)
 
