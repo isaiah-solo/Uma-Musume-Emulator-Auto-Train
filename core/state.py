@@ -194,6 +194,10 @@ def check_current_year():
     text = pytesseract.image_to_string(year_img, config='--oem 3 --psm 7').strip()
     
     if text:
+        # Clean OCR result - correct common OCR errors
+        if "Pre-Debu" in text:
+            text = text.replace("Pre-Debu", "Pre-Debut")
+        
         debug_print(f"[DEBUG] Year OCR result: '{text}'")
         return text
     
