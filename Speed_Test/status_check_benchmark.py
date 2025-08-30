@@ -38,7 +38,7 @@ def _status_checks() -> Dict[str, Tuple[Any, float]]:
         check_mood,
         check_turn,
         check_current_year,
-        check_goal_name_with_g1_requirement,
+        check_goal_name,
         check_criteria,
         check_energy_bar,
         check_current_stats,
@@ -61,7 +61,7 @@ def _status_checks() -> Dict[str, Tuple[Any, float]]:
     year, t_year = timed(check_current_year)
     results["year"] = (year, t_year)
 
-    goal_data, t_goal = timed(check_goal_name_with_g1_requirement)
+    goal_data, t_goal = timed(check_goal_name)
     results["goal_name_with_g1"] = (goal_data, t_goal)
 
     criteria, t_criteria = timed(check_criteria)
@@ -95,8 +95,7 @@ def _print_first_run(results: Dict[str, Tuple[Any, float]], total_time: float):
     print(f"[INFO] Mood: {results['mood'][0]}")
     print(f"[INFO] Turn: {results['turn'][0]}")
     print(f"[INFO] Goal Name: {goal_data['text'] if isinstance(goal_data, dict) else goal_data}")
-    if isinstance(goal_data, dict):
-        print(f"[INFO] G1 Race Requirement: {goal_data.get('requires_g1_races')}")
+
     print(f"[INFO] Status: {results['criteria'][0]}")
     print(f"[INFO] Energy: {energy:.1f}%")
     print(

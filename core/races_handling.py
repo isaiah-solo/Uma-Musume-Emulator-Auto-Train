@@ -62,14 +62,14 @@ def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 
             "PreeDebut" in year or "Pre" in year)
 
-def do_race(prioritize_g1=False):
+def do_race():
     """Perform race action"""
-    debug_print(f"[DEBUG] Performing race action (G1 priority: {prioritize_g1})...")
+    debug_print("[DEBUG] Performing race action...")
     tap_on_image("assets/buttons/races_btn.png", min_search=10)
     time.sleep(1.2)
     tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=1)
 
-    found = race_select(prioritize_g1=prioritize_g1)
+    found = race_select()
     if found:
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
@@ -138,49 +138,45 @@ def race_day():
         return True
     return False
 
-def race_select(prioritize_g1=False):
+def race_select():
     """Select race"""
-    debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
+    debug_print("[DEBUG] Selecting race...")
     
     def find_and_select_race():
-        """Helper function to find and select a race (G1 or normal)"""
+        """Helper function to find and select a race"""
         # Wait for race list to load before detection
         debug_print("[DEBUG] Waiting for race list to load...")
         time.sleep(1.5)
         
-        # Check initial screen first
-        if prioritize_g1:
-            debug_print("[DEBUG] Looking for G1 race.")
-            screenshot = take_screenshot()
-            race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
-            debug_print(f"[DEBUG] Initial G1 detection result: {race_cards}")
+        # Look for any race
+        debug_print("[DEBUG] Looking for race.")
+        match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
+        if match_aptitude:
+            debug_print(f"[DEBUG] Race found at {match_aptitude}")
+            tap(match_aptitude[0], match_aptitude[1])
+            time.sleep(0.2)
             
-            if race_cards:
-                debug_print(f"[DEBUG] Found {len(race_cards)} G1 race card(s), searching for match_track within regions...")
-                for x, y, w, h in race_cards:
-                    region = (x, y, w, h)
-                    match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
-                    if match_aptitude:
-                        debug_print(f"[DEBUG] G1 race found at {match_aptitude}")
-                        tap(match_aptitude[0], match_aptitude[1])
-                        time.sleep(0.2)
-                        
-                        # Click race button twice like PC version
-                        for j in range(2):
-                            race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                            if race_btn:
-                                debug_print(f"[DEBUG] Found race button at {race_btn}")
-                                tap(race_btn[0], race_btn[1])
-                                time.sleep(0.5)
-                            else:
-                                debug_print("[DEBUG] Race button not found")
-                        return True
-                debug_print("[DEBUG] No G1 race cards found on initial screen, will try swiping...")
-        else:
-            debug_print("[DEBUG] Looking for race.")
+            # Click race button twice like PC version
+            for j in range(2):
+                race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
+                if race_btn:
+                    debug_print(f"[DEBUG] Found race button at {race_btn}")
+                    tap(race_btn[0], race_btn[1])
+                    time.sleep(0.5)
+                else:
+                    debug_print("[DEBUG] Race button not found")
+            return True
+        
+        # If not found on initial screen, try scrolling up to 4 times
+        for scroll in range(4):
+            debug_print(f"[DEBUG] Swiping up to find races (attempt {scroll+1}/4)...")
+            swipe(540, 1500, 540, 500, duration_ms=500)
+            time.sleep(1.0)
+            
+            debug_print(f"[DEBUG] Looking for any race after swipe {scroll+1}")
             match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
             if match_aptitude:
-                debug_print(f"[DEBUG] Race found at {match_aptitude}")
+                debug_print(f"[DEBUG] Race found at {match_aptitude} after swipe {scroll+1}")
                 tap(match_aptitude[0], match_aptitude[1])
                 time.sleep(0.2)
                 
@@ -194,59 +190,8 @@ def race_select(prioritize_g1=False):
                     else:
                         debug_print("[DEBUG] Race button not found")
                 return True
-        
-        # If not found on initial screen, try scrolling up to 4 times
-        for scroll in range(4):
-            debug_print(f"[DEBUG] Swiping up to find races (attempt {scroll+1}/4)...")
-            swipe(540, 1500, 540, 500, duration_ms=500)
-            time.sleep(1.0)
-            
-            if prioritize_g1:
-                debug_print(f"[DEBUG] Looking for G1 race after swipe {scroll+1}")
-                screenshot = take_screenshot()
-                race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
-                if race_cards:
-                    debug_print(f"[DEBUG] Found {len(race_cards)} G1 race card(s) after swipe {scroll+1}")
-                    for x, y, w, h in race_cards:
-                        region = (x, y, w, h)
-                        match_aptitude = locate_match_track_with_brightness(confidence=0.6, region=region, brightness_threshold=180.0)
-                        if match_aptitude:
-                            debug_print(f"[DEBUG] G1 race found at {match_aptitude} after swipe {scroll+1}")
-                            tap(match_aptitude[0], match_aptitude[1])
-                            time.sleep(0.2)
-                            
-                            # Click race button twice like PC version
-                            for j in range(2):
-                                race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                                if race_btn:
-                                    debug_print(f"[DEBUG] Found race button at {race_btn}")
-                                    tap(race_btn[0], race_btn[1])
-                                    time.sleep(0.5)
-                                else:
-                                    debug_print("[DEBUG] Race button not found")
-                            return True
-                else:
-                    debug_print(f"[DEBUG] No G1 race cards found after swipe {scroll+1}")
             else:
-                debug_print(f"[DEBUG] Looking for any race (non-G1) after swipe {scroll+1}")
-                match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
-                if match_aptitude:
-                    debug_print(f"[DEBUG] Race found at {match_aptitude} after swipe {scroll+1}")
-                    tap(match_aptitude[0], match_aptitude[1])
-                    time.sleep(0.2)
-                    
-                    # Click race button twice like PC version
-                    for j in range(2):
-                        race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                        if race_btn:
-                            debug_print(f"[DEBUG] Found race button at {race_btn}")
-                            tap(race_btn[0], race_btn[1])
-                            time.sleep(0.5)
-                        else:
-                            debug_print("[DEBUG] Race button not found")
-                    return True
-                else:
-                    debug_print(f"[DEBUG] No races found after swipe {scroll+1}")
+                debug_print(f"[DEBUG] No races found after swipe {scroll+1}")
         
         return False
     

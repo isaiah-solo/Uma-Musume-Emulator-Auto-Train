@@ -120,7 +120,7 @@ class MainWindow:
             "minimum_mood": "GREAT",
             "maximum_failure": 15,
             "strategy": "PACE",
-            "prioritize_g1_race": False,
+
             "retry_race": True,
             "skill_point_cap": 400,
             "skill_purchase": "auto",

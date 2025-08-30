@@ -28,7 +28,7 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Keeps racing until fan count meets the goal, and always picks races with matching aptitude
 - Checks mood and handles debuffs automatically
 - Rest and recreation management
-- Prioritizes G1 races if available for fan farming
+
 - **Auto Skill Purchase**: Automatically purchases skills when skill points exceed cap
 - Stat caps to prevent overtraining specific stats
 - **Intelligent Event Choice Selection**: Automatically analyzes event options and selects the best choice based on configured priorities
@@ -157,7 +157,7 @@ You can edit your configuration in `config.json`
   "maximum_failure": 15,
   
   "strategy": "PACE",
-  "prioritize_g1_race": false,
+
   "retry_race": true,
 
   "skill_point_cap": 400,
@@ -205,10 +205,9 @@ You can edit your configuration in `config.json`
 - Sets the maximum acceptable failure chance (in percent) before skipping a training option.
 - Example: 10 means the bot will avoid training with more than 10% failure risk.
 
-`prioritize_g1_race` (boolean)
-- If `true`, the bot will prioritize G1 races except during July and August (summer).
+
 - Useful for fan farming.
-- **Warning**: It will do G1 race no matter what
+
 
 `retry_race` (boolean)
 - Controls whether the bot automatically retries failed races,. **MAKE SURE YOUR HAVE MORE THAN 3 CLOCKS**

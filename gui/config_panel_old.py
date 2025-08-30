@@ -267,12 +267,7 @@ class ConfigPanel(ctk.CTkFrame):
         
         config = self.main_window.get_config()
         
-        # G1 Race Prioritize
-        g1_frame = ttk.Frame(racing_frame, style='Dark.TFrame')
-        g1_frame.pack(fill=tk.X, pady=10)
-        self.prioritize_g1_var = tk.BooleanVar(value=config.get('prioritize_g1_race', False))
-        ttk.Checkbutton(g1_frame, text="G1 Race Prioritize (For Fan Farming)", 
-                       variable=self.prioritize_g1_var, style='Dark.TCheckbutton').pack(anchor=tk.W)
+
         
         # Strategy
         strategy_frame = ttk.Frame(racing_frame, style='Dark.TFrame')
@@ -539,7 +534,7 @@ class ConfigPanel(ctk.CTkFrame):
     def save_racing_settings(self):
         """Save racing settings to config"""
         config = self.main_window.get_config()
-        config['prioritize_g1_race'] = self.prioritize_g1_var.get()
+
         config['strategy'] = self.strategy_var.get()
         config['retry_race'] = self.retry_race_var.get()
         

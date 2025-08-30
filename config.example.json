@@ -10,7 +10,7 @@
   "maximum_failure": 15,
   "strategy": "PACE",
 
-  "prioritize_g1_race": false,
+
   "retry_race": true,
   "skill_point_cap": 400,
   "skill_purchase": "auto",

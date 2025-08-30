@@ -535,13 +535,7 @@ class ConfigPanel(ctk.CTkFrame):
         racing_title = ctk.CTkLabel(racing_frame, text="Racing Settings", font=ctk.CTkFont(size=14, weight="bold"), text_color=self.colors['text_light'])
         racing_title.pack(pady=(15, 10))
         
-        # G1 Race Prioritize
-        g1_frame = ctk.CTkFrame(racing_frame, fg_color="transparent")
-        g1_frame.pack(fill=tk.X, padx=15, pady=5)
-        self.prioritize_g1_var = tk.BooleanVar(value=config.get('prioritize_g1_race', False))
-        g1_checkbox = ctk.CTkCheckBox(g1_frame, text="G1 Race Prioritize (For Fan Farming)", 
-                                     variable=self.prioritize_g1_var, text_color=self.colors['text_light'])
-        g1_checkbox.pack(anchor=tk.W)
+
         
         # Strategy
         strategy_frame = ctk.CTkFrame(racing_frame, fg_color="transparent")
@@ -572,7 +566,7 @@ class ConfigPanel(ctk.CTkFrame):
         """Save racing settings to config"""
         try:
             config = self.main_window.get_config()
-            config['prioritize_g1_race'] = self.prioritize_g1_var.get()
+
             config['strategy'] = self.strategy_var.get()
             config['retry_race'] = self.retry_race_var.get()
             

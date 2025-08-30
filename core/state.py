@@ -271,24 +271,7 @@ def check_goal_name():
 
     return text
 
-def check_goal_name_with_g1_requirement():
-    """Detect the current goal name and check if it requires G1 races.
-    
-    Returns:
-        dict: Dictionary with goal name text and G1 race requirement flag
-    """
-    goal_name = check_goal_name()
-    
-    # Check if goal name contains G1 race requirements
-    requires_g1_races = False
-    if goal_name and "G1" in goal_name.upper():
-        requires_g1_races = True
-        debug_print(f"[DEBUG] G1 race requirement detected in goal name: '{goal_name}'")
-    
-    return {
-        "text": goal_name,
-        "requires_g1_races": requires_g1_races
-    }
+
 
 def check_skill_points():
     skill_img = enhanced_screenshot(SKILL_PTS_REGION)

@@ -24,7 +24,7 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_current_stats, check_energy_bar
+from core.state import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_current_stats, check_energy_bar
 
 # Import event handling functions
 from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
@@ -183,11 +183,9 @@ def career_lobby():
         with open("config.json", "r", encoding="utf-8") as file:
             config = json.load(file)
         MINIMUM_MOOD = config["minimum_mood"]
-        PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
     except Exception as e:
         print(f"Error loading config: {e}")
         MINIMUM_MOOD = "GREAT"
-        PRIORITIZE_G1_RACE = False
 
     # Program start
     while True:
@@ -339,7 +337,7 @@ def career_lobby():
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
         turn = check_turn()
         year = check_current_year()
-        goal_data = check_goal_name_with_g1_requirement()
+        goal_data = check_goal_name()
         criteria_text = check_criteria()
         
         log_and_flush("", "INFO")
@@ -349,7 +347,7 @@ def career_lobby():
         log_and_flush(f"Turn: {turn}", "INFO")
         log_and_flush(f"Goal Name: {goal_data['text']}", "INFO")
         log_and_flush(f"Status: {criteria_text}", "INFO")
-        log_and_flush(f"G1 Race Requirement: {goal_data['requires_g1_races']}", "INFO")
+
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
         
         # Check energy bar before proceeding with training decisions
@@ -371,31 +369,19 @@ def career_lobby():
         # Check if goals criteria are NOT met AND it is not Pre-Debut AND turn is less than 10
         # Prioritize racing when criteria are not met to help achieve goals
         debug_print("[DEBUG] Checking goal criteria...")
-        goal_analysis = check_goal_criteria({"text": criteria_text, "requires_g1_races": goal_data['requires_g1_races']}, year, turn)
+        goal_analysis = check_goal_criteria({"text": criteria_text}, year, turn)
         
         if goal_analysis["should_prioritize_racing"]:
-            if goal_analysis["should_prioritize_g1_races"]:
-                print(f"Decision: Criteria not met - Prioritizing G1 races to meet goals")
-                race_found = do_race(prioritize_g1=True)
-                if race_found:
-                    print("Race Result: Found G1 Race")
-                    continue
-                else:
-                    print("Race Result: No G1 Race Found")
-                    # If there is no G1 race found, go back and do training instead
-                    tap_on_image("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
-                    time.sleep(0.5)
+            print(f"Decision: Criteria not met - Prioritizing races to meet goals")
+            race_found = do_race()
+            if race_found:
+                print("Race Result: Found Race")
+                continue
             else:
-                print(f"Decision: Criteria not met - Prioritizing normal races to meet goals")
-                race_found = do_race()
-                if race_found:
-                    print("Race Result: Found Race")
-                    continue
-                else:
-                    print("Race Result: No Race Found")
-                    # If there is no race found, go back and do training instead
-                    tap_on_image("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
-                    time.sleep(0.5)
+                print("Race Result: No Race Found")
+                # If there is no race found, go back and do training instead
+                tap_on_image("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to training.")
+                time.sleep(0.5)
         else:
             print("Decision: Criteria met or conditions not suitable for racing")
             debug_print(f"[DEBUG] Racing not prioritized - Criteria met: {goal_analysis['criteria_met']}, Pre-debut: {goal_analysis['is_pre_debut']}, Turn < 10: {goal_analysis['turn_less_than_10']}")
@@ -459,21 +445,8 @@ def career_lobby():
         else:
             debug_print(f"[DEBUG] Mood is good ({mood_index} >= {minimum_mood})")
 
-        # If Prioritize G1 Race is true, check G1 race every turn
-        debug_print(f"[DEBUG] Checking G1 race priority: {PRIORITIZE_G1_RACE}")
-        if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year):
-            print("G1 Race Check: Looking for G1 race...")
-            g1_race_found = do_race(PRIORITIZE_G1_RACE)
-            if g1_race_found:
-                print("G1 Race Result: Found G1 Race")
-                continue
-            else:
-                print("G1 Race Result: No G1 Race Found")
-                # If there is no G1 race, go back and do training instead
-                tap_on_image("assets/buttons/back_btn.png", text="[INFO] G1 race not found. Proceeding to training.")
-                time.sleep(0.5)
-        else:
-            debug_print("[DEBUG] G1 race priority disabled or conditions not met")
+
+
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
@@ -560,16 +533,15 @@ def check_goal_criteria(criteria_data, year, turn):
     Check if goal criteria are met and determine if racing should be prioritized.
     
     Args:
-        criteria_data (dict): The criteria data from OCR with text and G1 race requirements
+        criteria_data (dict): The criteria data from OCR with text
         year (str): Current year text
         turn (str/int): Current turn number or text
     
     Returns:
         dict: Dictionary containing criteria analysis and decision
     """
-    # Extract criteria text and G1 race requirements
+    # Extract criteria text
     criteria_text = criteria_data.get("text", "")
-    requires_g1_races = criteria_data.get("requires_g1_races", False)
     
     # Check if goals criteria are met
     criteria_met = (criteria_text.split(" ")[0] == "criteria" or 
@@ -586,19 +558,13 @@ def check_goal_criteria(criteria_data, year, turn):
     # Determine if racing should be prioritized (when criteria not met, not pre-debut, turn < 10)
     should_prioritize_racing = not criteria_met and not is_pre_debut and turn_less_than_10
     
-    # Determine if G1 races should be prioritized (when racing should be prioritized AND G1 races are required)
-    should_prioritize_g1_races = should_prioritize_racing and requires_g1_races
-    
     debug_print(f"[DEBUG] Year: '{year}', Criteria met: {criteria_met}, Pre-debut: {is_pre_debut}, Turn < 10: {turn_less_than_10}")
-    debug_print(f"[DEBUG] G1 races required: {requires_g1_races}, Should prioritize G1: {should_prioritize_g1_races}")
     
     return {
         "criteria_met": criteria_met,
         "is_pre_debut": is_pre_debut,
         "turn_less_than_10": turn_less_than_10,
-        "should_prioritize_racing": should_prioritize_racing,
-        "requires_g1_races": requires_g1_races,
-        "should_prioritize_g1_races": should_prioritize_g1_races
+        "should_prioritize_racing": should_prioritize_racing
     } 
 
 def log_and_flush(message, level="INFO"):
