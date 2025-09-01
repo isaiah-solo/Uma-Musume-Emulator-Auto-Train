@@ -1,13 +1,17 @@
 import time
 import json
 import random
+import numpy as np
+import pytesseract
 from PIL import ImageStat
 
-from utils.recognizer import locate_on_screen, match_template
-from utils.input import tap, triple_click, long_press, tap_on_image
+from utils.recognizer import locate_on_screen, match_template, locate_all_on_screen, max_match_confidence
+from utils.input import tap, triple_click, long_press, tap_on_image, swipe
 from utils.screenshot import take_screenshot
-from utils.template_matching import wait_for_image
+from utils.template_matching import wait_for_image, deduplicated_matches
 from utils.log import debug_print
+from core.state import check_skill_points_cap, check_current_year
+from core.ocr import extract_text
 
 # Load config for RETRY_RACE
 try:
@@ -17,32 +21,9 @@ try:
 except Exception:
     RETRY_RACE = True
 
-def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_threshold=180.0):
-    """
-    Find center of `assets/ui/match_track.png` that also passes brightness threshold.
-    Returns (x, y) center or None.
-    """
-    try:
-        screenshot = take_screenshot()
-        matches = match_template(screenshot, "assets/ui/match_track.png", confidence=confidence, region=region)
-        if not matches:
-            return None
-
-        grayscale = screenshot.convert("L")
-        for (x, y, w, h) in matches:
-            try:
-                roi = grayscale.crop((x, y, x + w, y + h))
-                avg_brightness = ImageStat.Stat(roi).mean[0]
-                debug_print(f"[DEBUG] match_track bbox=({x},{y},{w},{h}) brightness={avg_brightness:.1f} (thr {brightness_threshold})")
-                if avg_brightness > brightness_threshold:
-                    center = (x + w//2, y + h//2)
-                    return center
-            except Exception:
-                continue
-        return None
-    except Exception as e:
-        debug_print(f"[DEBUG] match_track locate error: {e}")
-        return None
+# Region offsets from fan center (same as test code)
+GRADE_OFFSET = (-37, -105, 90, 45)  # x, y, width, height
+OCR_OFFSET = (47, -117, 345, 63)    # x, y, width, height
 
 def is_racing_available(year):
     """Check if racing is available based on the current year/month"""
@@ -62,24 +43,109 @@ def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 
             "PreeDebut" in year or "Pre" in year)
 
-def do_race():
-    """Perform race action"""
-    debug_print("[DEBUG] Performing race action...")
-    tap_on_image("assets/buttons/races_btn.png", min_search=10)
-    time.sleep(1.2)
-    tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=1)
+def get_grade_priority(grade):
+    """Get priority score for a grade (lower number = higher priority)"""
+    grade_priority = {
+        "G1": 1,
+        "G2": 2,
+        "G3": 3,
+        "OP": 4,
+        "PRE-OP": 5
+    }
+    return grade_priority.get(grade.upper(), 999)  # Unknown grades get lowest priority
 
-    found = race_select()
-    if found:
-        debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
-        race_prep()
-        time.sleep(1)
-        after_race()
-        return True
-    else:
-        debug_print("[DEBUG] No race found, going back")
-        tap_on_image("assets/buttons/back_btn.png", min_search=0.7)
+def find_target_race_in_screenshot(screenshot, race_description):
+    """Find target race in a given screenshot and return fan center coordinates"""
+    matches = locate_all_on_screen("assets/races/fan.png", confidence=0.8, region=(321, 1018, 114, 510))
+    
+    debug_print(f"[DEBUG] Found {len(matches) if matches else 0} fan matches")
+    
+    if not matches:
+        return None, None
+    
+    unique_fans = deduplicated_matches(matches, threshold=30)
+    debug_print(f"[DEBUG] After deduplication: {len(unique_fans)} unique fans")
+    
+    for i, (x, y, w, h) in enumerate(unique_fans):
+        center_x, center_y = x + w//2, y + h//2
+        
+        # OCR region
+        ox, oy, ow, oh = center_x + OCR_OFFSET[0], center_y + OCR_OFFSET[1], OCR_OFFSET[2], OCR_OFFSET[3]
+        text = extract_text(screenshot.crop((ox, oy, ox + ow, oy + oh)))
+        
+        debug_print(f"[DEBUG] Fan {i+1} at ({center_x}, {center_y}) - OCR text: '{text}'")
+        
+        # Check if the race description appears in the OCR text
+        if race_description and text and race_description.lower() in text.lower():
+            debug_print(f"[DEBUG] Found race with description '{race_description}' at fan center ({center_x}, {center_y})")
+            return center_x, center_y
+    
+    return None, None
+
+def execute_race_after_selection():
+    """Execute race after race selection - handles race button tapping and race execution"""
+    debug_print("[DEBUG] Executing race after selection...")
+    
+    # Wait for race button to appear after selecting race
+    debug_print("[DEBUG] Waiting for race button to appear after race selection...")
+    race_btn = wait_for_image("assets/buttons/race_btn.png", timeout=10)
+    if not race_btn:
+        debug_print("[DEBUG] Race button not found after 10 seconds")
         return False
+    
+    # Click race button twice to start the race
+    for j in range(2):
+        if tap_on_image("assets/buttons/race_btn.png", confidence=0.8, min_search=1):
+            debug_print(f"[DEBUG] Race button clicked {j+1}/2")
+            time.sleep(0.5)
+        else:
+            debug_print(f"[DEBUG] Failed to click race button {j+1}/2")
+    
+    # Race starts automatically after clicking race button twice
+    # Use the existing race_prep function to handle strategy and race execution
+    debug_print("[DEBUG] Race started automatically, calling race_prep...")
+    race_prep()
+    time.sleep(1)
+    # Handle post-race actions
+    after_race()
+    return True
+
+def search_race_with_swiping(race_description, year, max_swipes=3):
+    """Helper function to search for a race with swiping - eliminates duplicate code"""
+    debug_print(f"[DEBUG] Looking for: {race_description}")
+    
+    # Take screenshot and search for the race
+    screenshot = take_screenshot()
+    target_x, target_y = find_target_race_in_screenshot(screenshot, race_description)
+    
+    if target_x and target_y:
+        debug_print(f"[DEBUG] Race found! Tapping at ({target_x}, {target_y})")
+        tap(target_x, target_y)
+        time.sleep(0.5)
+        return True
+    
+    # If not found initially, perform swipes
+    debug_print("[DEBUG] Race not found on initial screen, performing swipes...")
+    
+    for swipe_num in range(1, max_swipes + 1):
+        debug_print(f"[DEBUG] Swipe {swipe_num}:")
+        swipe(540, 1500, 540, 500, duration_ms=500)
+        time.sleep(0.5)  # Wait for swipe animation
+        
+        # Take new screenshot after swipe
+        screenshot = take_screenshot()
+        
+        # Search for the race after each swipe
+        target_x, target_y = find_target_race_in_screenshot(screenshot, race_description)
+        
+        if target_x and target_y:
+            debug_print(f"[DEBUG] Race found after swipe {swipe_num}! Tapping at ({target_x}, {target_y})")
+            tap(target_x, target_y)
+            time.sleep(0.5)
+            return True
+    
+    debug_print("[DEBUG] Race not found after all swipes")
+    return False
 
 def race_day():
     """Handle race day"""
@@ -101,7 +167,15 @@ def race_day():
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
         tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=2)
-        time.sleep(1.0)  # Increased wait time
+        
+        # Wait for race selection screen to appear by waiting for race button
+        debug_print("[DEBUG] Waiting for race selection screen to appear...")
+        race_btn_found = wait_for_image("assets/buttons/race_btn.png", timeout=10)
+        if not race_btn_found:
+            debug_print("[DEBUG] Race button not found after 10 seconds, failed to enter race selection screen")
+            return False
+        
+        debug_print("[DEBUG] Race selection screen appeared, proceeding with race selection...")
         
         # Try to find and click race button with better error handling
         race_clicked = False
@@ -138,105 +212,84 @@ def race_day():
         return True
     return False
 
-def race_select():
-    """Select race"""
-    debug_print("[DEBUG] Selecting race...")
-    
-    def find_and_select_race():
-        """Helper function to find and select a race"""
-        # Wait for race list to load before detection
-        debug_print("[DEBUG] Waiting for race list to load...")
-        time.sleep(1.5)
-        
-        # Look for any race
-        debug_print("[DEBUG] Looking for race.")
-        match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
-        if match_aptitude:
-            debug_print(f"[DEBUG] Race found at {match_aptitude}")
-            tap(match_aptitude[0], match_aptitude[1])
-            time.sleep(0.2)
-            
-            # Click race button twice like PC version
-            for j in range(2):
-                race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                if race_btn:
-                    debug_print(f"[DEBUG] Found race button at {race_btn}")
-                    tap(race_btn[0], race_btn[1])
-                    time.sleep(0.5)
-                else:
-                    debug_print("[DEBUG] Race button not found")
-            return True
-        
-        # If not found on initial screen, try scrolling up to 4 times
-        for scroll in range(4):
-            debug_print(f"[DEBUG] Swiping up to find races (attempt {scroll+1}/4)...")
-            swipe(540, 1500, 540, 500, duration_ms=500)
-            time.sleep(1.0)
-            
-            debug_print(f"[DEBUG] Looking for any race after swipe {scroll+1}")
-            match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
-            if match_aptitude:
-                debug_print(f"[DEBUG] Race found at {match_aptitude} after swipe {scroll+1}")
-                tap(match_aptitude[0], match_aptitude[1])
-                time.sleep(0.2)
-                
-                # Click race button twice like PC version
-                for j in range(2):
-                    race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
-                    if race_btn:
-                        debug_print(f"[DEBUG] Found race button at {race_btn}")
-                        tap(race_btn[0], race_btn[1])
-                        time.sleep(0.5)
-                    else:
-                        debug_print("[DEBUG] Race button not found")
-                return True
-            else:
-                debug_print(f"[DEBUG] No races found after swipe {scroll+1}")
-        
-        return False
-    
-    # Use the unified race finding logic
-    found = find_and_select_race()
-    if not found:
-        debug_print("[DEBUG] No suitable race found")
-    return found
-
 def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
     """Check and ensure strategy matches config before race."""
+    debug_print("[DEBUG] Checking strategy before race...")
+    
     try:
-        # Load config to get expected strategy
-        with open("config.json", "r", encoding="utf-8") as file:
-            config = json.load(file)
-        
-        expected_strategy = config.get("race_strategy", "Front")
-        debug_print(f"[DEBUG] Expected race strategy: {expected_strategy}")
-        
-        # Take screenshot and crop the strategy region
         screenshot = take_screenshot()
-        strategy_region = screenshot.crop(region)
         
-        # Use OCR to read the current strategy
-        import pytesseract
-        import numpy as np
+        templates = {
+            "front": "assets/icons/front.png",
+            "late": "assets/icons/late.png", 
+            "pace": "assets/icons/pace.png",
+            "end": "assets/icons/end.png",
+        }
         
-        # Convert PIL image to numpy array for OCR
-        strategy_img = np.array(strategy_region)
+        # Find brightest strategy using existing project functions
+        best_match = None
+        best_brightness = 0
         
-        # Use OCR to extract text
-        strategy_text = pytesseract.image_to_string(strategy_img, config='--oem 3 --psm 6').strip()
-        debug_print(f"[DEBUG] Current race strategy: '{strategy_text}'")
+        for name, path in templates.items():
+            try:
+                # Use existing match_template function
+                matches = match_template(screenshot, path, confidence=0.5, region=region)
+                if matches:
+                    # Get confidence for best match
+                    confidence = max_match_confidence(screenshot, path, region)
+                    if confidence:
+                        # Check brightness of the matched region
+                        x, y, w, h = matches[0]
+                        roi = screenshot.convert("L").crop((x, y, x + w, y + h))
+                        bright = float(ImageStat.Stat(roi).mean[0])
+                        
+                        if bright >= 160 and bright > best_brightness:
+                            best_match = (name, matches[0], confidence, bright)
+                            best_brightness = bright
+            except Exception:
+                continue
         
-        # Check if the current strategy matches the expected strategy
-        if expected_strategy.lower() in strategy_text.lower():
-            debug_print(f"[DEBUG] Race strategy is already correct: {strategy_text}")
+        if not best_match:
+            debug_print("[DEBUG] No strategy found with brightness >= 160")
+            return False
+        
+        strategy_name, bbox, conf, bright = best_match
+        current_strategy = strategy_name.upper()
+        
+        # Load expected strategy from config
+        try:
+            with open("config.json", "r", encoding="utf-8") as f:
+                config = json.load(f)
+            expected_strategy = config.get("strategy", "").upper()
+        except Exception:
+            debug_print("[DEBUG] Cannot read config.json")
+            return False
+        
+        matches = current_strategy == expected_strategy
+        debug_print(f"[DEBUG] Current: {current_strategy}, Expected: {expected_strategy}, Match: {matches}")
+        
+        if matches:
+            debug_print("[DEBUG] Strategy matches config, proceeding with race")
             return True
+        
+        # Strategy doesn't match, try to change it
+        debug_print(f"[DEBUG] Strategy mismatch, changing to {expected_strategy}")
+        
+        if change_strategy_before_race(expected_strategy):
+            # Recheck after change
+            new_strategy, new_matches = check_strategy_before_race(region)
+            if new_matches:
+                debug_print("[DEBUG] Strategy successfully changed")
+                return True
+            else:
+                debug_print("[DEBUG] Strategy change failed")
+                return False
         else:
-            debug_print(f"[DEBUG] Race strategy mismatch. Expected: {expected_strategy}, Current: {strategy_text}")
-            # Try to change the strategy
-            return change_strategy_before_race(expected_strategy)
+            debug_print("[DEBUG] Failed to change strategy")
+            return False
             
     except Exception as e:
-        debug_print(f"[DEBUG] Error during strategy check: {e}")
+        debug_print(f"[DEBUG] Error checking strategy: {e}")
         return False
 
 def change_strategy_before_race(expected_strategy: str) -> bool:
@@ -293,65 +346,34 @@ def race_prep():
         for i in range(1):
             debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
             triple_click(view_result_btn[0], view_result_btn[1], interval=0.01)
-            time.sleep(0.01)
-        debug_print("[DEBUG] Race preparation complete")
+            time.sleep(0.5)
+        time.sleep(1.0)
     else:
-        debug_print("[DEBUG] View results button not found")
+        debug_print("[DEBUG] View results button not found, proceeding without strategy check")
 
 def handle_race_retry_if_failed():
-    """
-    Handle race failures and retries.
+    """Handle race retry if failed"""
+    debug_print("[DEBUG] Checking for race retry...")
     
-    Recognizes failure by detecting `assets/icons/clock.png` on screen.
-    If `retry_race` is true in config, continuously taps `assets/buttons/try_again.png`, waits 5s,
-    and calls `race_prep()` again until success.
-    Returns True if retries were performed, False otherwise.
-    """
-    try:
-        if not RETRY_RACE:
-            print("[INFO] retry_race is disabled. Stopping automation.")
-            raise SystemExit(0)
-
-        retry_count = 0
+    if not RETRY_RACE:
+        debug_print("[DEBUG] Race retry disabled in config")
+        return
+    
+    # Look for retry button
+    retry_btn = wait_for_image("assets/buttons/retry_btn.png", timeout=5)
+    if retry_btn:
+        debug_print("[DEBUG] Race failed, retrying...")
+        tap(retry_btn[0], retry_btn[1])
+        time.sleep(2.0)  # Wait for retry to complete
         
-        while True:
-            # Check for failure indicator (clock icon)
-            clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
-            # Check for success indicator (next button)
-            next_btn = locate_on_screen("assets/buttons/next_btn.png", confidence=0.8)
-            
-            if next_btn:
-                if retry_count > 0:
-                    print(f"[INFO] Race succeeded after {retry_count} retry attempts!")
-                else:
-                    print("[INFO] Race succeeded on first attempt!")
-                return retry_count > 0
-                
-            if not clock:
-                # No clock and no next button - wait a bit and check again
-                time.sleep(1)
-                continue
-
-            retry_count += 1
-            print(f"[INFO] Race failed detected (clock icon). Retry attempt {retry_count}")
-
-            # Try to click Try Again button
-            try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
-            if try_again:
-                print(f"[INFO] Clicking Try Again button for retry {retry_count}")
-                tap(try_again[0], try_again[1])
-                time.sleep(5)  # Wait 5 seconds for retry
-                
-                # Call race_prep() again for the retry
-                race_prep()
-                time.sleep(1)
-            else:
-                print("[WARNING] Try Again button not found, cannot retry")
-                return False
-                
-    except Exception as e:
-        print(f"[ERROR] Error during race retry handling: {e}")
-        return False
+        # Check if retry succeeded
+        success_btn = wait_for_image("assets/buttons/success_btn.png", timeout=5)
+        if success_btn:
+            debug_print("[DEBUG] Retry succeeded!")
+        else:
+            debug_print("[DEBUG] Retry failed, proceeding...")
+    else:
+        debug_print("[DEBUG] No retry needed or retry button not found")
 
 def after_race():
     """Handle post-race actions"""
@@ -364,21 +386,250 @@ def after_race():
         time.sleep(1)
         debug_print("[DEBUG] Retrying next button search after screen tap...")
         tap_on_image("assets/buttons/next_btn.png", confidence=0.7, min_search=10)
-        time.sleep(1)
     
     time.sleep(4)
     
     # Try to click second next button with fallback mechanism
     if not tap_on_image("assets/buttons/next2_btn.png", confidence=0.7, min_search=10):
+        debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
+        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
         time.sleep(1)
         debug_print("[DEBUG] Retrying next2 button search after screen tap...")
         tap_on_image("assets/buttons/next2_btn.png", confidence=0.7, min_search=10)
     
     debug_print("[DEBUG] Post-race actions complete")
 
-    # check_skill_points_cap is imported from core.state
+def enter_race_selection_screen():
+    """Helper function to enter race selection screen - eliminates duplicate code"""
+    debug_print("[DEBUG] Entering race selection screen...")
+    
+    # Tap races button
+    if not tap_on_image("assets/buttons/races_btn.png", min_search=10):
+        debug_print("[DEBUG] Failed to find races button")
+        return False
+    
+    time.sleep(1.2)
+    
+    # Try to tap OK button if it appears (optional)
+    ok_clicked = tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=1)
+    if ok_clicked:
+        debug_print("[DEBUG] OK button found and clicked")
+        time.sleep(1.5)  # Wait for race list to load
+    else:
+        debug_print("[DEBUG] OK button not found, proceeding without it")
+        time.sleep(1.0)  # Shorter wait since no OK button
+    
+    return True
 
-def swipe(start_x, start_y, end_x, end_y, duration_ms=500):
-    """Perform swipe gesture"""
-    from utils.input import swipe as adb_swipe
-    adb_swipe(start_x, start_y, end_x, end_y, duration_ms)
+def check_and_select_maiden_race():
+    """Helper function to check for and select maiden races - eliminates duplicate code"""
+    debug_print("[DEBUG] Checking for maiden races...")
+    maiden_races = locate_all_on_screen("assets/races/maiden.png", confidence=0.8)
+    
+    if maiden_races:
+        debug_print(f"[DEBUG] Found {len(maiden_races)} maiden race(s)!")
+        
+        # Sort by Y coordinate (highest Y = top of screen)
+        maiden_races.sort(key=lambda x: x[1])  # Sort by Y coordinate
+        
+        # Select the topmost maiden race (highest Y coordinate)
+        top_maiden = maiden_races[0]
+        maiden_x, maiden_y, maiden_w, maiden_h = top_maiden
+        maiden_center_x = maiden_x + maiden_w // 2
+        maiden_center_y = maiden_y + maiden_h // 2
+        
+        debug_print(f"[DEBUG] Selecting top maiden race at ({maiden_center_x}, {maiden_center_y})")
+        debug_print("[DEBUG] Tapping on maiden race...")
+        
+        tap(maiden_center_x, maiden_center_y)
+        time.sleep(0.5)
+        
+        debug_print("[DEBUG] Maiden race selected successfully!")
+        return True
+    
+    debug_print("[DEBUG] No maiden races found")
+    return False
+
+def find_and_do_race():
+    """Find and execute race using intelligent race selection - replaces old do_race()"""
+    debug_print("[DEBUG] Starting intelligent race selection...")
+    
+    try:
+        # 1. Setup common environment
+        year = check_current_year()
+        if not year:
+            debug_print("[DEBUG] Could not detect current year")
+            return False
+        
+        # 2. Load configuration and race data
+        try:
+            with open("config.json", "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except Exception as e:
+            debug_print(f"[DEBUG] Error loading config: {e}")
+            return False
+        
+        try:
+            with open("assets/races/clean_race_data.json", "r", encoding="utf-8") as f:
+                race_data = json.load(f)
+        except Exception as e:
+            debug_print(f"[DEBUG] Error loading race data: {e}")
+            return False
+        
+        if not race_data:
+            debug_print("[DEBUG] Failed to load race data")
+            return False
+        
+        # 3. Choose best race based on database and config criteria
+        allowed_grades = config.get("allowed_grades", ["G1", "G2", "G3", "OP", "PRE-OP"])
+        allowed_tracks = config.get("allowed_tracks", ["Turf", "Dirt"])
+        allowed_distances = config.get("allowed_distances", ["Sprint", "Mile", "Medium", "Long"])
+        
+        # Find best race using the existing logic
+        best_race = None
+        best_grade = None
+        best_priority = 999
+        best_fans = 0
+        
+        if year in race_data:
+            for race_name, race_info in race_data[year].items():
+                race_grade = race_info.get("grade", "UNKNOWN")
+                race_surface = race_info.get("surface", "UNKNOWN")
+                race_category = race_info.get("distance_type", "UNKNOWN")
+                
+                # Check if this grade is allowed
+                if race_grade not in allowed_grades:
+                    continue
+                
+                # Check if this track/surface is allowed
+                if allowed_tracks and race_surface not in allowed_tracks:
+                    continue
+                
+                # Check if this distance/category is allowed
+                if allowed_distances and race_category not in allowed_distances:
+                    continue
+                
+                # Get priority score for this grade
+                priority = get_grade_priority(race_grade)
+                fans = race_info.get("fans", 0)
+                
+                # Update best race if this one is better
+                if priority < best_priority or (priority == best_priority and fans > best_fans):
+                    best_race = race_name
+                    best_grade = race_grade
+                    best_priority = priority
+                    best_fans = fans
+        
+        if not best_race:
+            debug_print("[DEBUG] No suitable race found")
+            return False
+        
+        debug_print(f"[DEBUG] Best race selected: {best_race} ({best_grade})")
+        
+        # 4. Enter race selection screen
+        if not enter_race_selection_screen():
+            return False
+        
+        # 5. Check for maiden races first (priority over database selection)
+        debug_print("[DEBUG] Checking for maiden races...")
+        if check_and_select_maiden_race():
+            debug_print("[DEBUG] Maiden race selected successfully!")
+            # Execute the race after selection
+            return execute_race_after_selection()
+        
+        debug_print("[DEBUG] No maiden races found, proceeding with database selection...")
+        
+        # 6. Find and choose the selected race using OCR
+        debug_print("[DEBUG] Searching for selected race in Race Select Screen...")
+        debug_print(f"[DEBUG] Looking for: {best_race}")
+        
+        # Get race description for OCR matching
+        race_info = race_data[year][best_race]
+        race_description = race_info.get("description", "")
+        debug_print(f"[DEBUG] Race description: {race_description}")
+        
+        # Search for race with swiping using the same logic as test file
+        if search_race_with_swiping(race_description, year):
+            debug_print("[DEBUG] Race selection completed successfully!")
+            # Execute the race after selection
+            return execute_race_after_selection()
+        
+        return False
+        
+    except Exception as e:
+        debug_print(f"[DEBUG] Error in find_and_do_race: {e}")
+        return False
+
+def do_custom_race():
+    """Handle custom races from custom_races.json - bypasses all criteria checks"""
+    debug_print("[DEBUG] Checking for custom race...")
+    
+    try:
+        # 1. Get current year
+        year = check_current_year()
+        if not year:
+            return False
+        
+        # 2. Load custom races data
+        try:
+            with open("custom_races.json", "r", encoding="utf-8") as f:
+                custom_races = json.load(f)
+        except Exception as e:
+            debug_print(f"[DEBUG] Failed to load custom_races.json: {e}")
+            return False
+        
+        # 3. Check if there's a custom race for the current year
+        if year not in custom_races:
+            return False
+        
+        custom_race = custom_races[year]
+        if not custom_race or custom_race.strip() == "":
+            return False
+        
+        debug_print(f"[DEBUG] Custom race found: {custom_race}")
+        
+        # 4. Enter race selection screen
+        if not enter_race_selection_screen():
+            debug_print("[DEBUG] Failed to enter race selection screen")
+            return False
+        
+        # 5. Check for maiden races first (priority over custom race)
+        debug_print("[DEBUG] Checking for maiden races...")
+        if check_and_select_maiden_race():
+            debug_print("[DEBUG] Maiden race selected successfully!")
+            # Execute the race after selection
+            return execute_race_after_selection()
+        
+        debug_print("[DEBUG] No maiden races found, proceeding with custom race...")
+        
+        # 6. Search for the custom race using OCR
+        debug_print("[DEBUG] Searching for custom race in Race Select Screen...")
+        
+        # Load race data to get the description for OCR matching
+        try:
+            with open("assets/races/clean_race_data.json", "r", encoding="utf-8") as f:
+                race_data = json.load(f)
+        except Exception as e:
+            debug_print(f"[DEBUG] Error loading race data: {e}")
+            race_data = {}
+        
+        if year in race_data and custom_race in race_data[year]:
+            race_info = race_data[year][custom_race]
+            race_description = race_info.get("description", "")
+            debug_print(f"[DEBUG] Race description: {race_description}")
+        else:
+            debug_print(f"[DEBUG] Warning: Race '{custom_race}' not found in race database for {year}")
+            debug_print("[DEBUG] Will search by race name directly")
+            race_description = custom_race
+        
+        # Search for race with swiping
+        if search_race_with_swiping(race_description, year):
+            debug_print("[DEBUG] Custom race selection completed successfully!")
+            # Execute the race after selection
+            return execute_race_after_selection()
+        
+        return False
+        
+    except Exception as e:
+        debug_print(f"[DEBUG] Error in do_custom_race: {e}")
+        return False

@@ -21,12 +21,12 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
         # Load template
         if not os.path.exists(template_path):
             print(f"Template not found: {template_path}")
-            return None
+            return []
         
         template = cv2.imread(template_path, cv2.IMREAD_COLOR)
         if template is None:
             print(f"Failed to load template: {template_path}")
-            return None
+            return []
         
         # Convert screenshot to OpenCV format
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
@@ -53,11 +53,11 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
             
             matches.append((pt[0], pt[1], w, h))
         
-        return matches if matches else None
+        return matches if matches else []
         
     except Exception as e:
         print(f"Error in template matching: {e}")
-        return None
+        return []
 
 def max_match_confidence(screenshot, template_path, region=None):
     """
@@ -74,12 +74,12 @@ def max_match_confidence(screenshot, template_path, region=None):
     try:
         if not os.path.exists(template_path):
             print(f"Template not found: {template_path}")
-            return None
+            return 0.0
 
         template = cv2.imread(template_path, cv2.IMREAD_COLOR)
         if template is None:
             print(f"Failed to load template: {template_path}")
-            return None
+            return 0.0
 
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
@@ -92,7 +92,7 @@ def max_match_confidence(screenshot, template_path, region=None):
         return float(max_val)
     except Exception as e:
         print(f"Error computing max template confidence: {e}")
-        return None
+        return 0.0
 
 def locate_on_screen(template_path, confidence=0.8, region=None):
     """

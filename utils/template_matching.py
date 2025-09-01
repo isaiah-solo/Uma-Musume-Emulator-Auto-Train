@@ -15,12 +15,27 @@ def deduplicated_matches(matches: List[Tuple[int, int, int, int]],
     Returns:
         Filtered list with duplicates removed
     """
+    # Safety check: ensure matches is a list
     if not matches:
+        return []
+    
+    # Additional safety check: ensure matches is actually a list
+    if not isinstance(matches, list):
+        print(f"WARNING: deduplicated_matches received non-list: {type(matches)}, {matches}")
+        return []
+    
+    # Safety check: ensure matches has at least one element
+    if len(matches) == 0:
         return []
     
     filtered = [matches[0]]
     
     for match in matches[1:]:
+        # Safety check: ensure match is a valid tuple
+        if not isinstance(match, tuple) or len(match) != 4:
+            print(f"WARNING: Invalid match format: {match}")
+            continue
+            
         match_center = (match[0] + match[2]//2, match[1] + match[3]//2)
         
         is_duplicate = False

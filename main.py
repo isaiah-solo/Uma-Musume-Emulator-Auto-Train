@@ -16,9 +16,9 @@ if os.name == 'nt':  # Windows
     except:
         pass
 
-from utils.adb_screenshot import get_screen_size, load_config
-from utils.adb import run_adb
-from core.execute_adb import career_lobby
+from utils.screenshot import get_screen_size, load_config
+from utils.device import run_adb
+from core.execute import career_lobby
 
 # Configure logging for real-time output
 logging.basicConfig(

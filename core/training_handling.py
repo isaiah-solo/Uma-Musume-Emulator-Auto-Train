@@ -265,9 +265,22 @@ def check_support_card(screenshot, threshold=0.85):
         
         # Use single threshold for faster detection
         matches = match_template(screenshot, icon_path, 0.8, region_cv)
-        filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
+        debug_print(f"[DEBUG] Raw matches for {key.upper()}: {matches}")
         
-        debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches)})")
+        filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
+        debug_print(f"[DEBUG] After deduplication for {key.upper()}: {filtered_matches}")
+        
+        # Ensure filtered_matches is always a list
+        if filtered_matches is None:
+            debug_print(f"[DEBUG] WARNING: filtered_matches is None for {key.upper()}, setting to empty list")
+            filtered_matches = []
+        
+        # Additional safety check
+        if not isinstance(filtered_matches, list):
+            debug_print(f"[DEBUG] WARNING: filtered_matches is not a list for {key.upper()}, type: {type(filtered_matches)}, setting to empty list")
+            filtered_matches = []
+        
+        debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches) if matches else 0})")
         
         # Show coordinates of each match
         for i, match in enumerate(filtered_matches):
@@ -279,7 +292,7 @@ def check_support_card(screenshot, threshold=0.85):
         if not filtered_matches:
             debug_print(f"[DEBUG] No {key.upper()} support cards found")
         
-        count_result[key] = len(filtered_matches) if filtered_matches else 0
+        count_result[key] = len(filtered_matches)
         
         # Debug output for each support card type
         if count_result[key] > 0:
@@ -356,14 +369,44 @@ def check_failure(screenshot, train_type):
     # Step 1: Try white-specialized OCR 3 times
     for attempt in range(3):
         debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        
+        # Shift region down by a few pixels on retries to help with alignment
+        if attempt > 0:
+            shift_amount = attempt * 5  # Move down 5, 10 pixels on retries
+            adjusted_region = (region[0], region[1] + shift_amount, region[2], region[3] + shift_amount)
+            debug_print(f"[DEBUG] Shifting region down by {shift_amount} pixels for retry {attempt+1}")
+        else:
+            adjusted_region = region
+        
         # Crop from provided screenshot instead of taking new one
-        img = screenshot.crop(region)  # ✅ Use provided screenshot instead of enhanced_screenshot()
+        img = screenshot.crop(adjusted_region)  # ✅ Use provided screenshot instead of enhanced_screenshot()
+        
+        # White text specialization: create white mask and enhance contrast
+        raw_img = img.convert("RGB")
+        raw_np = np.array(raw_img)
+        
+        # Create white text mask (high values in all RGB channels)
+        white_mask = (
+            (raw_np[:, :, 0] > 200) &  # High red
+            (raw_np[:, :, 1] > 200) &  # High green  
+            (raw_np[:, :, 2] > 200)    # High blue
+        )
+        
+        # Create white text result (white text on black background)
+        white_result = np.zeros_like(raw_np)
+        white_result[white_mask] = [255, 255, 255]
+        white_img = Image.fromarray(white_result).convert("L")
+        
+        # Enhance contrast for better OCR
+        white_img = ImageEnhance.Contrast(white_img).enhance(2.0)
+        
         if DEBUG_MODE:
             img.save(f"debug_failure_{train_type}_white_attempt_{attempt+1}.png")
+            white_img.save(f"debug_failure_{train_type}_white_enhanced_{attempt+1}.png")
         
-        # Get OCR data with confidence
-        ocr_data = pytesseract.image_to_data(np.array(img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
-        text = pytesseract.image_to_string(np.array(img), config='--oem 3 --psm 6').strip()
+        # Get OCR data with confidence from enhanced white image
+        ocr_data = pytesseract.image_to_data(np.array(white_img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
+        text = pytesseract.image_to_string(np.array(white_img), config='--oem 3 --psm 6').strip()
         debug_print(f"[DEBUG] White OCR result: '{text}'")
         
         # Calculate average confidence from OCR data
@@ -388,8 +431,17 @@ def check_failure(screenshot, train_type):
     # Step 2: Try yellow threshold OCR 3 times
     for attempt in range(3):
         debug_print(f"[DEBUG] Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        
+        # Shift region down by a few pixels on retries to help with alignment
+        if attempt > 0:
+            shift_amount = attempt * 5  # Move down 5, 10 pixels on retries
+            adjusted_region = (region[0], region[1] + shift_amount, region[2], region[3] + shift_amount)
+            debug_print(f"[DEBUG] Shifting region down by {shift_amount} pixels for retry {attempt+1}")
+        else:
+            adjusted_region = region
+        
         # Crop from provided screenshot instead of taking new one
-        raw_img = screenshot.crop(region)  # ✅ Use provided screenshot instead of take_screenshot()
+        raw_img = screenshot.crop(adjusted_region)  # ✅ Use provided screenshot instead of take_screenshot()
         raw_img = raw_img.resize((raw_img.width * 2, raw_img.height * 2), Image.BICUBIC)
         raw_img = raw_img.convert("RGB")
         raw_np = np.array(raw_img)
@@ -428,6 +480,25 @@ def check_failure(screenshot, train_type):
         if attempt < 2:
             debug_print("[DEBUG] No valid yellow percentage found, retrying...")
             time.sleep(0.1)
+    
+    # If we get here, all OCR attempts failed
+    debug_print(f"[DEBUG] ===== FAILURE DETECTION FAILED for {train_type.upper()} =====")
+    debug_print(f"[DEBUG] All OCR attempts failed to extract failure rate")
+    
+    if DEBUG_MODE:
+        # Save the original cropped region for debugging
+        original_crop = screenshot.crop(region)
+        debug_filename = f"debug_failure_{train_type}_failed_region.png"
+        original_crop.save(debug_filename)
+        debug_print(f"[DEBUG] Saved failed region to: {debug_filename}")
+        debug_print(f"[DEBUG] Region coordinates: {region}")
+        debug_print(f"[DEBUG] Region size: {original_crop.size}")
+        
+        # Stop execution in debug mode
+        debug_print(f"[DEBUG] Stopping execution due to failure rate extraction failure for {train_type.upper()}")
+        debug_print(f"[DEBUG] Please check the debug image: {debug_filename}")
+        raise RuntimeError(f"Failure rate extraction failed for {train_type.upper()} training. Debug image saved to {debug_filename}")
+    
     debug_print(f"[DEBUG] No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
     return (100, 0.0)  # 100% failure rate when detection completely fails (prevents choosing unknown training)
 
@@ -459,20 +530,6 @@ def choose_best_training(training_results, config, current_stats):
         debug_print(f"[DEBUG] No training options with failure rate <= {max_failure}%")
         return None
     
-    # Filter by minimum score requirements
-    valid_options = {}
-    for k, v in capped_options.items():
-        score = v.get('score', 0)
-        if k == 'wit' and score < min_wit_score:
-            continue
-        if score < min_score:
-            continue
-        valid_options[k] = v
-    
-    if not valid_options:
-        debug_print(f"[DEBUG] No training options meet minimum score requirements")
-        return None
-    
     # Filter by stat caps BEFORE other filtering
     from core.logic import filter_by_stat_caps
     
@@ -486,6 +543,20 @@ def choose_best_training(training_results, config, current_stats):
     
     if not capped_options:
         debug_print(f"[DEBUG] All training options filtered out by stat caps")
+        return None
+    
+    # Filter by minimum score requirements
+    valid_options = {}
+    for k, v in capped_options.items():
+        score = v.get('score', 0)
+        if k == 'wit' and score < min_wit_score:
+            continue
+        if score < min_score:
+            continue
+        valid_options[k] = v
+    
+    if not valid_options:
+        debug_print(f"[DEBUG] No training options meet minimum score requirements")
         return None
     
     # Sort by priority stat order and then by score

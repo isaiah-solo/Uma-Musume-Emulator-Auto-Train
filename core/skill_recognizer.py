@@ -387,10 +387,10 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
                 if is_available:
                     available_matches.append((x, y, w, h))
                     
-            debug_print(f"[DEBUG] Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication, {len(available_matches)} available (bright) buttons")
+            debug_print(f"[DEBUG] Found {len(matches) if matches else 0} raw matches, {len(unique_matches)} after de-duplication, {len(available_matches)} available (bright) buttons")
         else:
             available_matches = unique_matches
-            debug_print(f"[DEBUG] Found {len(matches)} raw matches, {len(unique_matches)} after de-duplication")
+            debug_print(f"[DEBUG] Found {len(matches) if matches else 0} raw matches, {len(unique_matches)} after de-duplication")
         
         # Extract skill information if requested
         skills_info = []
@@ -441,7 +441,7 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
             'locations': available_matches,
             'skills': skills_info,
             'debug_image_path': debug_image_path,
-            'raw_matches': len(matches),
+            'raw_matches': len(matches) if matches else 0,
             'deduplicated_matches': len(unique_matches),
             'confidence_used': confidence,
             'overlap_threshold_used': overlap_threshold,

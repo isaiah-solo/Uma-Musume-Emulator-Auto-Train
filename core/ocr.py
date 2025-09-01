@@ -5,6 +5,7 @@ import os
 import sys
 from PIL import Image, ImageOps, ImageEnhance
 import json
+import time
 
 # Fix Windows console encoding for Unicode support
 if os.name == 'nt':  # Windows
@@ -44,6 +45,58 @@ try:
 except Exception:
     pass  # Fall back to system PATH
 
+def verify_tesseract_config():
+    """Verify which Tesseract configuration is being used"""
+    try:
+        # Get current tesseract command
+        tesseract_cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'system PATH')
+        print(f"🔍 Tesseract executable: {tesseract_cmd}")
+        
+        # Get current TESSDATA_PREFIX
+        tessdata_prefix = os.environ.get('TESSDATA_PREFIX', 'Not set')
+        print(f"🔍 TESSDATA_PREFIX: {tessdata_prefix}")
+        
+        # Check if custom tessdata is accessible
+        if os.path.exists(tessdata_dir):
+            custom_models = [f for f in os.listdir(tessdata_dir) if f.endswith('.traineddata')]
+            print(f"🔍 Custom tessdata models: {custom_models}")
+            
+            # Try to get tesseract info to see which models it can see
+            try:
+                version = pytesseract.get_tesseract_version()
+                languages = pytesseract.get_languages()
+                print(f"🔍 Tesseract version: {version}")
+                print(f"🔍 Available languages: {languages}")
+            except Exception as e:
+                print(f"🔍 Could not get Tesseract info: {e}")
+        else:
+            print(f"🔍 Custom tessdata directory not found: {tessdata_dir}")
+            
+    except Exception as e:
+        print(f"🔍 Error verifying Tesseract config: {e}")
+
+# Verify configuration on import
+if DEBUG_MODE:
+    verify_tesseract_config()
+
+# Verify tessdata directory exists and contains models
+if not os.path.exists(tessdata_dir):
+    print(f"⚠️  Warning: tessdata directory not found: {tessdata_dir}")
+    print("   Falling back to system Tesseract models")
+else:
+    # Check what models are available in custom tessdata
+    available_models = []
+    for file in os.listdir(tessdata_dir):
+        if file.endswith('.traineddata'):
+            available_models.append(file)
+    
+    if available_models:
+        print(f"✅ Using custom Tesseract models from: {tessdata_dir}")
+        print(f"   Available models: {', '.join(available_models)}")
+    else:
+        print(f"⚠️  tessdata directory exists but contains no .traineddata files: {tessdata_dir}")
+        print("   Falling back to system Tesseract models")
+
 def extract_text(pil_img: Image.Image) -> str:
     """Extract text from image using Tesseract OCR"""
     try:
@@ -53,11 +106,28 @@ def extract_text(pil_img: Image.Image) -> str:
         else:
             img_np = pil_img
             
+        # Debug info about which tessdata is being used
+        if DEBUG_MODE and os.path.exists(tessdata_dir):
+            debug_print(f"[DEBUG] Using custom tessdata from: {tessdata_dir}")
+            
         # Use Tesseract with custom configuration for better accuracy
         config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%().- "'
         text = pytesseract.image_to_string(img_np, config=config, lang='eng')
-        return text.strip()
+        result = text.strip()
+        
+        # If no text extracted and in debug mode, save debug image
+        if not result and DEBUG_MODE:
+            debug_filename = f"debug_ocr_text_failed_{int(time.time())}.png"
+            pil_img.save(debug_filename)
+            debug_print(f"[DEBUG] OCR text extraction failed, saved debug image: {debug_filename}")
+            debug_print(f"[DEBUG] Image size: {pil_img.size}")
+        
+        return result
     except Exception as e:
+        if DEBUG_MODE:
+            debug_filename = f"debug_ocr_text_error_{int(time.time())}.png"
+            pil_img.save(debug_filename)
+            debug_print(f"[DEBUG] OCR text extraction error: {e}, saved debug image: {debug_filename}")
         print(f"[WARNING] OCR extraction failed: {e}")
         return ""
 
@@ -73,8 +143,21 @@ def extract_number(pil_img: Image.Image) -> str:
         # Use Tesseract with configuration optimized for numbers
         config = '--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789 '
         text = pytesseract.image_to_string(img_np, config=config, lang='eng')
-        return text.strip()
+        result = text.strip()
+        
+        # If no number extracted and in debug mode, save debug image
+        if not result and DEBUG_MODE:
+            debug_filename = f"debug_ocr_number_failed_{int(time.time())}.png"
+            pil_img.save(debug_filename)
+            debug_print(f"[DEBUG] OCR number extraction failed, saved debug image: {debug_filename}")
+            debug_print(f"[DEBUG] Image size: {pil_img.size}")
+        
+        return result
     except Exception as e:
+        if DEBUG_MODE:
+            debug_filename = f"debug_ocr_number_error_{int(time.time())}.png"
+            pil_img.save(debug_filename)
+            debug_print(f"[DEBUG] OCR number extraction error: {e}, saved debug image: {debug_filename}")
         print(f"[WARNING] Number extraction failed: {e}")
         return ""
 

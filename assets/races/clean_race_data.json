@@ -11,7 +11,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Chukyo Turf Mile 1600m"
+      "description": "Chukyo Turf 1600m"
     },
     "Hakodate Junior Stakes": {
       "grade": "G3",
@@ -24,7 +24,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3100,
-      "description": "Hakodate Turf Sprint 1200m"
+      "description": "Hakodate Turf 1200m"
     }
   },
   "Junior Year Early Aug": {
@@ -39,7 +39,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Sapporo Turf Mile 1800m"
+      "description": "Sapporo Turf 1800m"
     },
     "Dahlia Sho": {
       "grade": "OP",
@@ -52,7 +52,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Niigata Turf Sprint 1400m",
+      "description": "Niigata Turf 1400m",
       "course": "Inner"
     },
     "Phoenix Sho": {
@@ -66,7 +66,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Kokura Turf Sprint 1200m"
+      "description": "Kokura Turf 1200m"
     }
   },
   "Junior Year Late Aug": {
@@ -81,7 +81,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Sapporo Turf Mile 1500m"
+      "description": "Sapporo Turf 1500m"
     },
     "Niigata Junior Stakes": {
       "grade": "G3",
@@ -94,7 +94,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3100,
-      "description": "Niigata Turf Mile 1600m",
+      "description": "Niigata Turf 1600m",
       "course": "Outer"
     }
   },
@@ -110,7 +110,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Kokura Junior Stakes": {
@@ -124,7 +124,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3100,
-      "description": "Kokura Turf Sprint 1200m"
+      "description": "Kokura Turf 1200m"
     },
     "Nojigiku Stakes": {
       "grade": "OP",
@@ -137,7 +137,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Hanshin Turf Mile 1800m",
+      "description": "Hanshin Turf 1800m",
       "course": "Outer"
     },
     "Sapporo Junior Stakes": {
@@ -151,7 +151,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3100,
-      "description": "Sapporo Turf Mile 1800m"
+      "description": "Sapporo Turf 1800m"
     },
     "Suzuran Sho": {
       "grade": "OP",
@@ -164,7 +164,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Sapporo Turf Sprint 1200m"
+      "description": "Sapporo Turf 1200m"
     }
   },
   "Junior Year Late Sep": {
@@ -179,7 +179,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "Fuyo Stakes": {
@@ -193,7 +193,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Kikyo Stakes": {
@@ -207,7 +207,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Hanshin Turf Sprint 1400m",
+      "description": "Hanshin Turf 1400m",
       "course": "Inner"
     },
     "Saffron Sho": {
@@ -221,7 +221,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     }
   },
@@ -237,7 +237,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Platanus Sho": {
@@ -251,7 +251,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Rindo Sho": {
       "grade": "Pre-OP",
@@ -264,7 +264,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Saudi Arabia Royal Cup": {
@@ -278,7 +278,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3300,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Shigiku Sho": {
       "grade": "Pre-OP",
@@ -291,7 +291,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     }
   },
@@ -307,7 +307,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2900,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Hagi Stakes": {
       "grade": "OP",
@@ -320,7 +320,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1700,
-      "description": "Kyoto Turf Mile 1800m",
+      "description": "Kyoto Turf 1800m",
       "course": "Outer"
     },
     "Ivy Stakes": {
@@ -334,7 +334,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1700,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Nadeshiko Sho": {
       "grade": "Pre-OP",
@@ -347,7 +347,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Dirt Sprint 1400m"
+      "description": "Kyoto Dirt 1400m"
     }
   },
   "Junior Year Early Nov": {
@@ -362,7 +362,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Fantasy Stakes": {
@@ -376,7 +376,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2900,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Fukushima Junior Stakes": {
@@ -390,7 +390,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Fukushima Turf Sprint 1200m"
+      "description": "Fukushima Turf 1200m"
     },
     "Hyakunichiso Tokubetsu": {
       "grade": "Pre-OP",
@@ -403,7 +403,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     },
     "Keio Hai Junior Stakes": {
       "grade": "G2",
@@ -416,7 +416,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Tokyo Turf Sprint 1400m"
+      "description": "Tokyo Turf 1400m"
     },
     "Kigiku Sho": {
       "grade": "Pre-OP",
@@ -429,7 +429,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     },
     "Kimmokusei Tokubetsu": {
@@ -443,7 +443,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Fukushima Turf Mile 1800m"
+      "description": "Fukushima Turf 1800m"
     },
     "Oxalis Sho": {
       "grade": "Pre-OP",
@@ -456,7 +456,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     }
   },
   "Junior Year Late Nov": {
@@ -471,7 +471,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Begonia Sho": {
       "grade": "Pre-OP",
@@ -484,7 +484,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Cattleya Sho": {
       "grade": "Pre-OP",
@@ -497,7 +497,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Habotan Sho": {
       "grade": "Pre-OP",
@@ -510,7 +510,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Koyamaki Sho": {
@@ -524,7 +524,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Chukyo Turf Mile 1600m"
+      "description": "Chukyo Turf 1600m"
     },
     "Kyoto Junior Stakes": {
       "grade": "G3",
@@ -537,7 +537,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3300,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     },
     "Mochinoki Sho": {
@@ -551,7 +551,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Dirt Mile 1800m"
+      "description": "Kyoto Dirt 1800m"
     },
     "Shiragiku Sho": {
       "grade": "Pre-OP",
@@ -564,7 +564,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Shumeigiku Sho": {
@@ -578,7 +578,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Tokyo Sports Hai Junior Stakes": {
@@ -592,7 +592,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3300,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     }
   },
   "Junior Year Early Dec": {
@@ -607,7 +607,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 7000,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Erica Sho": {
@@ -621,7 +621,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     },
     "Hanshin Juvenile Fillies": {
@@ -635,7 +635,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Hiiragi Sho": {
@@ -649,7 +649,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Kantsubaki Sho": {
@@ -663,7 +663,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Chukyo Dirt Sprint 1400m"
+      "description": "Chukyo Dirt 1400m"
     },
     "Kuromatsu Sho": {
       "grade": "Pre-OP",
@@ -676,7 +676,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "Manryo Sho": {
@@ -690,7 +690,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Hanshin Turf Sprint 1400m",
+      "description": "Hanshin Turf 1400m",
       "course": "Inner"
     },
     "Sazanka Sho": {
@@ -704,7 +704,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Hanshin Turf Sprint 1200m",
+      "description": "Hanshin Turf 1200m",
       "course": "Inner"
     },
     "Tsuwabuki Sho": {
@@ -718,7 +718,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Chukyo Turf Sprint 1400m"
+      "description": "Chukyo Turf 1400m"
     }
   },
   "Junior Year Late Dec": {
@@ -733,7 +733,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1600,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "Hopeful Stakes": {
@@ -747,7 +747,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 7000,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Senryo Sho": {
@@ -761,7 +761,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1000,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     }
   },
@@ -777,7 +777,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3500,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Junior Cup": {
@@ -791,7 +791,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Keisei Hai": {
@@ -805,7 +805,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Kobai Stakes": {
@@ -819,7 +819,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Shinzan Kinen": {
@@ -833,7 +833,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     }
   },
@@ -849,7 +849,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Tokyo Turf Sprint 1400m"
+      "description": "Tokyo Turf 1400m"
     },
     "Wakagoma Stakes": {
       "grade": "OP",
@@ -862,7 +862,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     }
   },
@@ -878,7 +878,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Kisaragi Sho": {
@@ -892,7 +892,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Kyoto Turf Mile 1800m",
+      "description": "Kyoto Turf 1800m",
       "course": "Outer"
     },
     "Kyodo News Hai": {
@@ -906,7 +906,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Queen Cup": {
       "grade": "G3",
@@ -919,7 +919,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3500,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     }
   },
   "Classic Year Late Feb": {
@@ -934,7 +934,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 1900,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Marguerite Stakes": {
       "grade": "OP",
@@ -947,7 +947,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Hanshin Turf Sprint 1200m",
+      "description": "Hanshin Turf 1200m",
       "course": "Inner"
     },
     "Sumire Stakes": {
@@ -961,7 +961,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Hanshin Turf Medium 2200m",
+      "description": "Hanshin Turf 2200m",
       "course": "Inner"
     }
   },
@@ -977,7 +977,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Fillies' Revue": {
@@ -991,7 +991,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5200,
-      "description": "Hanshin Turf Sprint 1400m",
+      "description": "Hanshin Turf 1400m",
       "course": "Inner"
     },
     "Shoryu Stakes": {
@@ -1005,7 +1005,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 1800,
-      "description": "Chukyo Dirt Sprint 1400m"
+      "description": "Chukyo Dirt 1400m"
     },
     "Tulip Sho": {
       "grade": "G2",
@@ -1018,7 +1018,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5200,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Yayoi Sho": {
@@ -1032,7 +1032,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     }
   },
@@ -1048,7 +1048,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Chukyo Turf Sprint 1400m"
+      "description": "Chukyo Turf 1400m"
     },
     "Flower Cup": {
       "grade": "G3",
@@ -1061,7 +1061,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3500,
-      "description": "Nakayama Turf Mile 1800m",
+      "description": "Nakayama Turf 1800m",
       "course": "Inner"
     },
     "Mainichi Hai": {
@@ -1075,7 +1075,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Hanshin Turf Mile 1800m",
+      "description": "Hanshin Turf 1800m",
       "course": "Outer"
     },
     "Spring Stakes": {
@@ -1089,7 +1089,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Nakayama Turf Mile 1800m",
+      "description": "Nakayama Turf 1800m",
       "course": "Inner"
     },
     "Wakaba Stakes": {
@@ -1103,7 +1103,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     }
   },
@@ -1119,7 +1119,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Fukuryu Stakes": {
@@ -1133,7 +1133,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 1800,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     },
     "New Zealand Trophy": {
       "grade": "G2",
@@ -1146,7 +1146,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Oka Sho": {
@@ -1160,7 +1160,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 10500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Satsuki Sho": {
@@ -1174,7 +1174,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 11000,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Wasurenagusa Sho": {
@@ -1188,7 +1188,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     }
   },
@@ -1204,7 +1204,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Tokyo Turf Medium 2400m"
+      "description": "Tokyo Turf 2400m"
     },
     "Flora Stakes": {
       "grade": "G2",
@@ -1217,7 +1217,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5200,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     },
     "Sweetpea Stakes": {
       "grade": "OP",
@@ -1230,7 +1230,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Tachibana Stakes": {
       "grade": "OP",
@@ -1243,7 +1243,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Tango Stakes": {
@@ -1257,7 +1257,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 1800,
-      "description": "Kyoto Dirt Sprint 1400m"
+      "description": "Kyoto Dirt 1400m"
     }
   },
   "Classic Year Early May": {
@@ -1272,7 +1272,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Kyoto Turf Medium 2200m",
+      "description": "Kyoto Turf 2200m",
       "course": "Outer"
     },
     "NHK Mile Cup": {
@@ -1286,7 +1286,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 10500,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Principal Stakes": {
       "grade": "OP",
@@ -1299,7 +1299,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     },
     "Seiryu Stakes": {
       "grade": "OP",
@@ -1312,7 +1312,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 1800,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     }
   },
   "Classic Year Late May": {
@@ -1327,7 +1327,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     },
     "Hosu Stakes": {
@@ -1341,7 +1341,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 1900,
-      "description": "Kyoto Dirt Mile 1800m"
+      "description": "Kyoto Dirt 1800m"
     },
     "Japanese Oaks": {
       "grade": "G1",
@@ -1354,7 +1354,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 11000,
-      "description": "Tokyo Turf Medium 2400m"
+      "description": "Tokyo Turf 2400m"
     },
     "Shirayuri Stakes": {
       "grade": "OP",
@@ -1367,7 +1367,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2000,
-      "description": "Kyoto Turf Mile 1800m",
+      "description": "Kyoto Turf 1800m",
       "course": "Outer"
     },
     "Tokyo Yushun (Japanese Derby)": {
@@ -1381,7 +1381,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 20000,
-      "description": "Tokyo Turf Medium 2400m"
+      "description": "Tokyo Turf 2400m"
     }
   },
   "Classic Year Early Jun": {
@@ -1396,7 +1396,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Mermaid Stakes": {
       "grade": "G3",
@@ -1409,7 +1409,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     },
     "Naruo Kinen": {
@@ -1423,7 +1423,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     },
     "Sleipnir Stakes": {
@@ -1437,7 +1437,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Tokyo Dirt Medium 2100m"
+      "description": "Tokyo Dirt 2100m"
     },
     "Tempozan Stakes": {
       "grade": "OP",
@@ -1450,7 +1450,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hanshin Dirt Sprint 1400m"
+      "description": "Hanshin Dirt 1400m"
     },
     "Yasuda Kinen": {
       "grade": "G1",
@@ -1463,7 +1463,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 13000,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     }
   },
   "Classic Year Late Jun": {
@@ -1478,7 +1478,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Hakodate Sprint Stakes": {
       "grade": "G3",
@@ -1491,7 +1491,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Hakodate Turf Sprint 1200m"
+      "description": "Hakodate Turf 1200m"
     },
     "Onuma Stakes": {
       "grade": "OP",
@@ -1504,7 +1504,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Hakodate Dirt Mile 1700m"
+      "description": "Hakodate Dirt 1700m"
     },
     "Paradise Stakes": {
       "grade": "OP",
@@ -1517,7 +1517,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Tokyo Turf Sprint 1400m"
+      "description": "Tokyo Turf 1400m"
     },
     "Sannomiya Stakes": {
       "grade": "OP",
@@ -1530,7 +1530,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hanshin Dirt Mile 1800m"
+      "description": "Hanshin Dirt 1800m"
     },
     "Takarazuka Kinen": {
       "grade": "G1",
@@ -1543,7 +1543,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 15000,
-      "description": "Hanshin Turf Medium 2200m",
+      "description": "Hanshin Turf 2200m",
       "course": "Inner"
     },
     "Unicorn Stakes": {
@@ -1557,7 +1557,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3500,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Yonago Stakes": {
       "grade": "OP",
@@ -1570,7 +1570,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     }
   },
@@ -1586,7 +1586,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Chukyo Turf Sprint 1200m"
+      "description": "Chukyo Turf 1200m"
     },
     "Hakodate Kinen": {
       "grade": "G3",
@@ -1599,7 +1599,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Hakodate Turf Medium 2000m"
+      "description": "Hakodate Turf 2000m"
     },
     "Japan Dirt Derby": {
       "grade": "G1",
@@ -1612,7 +1612,7 @@
       "season": "Summer",
       "time_of_day": "Night",
       "fans": 4500,
-      "description": "Oi Dirt Medium 2000m"
+      "description": "Oi Dirt 2000m"
     },
     "Marine Stakes": {
       "grade": "OP",
@@ -1625,7 +1625,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hakodate Dirt Mile 1700m"
+      "description": "Hakodate Dirt 1700m"
     },
     "Meitetsu Hai": {
       "grade": "OP",
@@ -1638,7 +1638,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Chukyo Dirt Mile 1800m"
+      "description": "Chukyo Dirt 1800m"
     },
     "Procyon Stakes": {
       "grade": "G3",
@@ -1651,7 +1651,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Chukyo Dirt Sprint 1400m"
+      "description": "Chukyo Dirt 1400m"
     },
     "Radio Nikkei Sho": {
       "grade": "G3",
@@ -1664,7 +1664,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Fukushima Turf Mile 1800m"
+      "description": "Fukushima Turf 1800m"
     },
     "Tanabata Sho": {
       "grade": "G3",
@@ -1677,7 +1677,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Fukushima Turf Medium 2000m"
+      "description": "Fukushima Turf 2000m"
     },
     "Tomoe Sho": {
       "grade": "OP",
@@ -1690,7 +1690,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Hakodate Turf Mile 1800m"
+      "description": "Hakodate Turf 1800m"
     }
   },
   "Classic Year Late Jul": {
@@ -1705,7 +1705,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Chukyo Turf Mile 1600m"
+      "description": "Chukyo Turf 1600m"
     },
     "Fukushima TV Open": {
       "grade": "OP",
@@ -1718,7 +1718,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Fukushima Turf Sprint 1200m"
+      "description": "Fukushima Turf 1200m"
     },
     "Ibis Summer Dash": {
       "grade": "G3",
@@ -1731,7 +1731,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Niigata Turf Sprint 1000m"
+      "description": "Niigata Turf 1000m"
     },
     "Queen Stakes": {
       "grade": "G3",
@@ -1744,7 +1744,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Sapporo Turf Mile 1800m"
+      "description": "Sapporo Turf 1800m"
     }
   },
   "Classic Year Early Aug": {
@@ -1759,7 +1759,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kokura Dirt Mile 1700m"
+      "description": "Kokura Dirt 1700m"
     },
     "Elm Stakes": {
       "grade": "G3",
@@ -1772,7 +1772,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Sapporo Dirt Mile 1700m"
+      "description": "Sapporo Dirt 1700m"
     },
     "Kanetsu Stakes": {
       "grade": "OP",
@@ -1785,7 +1785,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Niigata Turf Mile 1800m",
+      "description": "Niigata Turf 1800m",
       "course": "Outer"
     },
     "Kokura Kinen": {
@@ -1799,7 +1799,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Kokura Turf Medium 2000m"
+      "description": "Kokura Turf 2000m"
     },
     "Leopard Stakes": {
       "grade": "G3",
@@ -1812,7 +1812,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4000,
-      "description": "Niigata Dirt Mile 1800m"
+      "description": "Niigata Dirt 1800m"
     },
     "Sapporo Nikkei Open": {
       "grade": "OP",
@@ -1825,7 +1825,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Sapporo Turf Long 2600m"
+      "description": "Sapporo Turf 2600m"
     },
     "Sekiya Kinen": {
       "grade": "G3",
@@ -1838,7 +1838,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Niigata Turf Mile 1600m",
+      "description": "Niigata Turf 1600m",
       "course": "Outer"
     },
     "UHB Sho": {
@@ -1852,7 +1852,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Sapporo Turf Sprint 1200m"
+      "description": "Sapporo Turf 1200m"
     }
   },
   "Classic Year Late Aug": {
@@ -1867,7 +1867,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Niigata Dirt Mile 1800m"
+      "description": "Niigata Dirt 1800m"
     },
     "Keeneland Cup": {
       "grade": "G3",
@@ -1880,7 +1880,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Sapporo Turf Sprint 1200m"
+      "description": "Sapporo Turf 1200m"
     },
     "Kitakyushu Kinen": {
       "grade": "G3",
@@ -1893,7 +1893,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Kokura Turf Sprint 1200m"
+      "description": "Kokura Turf 1200m"
     },
     "Kokura Nikkei Open": {
       "grade": "OP",
@@ -1906,7 +1906,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Kokura Turf Mile 1800m"
+      "description": "Kokura Turf 1800m"
     },
     "NST Sho": {
       "grade": "OP",
@@ -1919,7 +1919,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Niigata Dirt Sprint 1200m"
+      "description": "Niigata Dirt 1200m"
     },
     "Sapporo Kinen": {
       "grade": "G2",
@@ -1932,7 +1932,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 7000,
-      "description": "Sapporo Turf Medium 2000m"
+      "description": "Sapporo Turf 2000m"
     },
     "Toki Stakes": {
       "grade": "OP",
@@ -1945,7 +1945,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Niigata Turf Sprint 1400m",
+      "description": "Niigata Turf 1400m",
       "course": "Inner"
     }
   },
@@ -1961,7 +1961,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 5900,
-      "description": "Hanshin Turf Sprint 1200m",
+      "description": "Hanshin Turf 1200m",
       "course": "Inner"
     },
     "Enif Stakes": {
@@ -1975,7 +1975,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Hanshin Dirt Sprint 1400m"
+      "description": "Hanshin Dirt 1400m"
     },
     "Keisei Hai Autumn Handicap": {
       "grade": "G3",
@@ -1988,7 +1988,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Niigata Kinen": {
@@ -2002,7 +2002,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Niigata Turf Medium 2000m",
+      "description": "Niigata Turf 2000m",
       "course": "Outer"
     },
     "Prix Niel": {
@@ -2016,7 +2016,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 5000,
-      "description": "Longchamp Turf Medium 2400m"
+      "description": "Longchamp Turf 2400m"
     },
     "Radio Nippon Sho": {
       "grade": "OP",
@@ -2029,7 +2029,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     },
     "Rose Stakes": {
       "grade": "G2",
@@ -2042,7 +2042,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 5200,
-      "description": "Hanshin Turf Mile 1800m",
+      "description": "Hanshin Turf 1800m",
       "course": "Outer"
     },
     "Shion Stakes": {
@@ -2056,7 +2056,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 3500,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "Tancho Stakes": {
@@ -2070,7 +2070,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Sapporo Turf Long 2600m"
+      "description": "Sapporo Turf 2600m"
     }
   },
   "Classic Year Late Sep": {
@@ -2085,7 +2085,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Nakayama Turf Medium 2200m",
+      "description": "Nakayama Turf 2200m",
       "course": "Outer"
     },
     "Kobe Shimbun Hai": {
@@ -2099,7 +2099,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Hanshin Turf Medium 2400m",
+      "description": "Hanshin Turf 2400m",
       "course": "Outer"
     },
     "Nagatsuki Stakes": {
@@ -2113,7 +2113,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Sprint 1200m"
+      "description": "Nakayama Dirt 1200m"
     },
     "Port Island Stakes": {
       "grade": "OP",
@@ -2126,7 +2126,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Sirius Stakes": {
@@ -2140,7 +2140,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Hanshin Dirt Medium 2000m"
+      "description": "Hanshin Dirt 2000m"
     },
     "Sprinters Stakes": {
       "grade": "G1",
@@ -2153,7 +2153,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 13000,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "St. Lite Kinen": {
@@ -2167,7 +2167,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5400,
-      "description": "Nakayama Turf Medium 2200m",
+      "description": "Nakayama Turf 2200m",
       "course": "Outer"
     }
   },
@@ -2183,7 +2183,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5500,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Green Channel Cup": {
       "grade": "OP",
@@ -2196,7 +2196,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     },
     "Kyoto Daishoten": {
       "grade": "G2",
@@ -2209,7 +2209,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Kyoto Turf Medium 2400m",
+      "description": "Kyoto Turf 2400m",
       "course": "Outer"
     },
     "Mainichi Okan": {
@@ -2223,7 +2223,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "October Stakes": {
       "grade": "OP",
@@ -2236,7 +2236,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     },
     "Opal Stakes": {
       "grade": "OP",
@@ -2249,7 +2249,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     },
     "Shinetsu Stakes": {
@@ -2263,7 +2263,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Niigata Turf Sprint 1400m",
+      "description": "Niigata Turf 1400m",
       "course": "Inner"
     },
     "Uzumasa Stakes": {
@@ -2277,7 +2277,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Mile 1800m"
+      "description": "Kyoto Dirt 1800m"
     }
   },
   "Classic Year Late Oct": {
@@ -2292,7 +2292,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Tokyo Dirt Medium 2100m"
+      "description": "Tokyo Dirt 2100m"
     },
     "Cassiopeia Stakes": {
       "grade": "OP",
@@ -2305,7 +2305,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Kyoto Turf Mile 1800m",
+      "description": "Kyoto Turf 1800m",
       "course": "Outer"
     },
     "Fuji Stakes": {
@@ -2319,7 +2319,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5900,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Kikuka Sho": {
       "grade": "G1",
@@ -2332,7 +2332,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 12000,
-      "description": "Kyoto Turf Long 3000m",
+      "description": "Kyoto Turf 3000m",
       "course": "Outer"
     },
     "Lumiere Autumn Dash": {
@@ -2346,7 +2346,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Niigata Turf Sprint 1000m"
+      "description": "Niigata Turf 1000m"
     },
     "Muromachi Stakes": {
       "grade": "OP",
@@ -2359,7 +2359,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Sprint 1200m"
+      "description": "Kyoto Dirt 1200m"
     },
     "Shuka Sho": {
       "grade": "G1",
@@ -2372,7 +2372,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 10000,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     },
     "Swan Stakes": {
@@ -2386,7 +2386,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5900,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Tenno Sho (Autumn)": {
@@ -2400,7 +2400,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 15000,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     }
   },
   "Classic Year Early Nov": {
@@ -2415,7 +2415,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 5700,
-      "description": "Tokyo Turf Long 2500m"
+      "description": "Tokyo Turf 2500m"
     },
     "Fukushima Kinen": {
       "grade": "G3",
@@ -2428,7 +2428,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Fukushima Turf Medium 2000m"
+      "description": "Fukushima Turf 2000m"
     },
     "JBC Classic (1)": {
       "grade": "G1",
@@ -2441,7 +2441,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 8000,
-      "description": "Oi Dirt Medium 2000m"
+      "description": "Oi Dirt 2000m"
     },
     "JBC Classic (2)": {
       "grade": "G1",
@@ -2454,7 +2454,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 8000,
-      "description": "Kawasaki Dirt Medium 2100m"
+      "description": "Kawasaki Dirt 2100m"
     },
     "JBC Classic (3)": {
       "grade": "G1",
@@ -2467,7 +2467,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 8000,
-      "description": "Funabashi Dirt Mile 1800m"
+      "description": "Funabashi Dirt 1800m"
     },
     "JBC Classic (4)": {
       "grade": "G1",
@@ -2480,7 +2480,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 8000,
-      "description": "Morioka Dirt Medium 2000m"
+      "description": "Morioka Dirt 2000m"
     },
     "JBC Ladies’ Classic (1)": {
       "grade": "G1",
@@ -2493,7 +2493,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 4100,
-      "description": "Oi Dirt Mile 1800m"
+      "description": "Oi Dirt 1800m"
     },
     "JBC Ladies’ Classic (2)": {
       "grade": "G1",
@@ -2506,7 +2506,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 4100,
-      "description": "Kawasaki Dirt Mile 1600m"
+      "description": "Kawasaki Dirt 1600m"
     },
     "JBC Ladies’ Classic (3)": {
       "grade": "G1",
@@ -2519,7 +2519,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 4100,
-      "description": "Funabashi Dirt Mile 1600m"
+      "description": "Funabashi Dirt 1600m"
     },
     "JBC Ladies’ Classic (4)": {
       "grade": "G1",
@@ -2532,7 +2532,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 4100,
-      "description": "Morioka Dirt Mile 1800m"
+      "description": "Morioka Dirt 1800m"
     },
     "JBC Sprint (1)": {
       "grade": "G1",
@@ -2545,7 +2545,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 6000,
-      "description": "Oi Dirt Sprint 1200m"
+      "description": "Oi Dirt 1200m"
     },
     "JBC Sprint (2)": {
       "grade": "G1",
@@ -2558,7 +2558,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 6000,
-      "description": "Kawasaki Dirt Sprint 1400m"
+      "description": "Kawasaki Dirt 1400m"
     },
     "JBC Sprint (3)": {
       "grade": "G1",
@@ -2571,7 +2571,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 6000,
-      "description": "Funabashi Dirt Sprint 1000m"
+      "description": "Funabashi Dirt 1000m"
     },
     "JBC Sprint (4)": {
       "grade": "G1",
@@ -2584,7 +2584,7 @@
       "season": "Autumn",
       "time_of_day": "Evening",
       "fans": 6000,
-      "description": "Morioka Dirt Sprint 1200m"
+      "description": "Morioka Dirt 1200m"
     },
     "Miyako Stakes": {
       "grade": "G3",
@@ -2597,7 +2597,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Kyoto Dirt Mile 1800m"
+      "description": "Kyoto Dirt 1800m"
     },
     "Musashino Stakes": {
       "grade": "G3",
@@ -2610,7 +2610,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Oro Cup": {
       "grade": "OP",
@@ -2623,7 +2623,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Tokyo Turf Sprint 1400m"
+      "description": "Tokyo Turf 1400m"
     },
     "Queen Elizabeth II Cup": {
       "grade": "G1",
@@ -2636,7 +2636,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 10500,
-      "description": "Kyoto Turf Medium 2200m",
+      "description": "Kyoto Turf 2200m",
       "course": "Outer"
     }
   },
@@ -2652,7 +2652,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Kyoto Turf Medium 2000m",
+      "description": "Kyoto Turf 2000m",
       "course": "Inner"
     },
     "Autumn Leaf Stakes": {
@@ -2666,7 +2666,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Sprint 1200m"
+      "description": "Kyoto Dirt 1200m"
     },
     "Capital Stakes": {
       "grade": "OP",
@@ -2679,7 +2679,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Fukushima Minyu Cup": {
       "grade": "OP",
@@ -2692,7 +2692,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Fukushima Dirt Mile 1700m"
+      "description": "Fukushima Dirt 1700m"
     },
     "Japan Cup": {
       "grade": "G1",
@@ -2705,7 +2705,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 30000,
-      "description": "Tokyo Turf Medium 2400m"
+      "description": "Tokyo Turf 2400m"
     },
     "Keihan Hai": {
       "grade": "G3",
@@ -2718,7 +2718,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     },
     "Mile Championship": {
@@ -2732,7 +2732,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 11000,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Shimotsuki Stakes": {
@@ -2746,7 +2746,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     }
   },
   "Classic Year Early Dec": {
@@ -2761,7 +2761,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Nakayama Dirt Sprint 1200m"
+      "description": "Nakayama Dirt 1200m"
     },
     "Challenge Cup": {
       "grade": "G3",
@@ -2774,7 +2774,7 @@
       "season": "Autumn",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     },
     "Champions Cup": {
@@ -2788,7 +2788,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 10000,
-      "description": "Chukyo Dirt Mile 1800m"
+      "description": "Chukyo Dirt 1800m"
     },
     "Chunichi Shimbun Hai": {
       "grade": "G3",
@@ -2801,7 +2801,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Chukyo Turf Medium 2000m"
+      "description": "Chukyo Turf 2000m"
     },
     "December Stakes": {
       "grade": "OP",
@@ -2814,7 +2814,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Nakayama Turf Mile 1800m",
+      "description": "Nakayama Turf 1800m",
       "course": "Inner"
     },
     "Lapis Lazuli Stakes": {
@@ -2828,7 +2828,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "Rigel Stakes": {
@@ -2842,7 +2842,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Shiwasu Stakes": {
@@ -2856,7 +2856,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     },
     "Stayers Stakes": {
       "grade": "G2",
@@ -2869,7 +2869,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6200,
-      "description": "Nakayama Turf Long 3600m",
+      "description": "Nakayama Turf 3600m",
       "course": "Inner"
     },
     "Tanzanite Stakes": {
@@ -2883,7 +2883,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Hanshin Turf Sprint 1200m",
+      "description": "Hanshin Turf 1200m",
       "course": "Inner"
     },
     "Turquoise Stakes": {
@@ -2897,7 +2897,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     }
   },
@@ -2913,7 +2913,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 30000,
-      "description": "Nakayama Turf Long 2500m",
+      "description": "Nakayama Turf 2500m",
       "course": "Inner"
     },
     "Betelgeuse Stakes": {
@@ -2927,7 +2927,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hanshin Dirt Mile 1800m"
+      "description": "Hanshin Dirt 1800m"
     },
     "Galaxy Stakes": {
       "grade": "OP",
@@ -2940,7 +2940,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hanshin Dirt Sprint 1400m"
+      "description": "Hanshin Dirt 1400m"
     },
     "Hanshin Cup": {
       "grade": "G2",
@@ -2953,7 +2953,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Hanshin Turf Sprint 1400m",
+      "description": "Hanshin Turf 1400m",
       "course": "Inner"
     },
     "Tokyo Daishoten": {
@@ -2967,7 +2967,7 @@
       "season": "Winter",
       "time_of_day": "Evening",
       "fans": 8000,
-      "description": "Oi Dirt Medium 2000m"
+      "description": "Oi Dirt 2000m"
     }
   },
   "Senior Year Early Jan": {
@@ -2982,7 +2982,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Chukyo Turf Medium 2000m"
+      "description": "Chukyo Turf 2000m"
     },
     "Carbuncle Stakes": {
       "grade": "OP",
@@ -2995,7 +2995,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "January Stakes": {
@@ -3009,7 +3009,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Sprint 1200m"
+      "description": "Nakayama Dirt 1200m"
     },
     "Kyoto Kimpai": {
       "grade": "G3",
@@ -3022,7 +3022,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Manyo Stakes": {
@@ -3036,7 +3036,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Kyoto Turf Long 3000m",
+      "description": "Kyoto Turf 3000m",
       "course": "Outer"
     },
     "Nakayama Kimpai": {
@@ -3050,7 +3050,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Nakayama Turf Medium 2000m",
+      "description": "Nakayama Turf 2000m",
       "course": "Inner"
     },
     "New Year Stakes": {
@@ -3064,7 +3064,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Nikkei Shinshun Hai": {
@@ -3078,7 +3078,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 5700,
-      "description": "Kyoto Turf Medium 2400m",
+      "description": "Kyoto Turf 2400m",
       "course": "Outer"
     },
     "Pollux Stakes": {
@@ -3092,7 +3092,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     },
     "Yodo Tankyori Stakes": {
       "grade": "OP",
@@ -3105,7 +3105,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     }
   },
@@ -3121,7 +3121,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6200,
-      "description": "Nakayama Turf Medium 2200m",
+      "description": "Nakayama Turf 2200m",
       "course": "Outer"
     },
     "Negishi Stakes": {
@@ -3135,7 +3135,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     },
     "Shirafuji Stakes": {
       "grade": "OP",
@@ -3148,7 +3148,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Tokyo Turf Medium 2000m"
+      "description": "Tokyo Turf 2000m"
     },
     "Silk Road Stakes": {
       "grade": "G3",
@@ -3161,7 +3161,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     },
     "Subaru Stakes": {
@@ -3175,7 +3175,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Kyoto Dirt Sprint 1400m"
+      "description": "Kyoto Dirt 1400m"
     },
     "Tokai Stakes": {
       "grade": "G2",
@@ -3188,7 +3188,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 5500,
-      "description": "Chukyo Dirt Mile 1800m"
+      "description": "Chukyo Dirt 1800m"
     }
   },
   "Senior Year Early Feb": {
@@ -3203,7 +3203,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Medium 1900m"
+      "description": "Kyoto Dirt 1900m"
     },
     "Kyoto Kinen": {
       "grade": "G2",
@@ -3216,7 +3216,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6200,
-      "description": "Kyoto Turf Medium 2200m",
+      "description": "Kyoto Turf 2200m",
       "course": "Outer"
     },
     "Rakuyo Stakes": {
@@ -3230,7 +3230,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Tokyo Shimbun Hai": {
@@ -3244,7 +3244,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     },
     "Valentine Stakes": {
       "grade": "OP",
@@ -3257,7 +3257,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     },
     "Yamato Stakes": {
       "grade": "OP",
@@ -3270,7 +3270,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Sprint 1200m"
+      "description": "Kyoto Dirt 1200m"
     }
   },
   "Senior Year Late Feb": {
@@ -3285,7 +3285,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Tokyo Turf Long 3400m"
+      "description": "Tokyo Turf 3400m"
     },
     "February Stakes": {
       "grade": "G1",
@@ -3298,7 +3298,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 10000,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Hankyu Hai": {
       "grade": "G3",
@@ -3311,7 +3311,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Hanshin Turf Sprint 1400m",
+      "description": "Hanshin Turf 1400m",
       "course": "Inner"
     },
     "Kitakyushu Tankyori Stakes": {
@@ -3325,7 +3325,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Kokura Turf Sprint 1200m"
+      "description": "Kokura Turf 1200m"
     },
     "Kokura Daishoten": {
       "grade": "G3",
@@ -3338,7 +3338,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Kokura Turf Mile 1800m"
+      "description": "Kokura Turf 1800m"
     },
     "Kyoto Umamusume Stakes": {
       "grade": "G3",
@@ -3351,7 +3351,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Nakayama Kinen": {
@@ -3365,7 +3365,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Nakayama Turf Mile 1800m",
+      "description": "Nakayama Turf 1800m",
       "course": "Inner"
     },
     "Sobu Stakes": {
@@ -3379,7 +3379,7 @@
       "season": "Winter",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     }
   },
   "Senior Year Early Mar": {
@@ -3394,7 +3394,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Chukyo Turf Medium 2000m"
+      "description": "Chukyo Turf 2000m"
     },
     "Kochi Stakes": {
       "grade": "OP",
@@ -3407,7 +3407,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Nakayama Umamusume Stakes": {
@@ -3421,7 +3421,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Nakayama Turf Mile 1800m",
+      "description": "Nakayama Turf 1800m",
       "course": "Inner"
     },
     "Nigawa Stakes": {
@@ -3435,7 +3435,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Hanshin Dirt Medium 2000m"
+      "description": "Hanshin Dirt 2000m"
     },
     "Ocean Stakes": {
       "grade": "G3",
@@ -3448,7 +3448,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     },
     "Osakajo Stakes": {
@@ -3462,7 +3462,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Hanshin Turf Mile 1800m",
+      "description": "Hanshin Turf 1800m",
       "course": "Outer"
     },
     "Polaris Stakes": {
@@ -3476,7 +3476,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Hanshin Dirt Sprint 1400m"
+      "description": "Hanshin Dirt 1400m"
     }
   },
   "Senior Year Late Mar": {
@@ -3491,7 +3491,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Nakayama Dirt Sprint 1200m"
+      "description": "Nakayama Dirt 1200m"
     },
     "Hanshin Daishoten": {
       "grade": "G2",
@@ -3504,7 +3504,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Hanshin Turf Long 3000m",
+      "description": "Hanshin Turf 3000m",
       "course": "Inner"
     },
     "March Stakes": {
@@ -3518,7 +3518,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Nakayama Dirt Mile 1800m"
+      "description": "Nakayama Dirt 1800m"
     },
     "Nikkei Sho": {
       "grade": "G2",
@@ -3531,7 +3531,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 6700,
-      "description": "Nakayama Turf Long 2500m",
+      "description": "Nakayama Turf 2500m",
       "course": "Inner"
     },
     "Osaka Hai": {
@@ -3545,7 +3545,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 13500,
-      "description": "Hanshin Turf Medium 2000m",
+      "description": "Hanshin Turf 2000m",
       "course": "Inner"
     },
     "Rokko Stakes": {
@@ -3559,7 +3559,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Takamatsunomiya Kinen": {
@@ -3573,7 +3573,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 13000,
-      "description": "Chukyo Turf Sprint 1200m"
+      "description": "Chukyo Turf 1200m"
     }
   },
   "Senior Year Early Apr": {
@@ -3588,7 +3588,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Hanshin Dirt Mile 1800m"
+      "description": "Hanshin Dirt 1800m"
     },
     "Azumakofuji Stakes": {
       "grade": "OP",
@@ -3601,7 +3601,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Fukushima Dirt Mile 1700m"
+      "description": "Fukushima Dirt 1700m"
     },
     "Coral Stakes": {
       "grade": "OP",
@@ -3614,7 +3614,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Hanshin Dirt Sprint 1400m"
+      "description": "Hanshin Dirt 1400m"
     },
     "Fukushima Mimpo Hai": {
       "grade": "OP",
@@ -3627,7 +3627,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Fukushima Turf Medium 2000m"
+      "description": "Fukushima Turf 2000m"
     },
     "Hanshin Umamusume Stakes": {
       "grade": "G2",
@@ -3640,7 +3640,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5500,
-      "description": "Hanshin Turf Mile 1600m",
+      "description": "Hanshin Turf 1600m",
       "course": "Outer"
     },
     "Keiyo Stakes": {
@@ -3654,7 +3654,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Nakayama Dirt Sprint 1200m"
+      "description": "Nakayama Dirt 1200m"
     },
     "Lord Derby Challenge Trophy": {
       "grade": "G3",
@@ -3667,7 +3667,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3900,
-      "description": "Nakayama Turf Mile 1600m",
+      "description": "Nakayama Turf 1600m",
       "course": "Outer"
     },
     "Shunrai Stakes": {
@@ -3681,7 +3681,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Nakayama Turf Sprint 1200m",
+      "description": "Nakayama Turf 1200m",
       "course": "Outer"
     }
   },
@@ -3697,7 +3697,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3800,
-      "description": "Fukushima Turf Mile 1800m"
+      "description": "Fukushima Turf 1800m"
     },
     "Milers Cup": {
       "grade": "G2",
@@ -3710,7 +3710,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5900,
-      "description": "Kyoto Turf Mile 1600m",
+      "description": "Kyoto Turf 1600m",
       "course": "Outer"
     },
     "Oasis Stakes": {
@@ -3724,7 +3724,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Tokyo Dirt Mile 1600m"
+      "description": "Tokyo Dirt 1600m"
     },
     "Tenno Sho (Spring)": {
       "grade": "G1",
@@ -3737,7 +3737,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 15000,
-      "description": "Kyoto Turf Long 3200m",
+      "description": "Kyoto Turf 3200m",
       "course": "Outer"
     },
     "Tennozan Stakes": {
@@ -3751,7 +3751,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Kyoto Dirt Sprint 1200m"
+      "description": "Kyoto Dirt 1200m"
     }
   },
   "Senior Year Early May": {
@@ -3766,7 +3766,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Tokyo Dirt Medium 2100m"
+      "description": "Tokyo Dirt 2100m"
     },
     "Keio Hai Spring Cup": {
       "grade": "G2",
@@ -3779,7 +3779,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5900,
-      "description": "Tokyo Turf Sprint 1400m"
+      "description": "Tokyo Turf 1400m"
     },
     "Kurama Stakes": {
       "grade": "OP",
@@ -3792,7 +3792,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Kyoto Turf Sprint 1200m",
+      "description": "Kyoto Turf 1200m",
       "course": "Inner"
     },
     "Metropolitan Stakes": {
@@ -3806,7 +3806,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Tokyo Turf Medium 2400m"
+      "description": "Tokyo Turf 2400m"
     },
     "Miyakooji Stakes": {
       "grade": "OP",
@@ -3819,7 +3819,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2600,
-      "description": "Kyoto Turf Mile 1800m",
+      "description": "Kyoto Turf 1800m",
       "course": "Outer"
     },
     "Niigata Daishoten": {
@@ -3833,7 +3833,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 4100,
-      "description": "Niigata Turf Medium 2000m",
+      "description": "Niigata Turf 2000m",
       "course": "Outer"
     },
     "Ritto Stakes": {
@@ -3847,7 +3847,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Kyoto Dirt Sprint 1400m"
+      "description": "Kyoto Dirt 1400m"
     },
     "Tanigawadake Stakes": {
       "grade": "OP",
@@ -3860,7 +3860,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Niigata Turf Mile 1600m",
+      "description": "Niigata Turf 1600m",
       "course": "Outer"
     },
     "Victoria Mile": {
@@ -3874,7 +3874,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 10500,
-      "description": "Tokyo Turf Mile 1600m"
+      "description": "Tokyo Turf 1600m"
     }
   },
   "Senior Year Late May": {
@@ -3889,7 +3889,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2500,
-      "description": "Kyoto Turf Sprint 1400m",
+      "description": "Kyoto Turf 1400m",
       "course": "Outer"
     },
     "Heian Stakes": {
@@ -3903,7 +3903,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 3600,
-      "description": "Kyoto Dirt Medium 1900m"
+      "description": "Kyoto Dirt 1900m"
     },
     "Idaten Stakes": {
       "grade": "OP",
@@ -3916,7 +3916,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2300,
-      "description": "Niigata Turf Sprint 1000m"
+      "description": "Niigata Turf 1000m"
     },
     "Keyaki Stakes": {
       "grade": "OP",
@@ -3929,7 +3929,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2200,
-      "description": "Tokyo Dirt Sprint 1400m"
+      "description": "Tokyo Dirt 1400m"
     },
     "May Stakes": {
       "grade": "OP",
@@ -3942,7 +3942,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 2400,
-      "description": "Tokyo Turf Mile 1800m"
+      "description": "Tokyo Turf 1800m"
     },
     "Meguro Kinen": {
       "grade": "G2",
@@ -3955,7 +3955,7 @@
       "season": "Spring",
       "time_of_day": "Daytime",
       "fans": 5700,
-      "description": "Tokyo Turf Long 2500m"
+      "description": "Tokyo Turf 2500m"
     }
   },
   "Senior Year Late Jun": {
@@ -3970,7 +3970,7 @@
       "season": "Spring",
       "time_of_day": "Night",
       "fans": 6000,
-      "description": "Oi Dirt Medium 2000m"
+      "description": "Oi Dirt 2000m"
     }
   },
   "Senior Year Early Sep": {
@@ -3985,7 +3985,7 @@
       "season": "Summer",
       "time_of_day": "Daytime",
       "fans": 5000,
-      "description": "Longchamp Turf Medium 2400m"
+      "description": "Longchamp Turf 2400m"
     }
   }
 }

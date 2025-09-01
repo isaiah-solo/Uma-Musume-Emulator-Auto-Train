@@ -34,10 +34,9 @@ from core.training_handling import go_to_training, check_training, do_train, che
 
 # Import race handling functions
 from core.races_handling import (
-    do_race, race_day, race_select, check_strategy_before_race,
+    find_and_do_race, do_custom_race, race_day, check_strategy_before_race,
     change_strategy_before_race, race_prep, handle_race_retry_if_failed,
     after_race, is_racing_available, is_pre_debut_year,
-    locate_match_track_with_brightness
 )
 
 # Load config and check debug mode
@@ -178,14 +177,8 @@ def do_recreation():
 
 def career_lobby():
     """Main career lobby loop"""
-    # Load configuration
-    try:
-        with open("config.json", "r", encoding="utf-8") as file:
-            config = json.load(file)
-        MINIMUM_MOOD = config["minimum_mood"]
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        MINIMUM_MOOD = "GREAT"
+    # Use existing config loaded at module level
+    MINIMUM_MOOD = config.get("minimum_mood", "GREAT")
 
     # Program start
     while True:
@@ -222,7 +215,7 @@ def career_lobby():
         
         # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        ok_matches = match_template(screenshot, "assets/buttons/ok_btn.png", confidence=0.7)
+        ok_matches = match_template(screenshot, "assets/buttons/ok_btn.png", confidence=0.8)
         if ok_matches:
             x, y, w, h = ok_matches[0]
             center = (x + w//2, y + h//2)
@@ -280,7 +273,7 @@ def career_lobby():
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = match_template(screenshot, "assets/buttons/cancel_btn.png", confidence=0.6)
+        cancel_matches = match_template(screenshot, "assets/buttons/cancel_lobby.png", confidence=0.8)
         if cancel_matches:
             x, y, w, h = cancel_matches[0]
             center = (x + w//2, y + h//2)
@@ -290,7 +283,7 @@ def career_lobby():
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.6)
+        next_matches = match_template(screenshot, "assets/buttons/next_btn.png", confidence=0.8)
         if next_matches:
             x, y, w, h = next_matches[0]
             center = (x + w//2, y + h//2)
@@ -345,7 +338,7 @@ def career_lobby():
         log_and_flush(f"Year: {year}", "INFO")
         log_and_flush(f"Mood: {mood}", "INFO")
         log_and_flush(f"Turn: {turn}", "INFO")
-        log_and_flush(f"Goal Name: {goal_data['text']}", "INFO")
+        log_and_flush(f"Goal Name: {goal_data}", "INFO")
         log_and_flush(f"Status: {criteria_text}", "INFO")
 
         debug_print(f"[DEBUG] Mood index: {mood_index}, Minimum mood index: {minimum_mood}")
@@ -373,7 +366,7 @@ def career_lobby():
         
         if goal_analysis["should_prioritize_racing"]:
             print(f"Decision: Criteria not met - Prioritizing races to meet goals")
-            race_found = do_race()
+            race_found = find_and_do_race()
             if race_found:
                 print("Race Result: Found Race")
                 continue
@@ -430,6 +423,21 @@ def career_lobby():
         else:
             debug_print("[DEBUG] Not race day")
 
+        # Check for custom race (bypasses all criteria) - only if enabled in config
+        debug_print("[DEBUG] Checking if custom race is enabled...")
+        do_custom_race_enabled = config.get("do_custom_race", False)
+        
+        if do_custom_race_enabled:
+            debug_print("[DEBUG] Custom race is enabled, checking for custom race...")
+            custom_race_found = do_custom_race()
+            if custom_race_found:
+                print("[INFO] Custom race executed successfully")
+                continue
+            else:
+                debug_print("[DEBUG] No custom race found or executed")
+        else:
+            debug_print("[DEBUG] Custom race is disabled in config")
+
         # Mood check
         debug_print("[DEBUG] Checking mood...")
         if mood_index < minimum_mood:
@@ -445,9 +453,6 @@ def career_lobby():
         else:
             debug_print(f"[DEBUG] Mood is good ({mood_index} >= {minimum_mood})")
 
-
-
-        
         # Check training button
         debug_print("[DEBUG] Going to training...")
         
@@ -468,13 +473,13 @@ def career_lobby():
         
         debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
         
-        # Load config for scoring thresholds
-        try:
-            with open("config.json", "r", encoding="utf-8") as file:
-                training_config = json.load(file)
-        except Exception as e:
-            print(f"Error loading config: {e}")
-            training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
+        # Use existing config for scoring thresholds
+        training_config = {
+            "maximum_failure": config.get("maximum_failure", 15),
+            "min_score": config.get("min_score", 1.0),
+            "min_wit_score": config.get("min_wit_score", 1.0),
+            "priority_stat": config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
+        }
         
         # Use new scoring algorithm to choose best training (with stat cap filtering)
         debug_print(f"[DEBUG] Choosing best training with stat cap filtering. Current stats: {current_stats}")
@@ -511,7 +516,7 @@ def career_lobby():
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
-                        race_found = do_race()
+                        race_found = find_and_do_race()
                         if race_found:
                             print("Training Race Result: Found Race")
                             continue

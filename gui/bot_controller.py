@@ -110,8 +110,8 @@ class BotController:
             self.main_window.add_log("Checking ADB connection...", "info")
             
             # Check if main script exists
-                    if os.path.exists('main.py'):
-            self.main_window.add_log("Found main.py, starting automation...", "info")
+            if os.path.exists('main.py'):
+                self.main_window.add_log("Found main.py, starting automation...", "info")
                 
                 try:
                     # Run the main ADB bot in a subprocess with unbuffered output
