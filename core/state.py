@@ -63,22 +63,22 @@ def fuzzy_match_mood(text):
     
     # Fuzzy pattern matching with priority order (most restrictive first)
     # AWFUL patterns - check first since it's most likely to be misread
-    if any(pattern in cleaned_text for pattern in ['AWF', 'AWFUL', 'AWFU', 'VAWF', 'WAWF']):
+    if any(pattern in cleaned_text for pattern in ['AWF', 'AWFUL', 'AWFU', 'AWF', 'WAWF']):
         debug_print(f"[DEBUG] AWFUL pattern match in: '{text}'")
         return "AWFUL"
     
     # GREAT patterns - check before GOOD to avoid conflicts
-    if any(pattern in cleaned_text for pattern in ['GREAT', 'GREA', 'REAT', 'EA']):
+    if any(pattern in cleaned_text for pattern in ['GREAT', 'GREA', 'GRE']):
         debug_print(f"[DEBUG] GREAT pattern match in: '{text}'")
         return "GREAT"
     
     # GOOD patterns
-    if any(pattern in cleaned_text for pattern in ['GOOD', 'GOO', 'OOD', 'OO']):
+    if any(pattern in cleaned_text for pattern in ['GOOD', 'GOO', 'OOD', 'GO']):
         debug_print(f"[DEBUG] GOOD pattern match in: '{text}'")
         return "GOOD"
     
     # NORMAL patterns
-    if any(pattern in cleaned_text for pattern in ['NORMAL', 'NORMA', 'ORMA', 'RMAL']):
+    if any(pattern in cleaned_text for pattern in ['NORMAL', 'NORMA', 'NORM', 'NOR', 'RMAL']):
         debug_print(f"[DEBUG] NORMAL pattern match in: '{text}'")
         return "NORMAL"
     
@@ -168,7 +168,7 @@ def check_turn():
         
         # Character replacements for common OCR errors (only for digit extraction)
         original_text = turn_text
-        turn_text = turn_text.replace('y', '9').replace(']', '1').replace('l', '1').replace('I', '1').replace('o', '0').replace('O', '0').replace('/', '7')
+        turn_text = turn_text.replace('y', '9').replace(']', '1').replace('l', '1').replace('I', '1').replace('o', '8').replace('O', '0').replace('/', '7')
         debug_print(f"[DEBUG] Turn OCR after character replacement: '{turn_text}' (was '{original_text}')")
         
         # Extract all consecutive digits (not just first digit)

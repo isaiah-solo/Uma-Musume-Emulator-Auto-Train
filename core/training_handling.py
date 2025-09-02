@@ -229,7 +229,7 @@ def do_train(train):
     debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
 
 # Training-related functions moved from state.py
-def check_support_card(screenshot, threshold=0.85):
+def check_support_card(screenshot, threshold=0.9):
     SUPPORT_ICONS = {
         "spd": "assets/icons/support_card_type_spd.png",
         "sta": "assets/icons/support_card_type_sta.png",
@@ -370,16 +370,15 @@ def check_failure(screenshot, train_type):
     for attempt in range(3):
         debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
         
-        # Shift region down by a few pixels on retries to help with alignment
+        # Take new screenshot for each retry instead of shifting region
         if attempt > 0:
-            shift_amount = attempt * 5  # Move down 5, 10 pixels on retries
-            adjusted_region = (region[0], region[1] + shift_amount, region[2], region[3] + shift_amount)
-            debug_print(f"[DEBUG] Shifting region down by {shift_amount} pixels for retry {attempt+1}")
+            debug_print(f"[DEBUG] Taking new screenshot for retry {attempt+1}")
+            current_screenshot = take_screenshot()
         else:
-            adjusted_region = region
+            current_screenshot = screenshot
         
-        # Crop from provided screenshot instead of taking new one
-        img = screenshot.crop(adjusted_region)  # ✅ Use provided screenshot instead of enhanced_screenshot()
+        # Crop from current screenshot
+        img = current_screenshot.crop(region)
         
         # White text specialization: create white mask and enhance contrast
         raw_img = img.convert("RGB")
@@ -419,11 +418,11 @@ def check_failure(screenshot, train_type):
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
                     debug_print(f"[DEBUG] Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
-                    if avg_confidence >= 0.7:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
+                    if avg_confidence >= 0.9:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.9, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.9, continuing to retry")
         if attempt < 2:
             debug_print("[DEBUG] No valid percentage found, retrying...")
             time.sleep(0.1)
@@ -432,16 +431,15 @@ def check_failure(screenshot, train_type):
     for attempt in range(3):
         debug_print(f"[DEBUG] Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
         
-        # Shift region down by a few pixels on retries to help with alignment
+        # Take new screenshot for each retry instead of shifting region
         if attempt > 0:
-            shift_amount = attempt * 5  # Move down 5, 10 pixels on retries
-            adjusted_region = (region[0], region[1] + shift_amount, region[2], region[3] + shift_amount)
-            debug_print(f"[DEBUG] Shifting region down by {shift_amount} pixels for retry {attempt+1}")
+            debug_print(f"[DEBUG] Taking new screenshot for retry {attempt+1}")
+            current_screenshot = take_screenshot()
         else:
-            adjusted_region = region
+            current_screenshot = screenshot
         
-        # Crop from provided screenshot instead of taking new one
-        raw_img = screenshot.crop(adjusted_region)  # ✅ Use provided screenshot instead of take_screenshot()
+        # Crop from current screenshot
+        raw_img = current_screenshot.crop(region)
         raw_img = raw_img.resize((raw_img.width * 2, raw_img.height * 2), Image.BICUBIC)
         raw_img = raw_img.convert("RGB")
         raw_np = np.array(raw_img)
@@ -472,11 +470,11 @@ def check_failure(screenshot, train_type):
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
                     debug_print(f"[DEBUG] Found percentage: {rate}% (yellow) confidence: {avg_confidence:.2f} for {train_type.upper()}")
-                    if avg_confidence >= 0.7:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
+                    if avg_confidence >= 0.9:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.9, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.9, continuing to retry")
         if attempt < 2:
             debug_print("[DEBUG] No valid yellow percentage found, retrying...")
             time.sleep(0.1)

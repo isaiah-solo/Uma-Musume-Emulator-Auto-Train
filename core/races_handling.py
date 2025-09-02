@@ -129,8 +129,8 @@ def search_race_with_swiping(race_description, year, max_swipes=3):
     
     for swipe_num in range(1, max_swipes + 1):
         debug_print(f"[DEBUG] Swipe {swipe_num}:")
-        swipe(540, 1500, 540, 500, duration_ms=500)
-        time.sleep(0.5)  # Wait for swipe animation
+        swipe(381, 1415, 381, 1223, duration_ms=240)
+        time.sleep(1)  # Wait for swipe animation
         
         # Take new screenshot after swipe
         screenshot = take_screenshot()
@@ -206,10 +206,47 @@ def race_day():
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
-        # If race failed screen appears, handle retry before proceeding
-        handle_race_retry_if_failed()
-        after_race()
-        return True
+        
+        # Loop to check for either next button or clock icon with unlimited retries
+        debug_print("[DEBUG] Checking for next button or clock icon with unlimited retries...")
+        retry_count = 0
+        max_retries_per_race = 50  # Safety limit to prevent infinite loops
+        
+        while True:
+            retry_count += 1
+            debug_print(f"[DEBUG] Check attempt {retry_count}")
+            
+            # Check for clock icon (race failure)
+            clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+            if clock:
+                debug_print(f"[DEBUG] Clock icon found - race failed (attempt {retry_count}), handling retry...")
+                if retry_count > max_retries_per_race:
+                    debug_print(f"[DEBUG] Max retries per race ({max_retries_per_race}) reached, proceeding anyway...")
+                    after_race()
+                    return True
+                
+                # Handle race retry
+                handle_race_retry_if_failed()
+                # Continue the loop to check again after retry
+                continue
+            
+            # Check for next button
+            next_btn = locate_on_screen("assets/buttons/next_btn.png", confidence=0.8)
+            if next_btn:
+                debug_print(f"[DEBUG] Next button found after {retry_count} attempts - proceeding with after_race...")
+                after_race()
+                return True
+            
+            # If neither found, try tapping middle of screen and wait
+            debug_print(f"[DEBUG] Neither clock nor next button found (attempt {retry_count}), tapping middle of screen...")
+            tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+            time.sleep(1)
+            
+            # Safety check to prevent infinite loops
+            if retry_count > max_retries_per_race:
+                debug_print(f"[DEBUG] Safety limit reached ({max_retries_per_race} attempts), proceeding with after_race...")
+                after_race()
+                return True
     return False
 
 def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
@@ -293,39 +330,59 @@ def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
         return False
 
 def change_strategy_before_race(expected_strategy: str) -> bool:
-    """Change race strategy to match config before race."""
+    """Change strategy to the expected one before race."""
+    debug_print(f"[DEBUG] Changing strategy to: {expected_strategy}")
+    
+    # Strategy coordinates mapping
+    strategy_coords = {
+        "FRONT": (882, 1159),
+        "PACE": (645, 1159),
+        "LATE": (414, 1159),
+        "END": (186, 1162),
+    }
+    
+    if expected_strategy not in strategy_coords:
+        debug_print(f"[DEBUG] Unknown strategy: {expected_strategy}")
+        return False
+    
     try:
-        debug_print(f"[DEBUG] Attempting to change race strategy to: {expected_strategy}")
-        
-        # Strategy button coordinates (approximate)
-        strategy_btn = (660, 974)
-        
-        # Click the strategy button to open strategy selection
-        tap(strategy_btn[0], strategy_btn[1])
-        time.sleep(1.0)
-        
-        # Strategy option coordinates based on expected strategy
-        strategy_coords = {
-            "Front": (660, 800),
-            "Middle": (660, 900),
-            "Back": (660, 1000),
-            "Front Runner": (660, 800),
-            "Stalker": (660, 900),
-            "Closer": (660, 1000)
-        }
-        
-        if expected_strategy in strategy_coords:
-            target_coords = strategy_coords[expected_strategy]
-            debug_print(f"[DEBUG] Clicking strategy option at {target_coords}")
-            tap(target_coords[0], target_coords[1])
-            time.sleep(0.5)
-            
-            # Verify the strategy was changed
-            return check_strategy_before_race()
-        else:
-            debug_print(f"[DEBUG] Unknown strategy: {expected_strategy}")
+        # Step 1: Find and tap strategy_change.png
+        debug_print("[DEBUG] Looking for strategy change button...")
+        change_btn = wait_for_image("assets/buttons/strategy_change.png", timeout=10, confidence=0.8)
+        if not change_btn:
+            debug_print("[DEBUG] Strategy change button not found")
             return False
-            
+        
+        debug_print(f"[DEBUG] Found strategy change button at {change_btn}")
+        tap(change_btn[0], change_btn[1])
+        debug_print("[DEBUG] Tapped strategy change button")
+        
+        # Step 2: Wait for confirm.png to appear
+        debug_print("[DEBUG] Waiting for confirm button to appear...")
+        confirm_btn = wait_for_image("assets/buttons/confirm.png", timeout=10, confidence=0.8)
+        if not confirm_btn:
+            debug_print("[DEBUG] Confirm button not found after strategy change")
+            return False
+        
+        debug_print(f"[DEBUG] Confirm button appeared at {confirm_btn}")
+        
+        # Step 3: Tap on the specified coordinate for the right strategy
+        target_x, target_y = strategy_coords[expected_strategy]
+        debug_print(f"[DEBUG] Tapping strategy position: ({target_x}, {target_y}) for {expected_strategy}")
+        tap(target_x, target_y)
+        debug_print(f"[DEBUG] Tapped strategy position for {expected_strategy}")
+        
+        # Step 4: Tap confirm.png from found location
+        debug_print("[DEBUG] Confirming strategy change...")
+        tap(confirm_btn[0], confirm_btn[1])
+        debug_print("[DEBUG] Tapped confirm button")
+        
+        # Wait a moment for the change to take effect
+        time.sleep(2)
+        
+        debug_print(f"[DEBUG] Strategy change completed for {expected_strategy}")
+        return True
+        
     except Exception as e:
         debug_print(f"[DEBUG] Error during strategy change: {e}")
         return False
@@ -352,28 +409,46 @@ def race_prep():
         debug_print("[DEBUG] View results button not found, proceeding without strategy check")
 
 def handle_race_retry_if_failed():
-    """Handle race retry if failed"""
-    debug_print("[DEBUG] Checking for race retry...")
-    
-    if not RETRY_RACE:
-        debug_print("[DEBUG] Race retry disabled in config")
-        return
-    
-    # Look for retry button
-    retry_btn = wait_for_image("assets/buttons/retry_btn.png", timeout=5)
-    if retry_btn:
-        debug_print("[DEBUG] Race failed, retrying...")
-        tap(retry_btn[0], retry_btn[1])
-        time.sleep(2.0)  # Wait for retry to complete
-        
-        # Check if retry succeeded
-        success_btn = wait_for_image("assets/buttons/success_btn.png", timeout=5)
-        if success_btn:
-            debug_print("[DEBUG] Retry succeeded!")
+    """Detect race failure on race day and retry based on config.
+
+    Recognizes failure by detecting `assets/icons/clock.png` on screen.
+    If `retry_race` is true in config, taps `assets/buttons/try_again.png`, waits 5s,
+    and calls `race_prep()` again. Returns True if a retry was performed, False otherwise.
+    """
+    try:
+        # Check for failure indicator (clock icon)
+        clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+        if not clock:
+            return False
+
+        print("[INFO] Race failed detected (clock icon).")
+
+        if not RETRY_RACE:
+            print("[INFO] retry_race is disabled. Stopping automation.")
+            raise SystemExit(0)
+
+        # Try to click Try Again button
+        try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
+        if try_again:
+            time.sleep(0.5)
+            print("[INFO] Clicking Try Again button.")
+            tap(try_again[0], try_again[1])
         else:
-            debug_print("[DEBUG] Retry failed, proceeding...")
-    else:
-        debug_print("[DEBUG] No retry needed or retry button not found")
+            print("[INFO] Try Again button not found. Attempting helper click...")
+            # Fallback: attempt generic click using click helper
+            tap_on_image("assets/buttons/try_again.png", confidence=0.8, min_search=10)
+
+        # Wait before re-prepping the race
+        print("[INFO] Waiting 5 seconds before retrying the race...")
+        time.sleep(5)
+        print("[INFO] Re-preparing race...")
+        race_prep()
+        return True
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"[ERROR] handle_race_retry_if_failed error: {e}")
+        return False
 
 def after_race():
     """Handle post-race actions"""
@@ -481,7 +556,17 @@ def find_and_do_race():
             return False
         
         # 3. Choose best race based on database and config criteria
-        allowed_grades = config.get("allowed_grades", ["G1", "G2", "G3", "OP", "PRE-OP"])
+        # Check if goal contains G1 and override allowed grades if so
+        from core.state import check_goal_name
+        goal_name = check_goal_name()
+        
+        # Override allowed grades if goal contains G1
+        if goal_name and "G1" in goal_name:
+            debug_print(f"[DEBUG] Goal contains G1: '{goal_name}' - Overriding to only allow G1 races")
+            allowed_grades = ["G1"]
+        else:
+            allowed_grades = config.get("allowed_grades", ["G1", "G2", "G3", "OP", "PRE-OP"])
+        
         allowed_tracks = config.get("allowed_tracks", ["Turf", "Dirt"])
         allowed_distances = config.get("allowed_distances", ["Sprint", "Mile", "Medium", "Long"])
         

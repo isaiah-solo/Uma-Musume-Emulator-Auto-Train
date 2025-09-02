@@ -34,7 +34,7 @@ from core.training_handling import go_to_training, check_training, do_train, che
 
 # Import race handling functions
 from core.races_handling import (
-    find_and_do_race, do_custom_race, race_day, check_strategy_before_race,
+    find_and_do_race, do_custom_race, race_day,check_strategy_before_race,
     change_strategy_before_race, race_prep, handle_race_retry_if_failed,
     after_race, is_racing_available, is_pre_debut_year,
 )
@@ -130,7 +130,7 @@ def do_rest():
         # Take a new screenshot and try again
         from utils.screenshot import take_screenshot
         take_screenshot()
-        tazuna_hint = locate_on_screen("assets/hints/@tazuna_hint.png", confidence=0.7)
+        tazuna_hint = locate_on_screen("assets/hints/tazuna_hint.png", confidence=0.7)
         if not tazuna_hint:
             debug_print("[WARNING] Still not in lobby after retrying screenshot. Rest button search may fail.")
     # Now look for rest buttons in the lobby
@@ -157,6 +157,7 @@ def do_rest():
     else:
         debug_print("[DEBUG] No rest button found in lobby")
         print("[WARNING] No rest button found in lobby")
+    time.sleep(3)
 
 def do_recreation():
     """Perform recreation action"""
