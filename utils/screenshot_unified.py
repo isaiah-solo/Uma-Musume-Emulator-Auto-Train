@@ -292,10 +292,11 @@ class UnifiedScreenshot:
             # Default fallback size
             return 1080, 1920
 
-    def enhanced_screenshot(self, region):
+    def enhanced_screenshot(self, region, screenshot=None):
         """Take a screenshot of a specific region with enhancement"""
         try:
-            screenshot = self.take_screenshot()
+            if screenshot is None:
+                screenshot = self.take_screenshot()
             cropped = screenshot.crop(region)
 
             # Resize for better OCR (same as PC version)
@@ -313,10 +314,11 @@ class UnifiedScreenshot:
             print(f"Error taking enhanced screenshot: {e}")
             raise
 
-    def enhanced_screenshot_for_failure(self, region):
+    def enhanced_screenshot_for_failure(self, region, screenshot=None):
         """Enhanced screenshot specifically optimized for white and yellow text on orange background"""
         try:
-            screenshot = self.take_screenshot()
+            if screenshot is None:
+                screenshot = self.take_screenshot()
             cropped = screenshot.crop(region)
 
             # Resize for better OCR
@@ -375,10 +377,11 @@ class UnifiedScreenshot:
             print(f"Error taking failure screenshot: {e}")
             raise
 
-    def enhanced_screenshot_for_year(self, region):
+    def enhanced_screenshot_for_year(self, region, screenshot=None):
         """Take a screenshot optimized for year detection"""
         try:
-            screenshot = self.take_screenshot()
+            if screenshot is None:
+                screenshot = self.take_screenshot()
             cropped = screenshot.crop(region)
 
             # Enhance for year text detection
@@ -425,10 +428,11 @@ def get_screen_size() -> tuple:
     return get_unified_screenshot().get_screen_size()
 
 
-def enhanced_screenshot(region):
+def enhanced_screenshot(region, screenshot=None):
     """Take a screenshot of a specific region with enhancement (backward compatibility)"""
     try:
-        screenshot = take_screenshot()
+        if screenshot is None:
+            screenshot = take_screenshot()
         cropped = screenshot.crop(region)
 
         # Resize for better OCR (same as PC version)
@@ -447,10 +451,11 @@ def enhanced_screenshot(region):
         raise
 
 
-def enhanced_screenshot_for_failure(region):
+def enhanced_screenshot_for_failure(region, screenshot=None):
     """Enhanced screenshot specifically optimized for white and yellow text on orange background (backward compatibility)"""
     try:
-        screenshot = take_screenshot()
+        if screenshot is None:
+            screenshot = take_screenshot()
         cropped = screenshot.crop(region)
 
         # Resize for better OCR
@@ -510,10 +515,11 @@ def enhanced_screenshot_for_failure(region):
         raise
 
 
-def enhanced_screenshot_for_year(region):
+def enhanced_screenshot_for_year(region, screenshot=None):
     """Take a screenshot optimized for year detection (backward compatibility)"""
     try:
-        screenshot = take_screenshot()
+        if screenshot is None:
+            screenshot = take_screenshot()
         cropped = screenshot.crop(region)
 
         # Enhance for year text detection

@@ -26,7 +26,7 @@ from utils.log import debug_print
 from utils.template_matching import deduplicated_matches
 
 # Get Stat
-def stat_state():
+def stat_state(screenshot=None):
     stat_regions = {
         "spd": SPD_REGION,
         "sta": STA_REGION,
@@ -37,7 +37,7 @@ def stat_state():
 
     result = {}
     for stat, region in stat_regions.items():
-        img = enhanced_screenshot(region)
+        img = enhanced_screenshot(region, screenshot)
         val = extract_number(img)
         digits = ''.join(filter(str.isdigit, val))
         result[stat] = int(digits) if digits.isdigit() else 0
@@ -96,12 +96,12 @@ def fuzzy_match_mood(text):
     debug_print(f"[DEBUG] No fuzzy match found for: '{text}'")
     return "UNKNOWN"
 
-def check_mood():
+def check_mood(screenshot=None):
     # Try up to 3 times to detect mood
     max_attempts = 3
     
     for attempt in range(1, max_attempts + 1):
-        mood_img = enhanced_screenshot(MOOD_REGION)
+        mood_img = enhanced_screenshot(MOOD_REGION, screenshot)
         mood_text = extract_mood_text(mood_img)
         
         # Apply fuzzy matching for mood detection
@@ -122,12 +122,12 @@ def check_mood():
     print(f"[WARNING] Mood not recognized after {max_attempts} attempts: {mood_text}")
     return "UNKNOWN"
 
-def check_turn():
+def check_turn(screenshot=None):
     """Fast turn detection with minimal OCR"""
     debug_print("[DEBUG] Starting turn detection...")
     
     try:
-        turn_img = enhanced_screenshot(TURN_REGION)
+        turn_img = enhanced_screenshot(TURN_REGION, screenshot)
         debug_print(f"[DEBUG] Turn region screenshot taken: {TURN_REGION}")
         
         # Save the turn region image for debugging
@@ -185,9 +185,9 @@ def check_turn():
         debug_print(f"[DEBUG] Turn detection failed with error: {e}")
         return 1
 
-def check_current_year():
+def check_current_year(screenshot=None):
     """Fast year detection using regular screenshot"""
-    year_img = enhanced_screenshot(YEAR_REGION)
+    year_img = enhanced_screenshot(YEAR_REGION, screenshot)
     
     # Simple OCR with PSM 7 (single line text)
     import pytesseract
@@ -203,9 +203,9 @@ def check_current_year():
     
     return "Unknown Year"
 
-def check_criteria():
+def check_criteria(screenshot=None):
     """Enhanced criteria detection"""
-    criteria_img = enhanced_screenshot(CRITERIA_REGION)
+    criteria_img = enhanced_screenshot(CRITERIA_REGION, screenshot)
     
     # Use single, fast OCR configuration
     import pytesseract
@@ -230,7 +230,7 @@ def check_criteria():
     
     return text
 
-def check_goal_name():
+def check_goal_name(screenshot=None):
     """Detect the current goal name using simple Tesseract OCR.
 
     Captures the region (372, 113, 912, 152) and returns the recognized
@@ -241,7 +241,7 @@ def check_goal_name():
     GOAL_REGION = (372, 113, 912, 152)
 
     # Capture enhanced image of the goal name region for better OCR
-    goal_img = enhanced_screenshot(GOAL_REGION)
+    goal_img = enhanced_screenshot(GOAL_REGION, screenshot)
 
     # Save debug images if enabled
     if DEBUG_MODE:
@@ -273,8 +273,8 @@ def check_goal_name():
 
 
 
-def check_skill_points():
-    skill_img = enhanced_screenshot(SKILL_PTS_REGION)
+def check_skill_points(screenshot=None):
+    skill_img = enhanced_screenshot(SKILL_PTS_REGION, screenshot)
     
     # Apply sharpening for better OCR accuracy
     sharpener = ImageEnhance.Sharpness(skill_img)
@@ -304,7 +304,7 @@ def check_skill_points():
     
     return result
 
-def check_skill_points_cap():
+def check_skill_points_cap(screenshot=None):
     """Check skill points and handle cap logic (same as PC version)"""
     import json
     import tkinter as tk
@@ -319,7 +319,7 @@ def check_skill_points_cap():
         return True
     
     skill_point_cap = config.get("skill_point_cap", 9999)
-    current_skill_points = check_skill_points()
+    current_skill_points = check_skill_points(screenshot)
     
     print(f"[INFO] Current skill points: {current_skill_points}, Cap: {skill_point_cap}")
     
@@ -486,12 +486,19 @@ def check_current_stats(screenshot=None):
 
 
 
-def check_energy_bar(screenshot=None):
+def check_energy_bar(screenshot=None, debug_visualization=False):
     """
-    Check the energy bar fill percentage using the same logic as energy_detector.py.
+    Check the energy bar fill percentage using improved detection algorithm.
+    
+    Enhanced features:
+    - More flexible color detection for better robustness
+    - Improved erosion strategy for precise border removal
+    - Better error handling and debugging capabilities
+    - Optional debug visualization for troubleshooting
     
     Args:
         screenshot: Optional PIL Image. If None, takes a new screenshot.
+        debug_visualization: If True, creates debug visualization files
     
     Returns:
         float: Energy percentage (0.0 to 100.0)
@@ -514,84 +521,163 @@ def check_energy_bar(screenshot=None):
         if cropped_np.shape[2] == 4:
             cropped_np = cropped_np[:, :, :3]  # Keep only RGB channels
         
-        # Step 1: Find the white border (253, 253, 253)
-        white_tolerance = 5
-        white_lower = np.array([253 - white_tolerance, 253 - white_tolerance, 253 - white_tolerance])
-        white_upper = np.array([253 + white_tolerance, 253 + white_tolerance, 253 + white_tolerance])
+        # Step 1: Find the white border using flexible detection
+        # More flexible than original (253,253,253) ± 5
+        white_lower = np.array([220, 220, 220])  # Flexible white detection
+        white_upper = np.array([255, 255, 255])
         white_mask = cv2.inRange(cropped_np, white_lower, white_upper)
         
-        # Step 2: Find the rounded rectangle contour and create an interior mask
-        contours, _ = cv2.findContours(white_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Find contours of the white border
+        contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
             debug_print("[DEBUG] No energy bar contour found")
             return 0.0
         
-        # Find the largest contour (should be the energy bar's outer white border)
+        # Find the largest contour (should be the rounded rectangle border)
         largest_contour = max(contours, key=cv2.contourArea)
         
-        # Create a mask for the area enclosed by the white border
-        border_mask = np.zeros(cropped_np.shape[:2], dtype=np.uint8)
-        cv2.drawContours(border_mask, [largest_contour], -1, 255, cv2.FILLED)
+        # Create mask for the interior of the rounded rectangle
+        border_mask = np.zeros(white_mask.shape, dtype=np.uint8)
+        cv2.fillPoly(border_mask, [largest_contour], 255)
         
-        # Erode the border mask to get the interior (remove the border itself)
-        kernel = np.ones((5,5), np.uint8)
-        interior_mask = cv2.erode(border_mask, kernel, iterations=1)
+        # Erode the border mask to get the interior (remove the border pixels)
+        # Improved erosion: (3,3) kernel with 2 iterations vs original (5,5) with 1 iteration
+        kernel = np.ones((3, 3), np.uint8)
+        interior_mask = cv2.erode(border_mask, kernel, iterations=2)
         
-        # Step 3: Count gray pixels vs total pixels in the interior using horizontal line analysis
-        # Create mask for gray pixels (117, 117, 117)
-        gray_tolerance = 10
-        gray_lower = np.array([117 - gray_tolerance, 117 - gray_tolerance, 117 - gray_tolerance])
-        gray_upper = np.array([117 + gray_tolerance, 117 + gray_tolerance, 117 + gray_tolerance])
+        # Step 2: Detect gray (empty) pixels inside the bar
+        # More flexible gray detection than original (117,117,117) ± 10
+        gray_lower = np.array([100, 100, 100])
+        gray_upper = np.array([140, 140, 140])
         gray_mask = cv2.inRange(cropped_np, gray_lower, gray_upper)
         
-        # Apply interior mask to only consider gray pixels inside the rounded rectangle
+        # Apply interior mask to only consider pixels inside the rounded rectangle
         gray_pixels_inside = cv2.bitwise_and(gray_mask, interior_mask)
         
-        # Horizontal line analysis
+        # Step 3: Calculate fill percentage using horizontal line analysis
+        # Get the bounding box of the interior
         contours_interior, _ = cv2.findContours(interior_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if not contours_interior:
-            debug_print("[DEBUG] No interior contour found")
-            return 0.0
-        
-        x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
-        
-        # Use the middle horizontal line for analysis
-        middle_y = y_rect + h_rect // 2
-        
-        # Ensure middle_y is within bounds
-        if not (0 <= middle_y < interior_mask.shape[0]):
-            debug_print("[DEBUG] Middle Y coordinate out of bounds")
-            return 0.0
-        
-        # Extract the horizontal line from both interior and gray masks
-        interior_line = interior_mask[middle_y, :]
-        gray_line = gray_pixels_inside[middle_y, :]
-        
-        # Find the leftmost and rightmost points of the bar on this line
-        interior_points = np.where(interior_line > 0)[0]
-        if len(interior_points) > 0:
-            leftmost = interior_points[0]
-            rightmost = interior_points[-1]
-            total_width = rightmost - leftmost + 1
+        if contours_interior:
+            x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
             
-            # Count gray pixels in this horizontal line within the bar's width
-            gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
-            gray_width = len(gray_points)
-            filled_width = total_width - gray_width
+            # Use the middle horizontal line for analysis
+            middle_y = y_rect + h_rect // 2
             
-            # Calculate fill percentage based on horizontal line
-            fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
+            # Ensure middle_y is within bounds (safety check from original)
+            if not (0 <= middle_y < interior_mask.shape[0]):
+                debug_print("[DEBUG] Middle Y coordinate out of bounds")
+                return 0.0
             
-            debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
-            return fill_percentage
+            # Extract the horizontal line from both interior and gray masks
+            interior_line = interior_mask[middle_y, :]
+            gray_line = gray_pixels_inside[middle_y, :]
+            
+            # Find the leftmost and rightmost points of the interior on this line
+            interior_points = np.where(interior_line > 0)[0]
+            if len(interior_points) > 0:
+                leftmost = interior_points[0]
+                rightmost = interior_points[-1]
+                total_width = rightmost - leftmost + 1
+                
+                # Count gray pixels in this horizontal line
+                gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
+                gray_width = len(gray_points)
+                filled_width = total_width - gray_width
+                
+                # Calculate fill percentage based on horizontal line
+                fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
+                
+                debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
+                
+                # Create debug visualization if requested
+                if debug_visualization:
+                    _create_energy_debug_visualization(cropped_np, largest_contour, interior_mask, gray_pixels_inside, fill_percentage, middle_y, leftmost, rightmost, gray_points + leftmost)
+                
+                return fill_percentage
+            else:
+                debug_print("[DEBUG] No interior points found on analysis line")
+                return 0.0
         else:
-            debug_print("[DEBUG] No interior points found on analysis line")
+            debug_print("[DEBUG] No interior contour found")
             return 0.0
             
     except Exception as e:
         debug_print(f"[DEBUG] Energy bar check failed: {e}")
         return 0.0
+
+
+def _create_energy_debug_visualization(original_image, contour, interior_mask, gray_mask, percentage, middle_y, leftmost, rightmost, gray_positions):
+    """
+    Create debug visualization files for energy bar detection analysis.
+    
+    Args:
+        original_image: The cropped energy bar image
+        contour: The detected energy bar contour
+        interior_mask: Mask of the interior area
+        gray_mask: Mask of gray (empty) pixels
+        percentage: Calculated fill percentage
+        middle_y: Y coordinate of analysis line
+        leftmost: Left boundary of energy bar
+        rightmost: Right boundary of energy bar
+        gray_positions: Positions of gray pixels on analysis line
+    """
+    try:
+        import cv2
+        import numpy as np
+        
+        # Create cropped region debug
+        cv2.imwrite("debug_energy_cropped.png", cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
+        debug_print("[DEBUG] Saved cropped region to: debug_energy_cropped.png")
+        
+        # Create horizontal line analysis debug
+        debug_img = cv2.cvtColor(original_image.copy(), cv2.COLOR_RGB2BGR)
+        
+        # Draw the horizontal analysis line in green
+        cv2.line(debug_img, (0, middle_y), (original_image.shape[1]-1, middle_y), (0, 255, 0), 2)
+        
+        # Draw the left and right boundaries in blue
+        cv2.line(debug_img, (leftmost, 0), (leftmost, original_image.shape[0]-1), (255, 0, 0), 2)
+        cv2.line(debug_img, (rightmost, 0), (rightmost, original_image.shape[0]-1), (255, 0, 0), 2)
+        
+        # Mark gray positions with red dots
+        for gray_x in gray_positions:
+            cv2.circle(debug_img, (int(gray_x), middle_y), 2, (0, 0, 255), -1)
+        
+        # Add text annotations
+        cv2.putText(debug_img, f"Analysis Line: y={middle_y}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(debug_img, f"Left: {leftmost}, Right: {rightmost}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(debug_img, f"Gray pixels: {len(gray_positions)}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        
+        cv2.imwrite("debug_horizontal_line.png", debug_img)
+        debug_print("[DEBUG] Saved horizontal line analysis to: debug_horizontal_line.png")
+        
+        # Create final visualization
+        vis_image = cv2.cvtColor(original_image.copy(), cv2.COLOR_RGB2BGR)
+        
+        # Draw the contour in green
+        cv2.drawContours(vis_image, [contour], -1, (0, 255, 0), 2)
+        
+        # Show interior area in blue tint
+        blue_overlay = np.zeros_like(vis_image)
+        blue_overlay[:, :, 0] = interior_mask  # Blue channel
+        vis_image = cv2.addWeighted(vis_image, 0.8, blue_overlay, 0.2, 0)
+        
+        # Show gray areas in red tint
+        red_overlay = np.zeros_like(vis_image)
+        red_overlay[:, :, 2] = gray_mask  # Red channel
+        vis_image = cv2.addWeighted(vis_image, 0.8, red_overlay, 0.2, 0)
+        
+        # Add percentage text
+        text = f"Energy: {percentage:.1f}%"
+        cv2.putText(vis_image, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(vis_image, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
+        
+        # Save visualization
+        cv2.imwrite("debug_energy_visualization.png", vis_image)
+        debug_print("[DEBUG] Saved visualization to: debug_energy_visualization.png")
+        
+    except Exception as e:
+        debug_print(f"[DEBUG] Failed to create debug visualization: {e}")
 
  

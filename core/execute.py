@@ -306,7 +306,6 @@ def career_lobby():
         # Check if there is debuff status
         debug_print("[DEBUG] Checking for debuff status...")
         # Use match_template to get full bounding box for brightness check
-        screenshot = take_screenshot()
         infirmary_matches = match_template(screenshot, "assets/buttons/infirmary_btn2.png", confidence=0.9)
         
         if infirmary_matches:
@@ -326,13 +325,13 @@ def career_lobby():
 
         # Get current state
         debug_print("[DEBUG] Getting current game state...")
-        mood = check_mood()
+        mood = check_mood(screenshot)
         mood_index = MOOD_LIST.index(mood)
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
-        turn = check_turn()
-        year = check_current_year()
-        goal_data = check_goal_name()
-        criteria_text = check_criteria()
+        turn = check_turn(screenshot)
+        year = check_current_year(screenshot)
+        goal_data = check_goal_name(screenshot)
+        criteria_text = check_criteria(screenshot)
         
         log_and_flush("", "INFO")
         log_and_flush("=== GAME STATUS ===", "INFO")
@@ -392,7 +391,7 @@ def career_lobby():
             
             if enable_skill_check:
                 print("[INFO] URA Finale Race Day - Checking skill points cap...")
-                check_skill_points_cap()
+                check_skill_points_cap(screenshot)
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
