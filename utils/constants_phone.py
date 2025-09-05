@@ -3,7 +3,7 @@
 # All regions are in PIL format: (left, top, right, bottom)
 
 # Support card icon region (right side of screen)
-SUPPORT_CARD_ICON_REGION=(879, 278, 1059, 1169)
+SUPPORT_CARD_ICON_REGION=(876, 253, 1080, 1171)
 
 # Mood region (top area)
 MOOD_REGION=(819, 211, 969, 274)

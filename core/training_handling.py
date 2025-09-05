@@ -300,7 +300,7 @@ def check_support_card(screenshot, threshold=0.9):
 
     return count_result
 
-def check_hint(screenshot, template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
+def check_hint(screenshot, template_path: str = "assets/icons/hint.png", confidence: float = 0.8) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:
@@ -418,11 +418,11 @@ def check_failure(screenshot, train_type):
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
                     debug_print(f"[DEBUG] Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
-                    if avg_confidence >= 0.9:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.9, accepting result")
+                    if avg_confidence >= 0.7:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.9, continuing to retry")
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
         if attempt < 2:
             debug_print("[DEBUG] No valid percentage found, retrying...")
             time.sleep(0.1)
@@ -557,11 +557,11 @@ def choose_best_training(training_results, config, current_stats):
         debug_print(f"[DEBUG] No training options meet minimum score requirements")
         return None
     
-    # Sort by priority stat order and then by score
+    # Sort by score first (desc), use priority as tiebreaker only
     def sort_key(item):
         k, v = item
         priority_index = priority_stat.index(k) if k in priority_stat else len(priority_stat)
-        return (priority_index, -v.get('score', 0))  # Higher score first
+        return (-v.get('score', 0), priority_index)
     
     sorted_options = sorted(valid_options.items(), key=sort_key)
     best_training = sorted_options[0][0]
