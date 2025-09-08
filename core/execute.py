@@ -302,6 +302,9 @@ def career_lobby():
 
         debug_print("[DEBUG] Confirmed in career lobby")
         time.sleep(0.5)
+        # Take a fresh screenshot after confirming lobby to ensure stable UI state
+        debug_print("[DEBUG] Taking fresh screenshot after lobby confirmation...")
+        screenshot = take_screenshot()
 
         # Check if there is debuff status
         debug_print("[DEBUG] Checking for debuff status...")
@@ -505,14 +508,54 @@ def career_lobby():
                 
                 if all_training_unsafe(results_training, max_failure):
                     debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
-                    print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
-                    do_rest()
+                    # If all trainings are unsafe AND wit score is low, rest; otherwise try a relaxed training
+                    wit_score = results_training.get('wit', {}).get('score', 0)
+                    if wit_score < 1.0:
+                        print(f"[INFO] All training options unsafe and WIT score < 1.0. Choosing to rest.")
+                        do_rest()
+                        continue
+                    else:
+                        # Try to pick a training with relaxed thresholds despite high failure context
+                        relaxed_config = dict(training_config)
+                        relaxed_config.update({
+                            'min_score': 0.0,
+                            'min_wit_score': 0.0
+                        })
+                        fallback_training = choose_best_training(results_training, relaxed_config, current_stats)
+                        if fallback_training:
+                            print(f"[INFO] Proceeding with training ({fallback_training.upper()}) despite poor options (relaxed selection)")
+                            do_train(fallback_training)
+                            continue
+                        else:
+                            print("[INFO] No viable training even after relaxed selection. Choosing to rest.")
+                            do_rest()
+                            continue
                 else:
                     # Check if racing is available (no races in July/August)
                     if not is_racing_available(year):
                         debug_print("[DEBUG] Racing not available (summer break)")
-                        print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
-                        do_rest()
+                        print("[INFO] July/August detected. No races available during summer break. Trying training instead.")
+                        # Try training with relaxed thresholds
+                        relaxed_config = dict(training_config)
+                        relaxed_config.update({
+                            'min_score': 0.0,
+                            'min_wit_score': 0.0
+                        })
+                        fallback_training = choose_best_training(results_training, relaxed_config, current_stats)
+                        if fallback_training:
+                            print(f"[INFO] Proceeding with training ({fallback_training.upper()}) due to no races")
+                            do_train(fallback_training)
+                            continue
+                        else:
+                            # If even relaxed cannot find, decide rest only if WIT score < 1.0, else do_rest as last resort
+                            wit_score = results_training.get('wit', {}).get('score', 0)
+                            if wit_score < 1.0:
+                                print("[INFO] No viable training after relaxation and no races. Choosing to rest.")
+                                do_rest()
+                            else:
+                                print("[INFO] No training selected after relaxation. Choosing to rest.")
+                                do_rest()
+                        
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
@@ -522,10 +565,28 @@ def career_lobby():
                             continue
                         else:
                             print("Training Race Result: No Race Found")
-                            # If no race found, go back and rest
-                            tap_on_image("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to rest.")
+                            # If no race found, go back and try training instead of resting by default
+                            tap_on_image("assets/buttons/back_btn.png", text="[INFO] Race not found. Trying training instead.")
                             time.sleep(0.5)
-                            do_rest()
+                            # Try training with relaxed thresholds
+                            relaxed_config = dict(training_config)
+                            relaxed_config.update({
+                                'min_score': 0.0,
+                                'min_wit_score': 0.0
+                            })
+                            fallback_training = choose_best_training(results_training, relaxed_config, current_stats)
+                            if fallback_training:
+                                print(f"[INFO] Proceeding with training ({fallback_training.upper()}) after race not found")
+                                do_train(fallback_training)
+                                continue
+                            else:
+                                wit_score = results_training.get('wit', {}).get('score', 0)
+                                if wit_score < 1.0:
+                                    print("[INFO] No viable training after relaxation and race not found. Choosing to rest.")
+                                    do_rest()
+                                else:
+                                    print("[INFO] No training selected after relaxation. Choosing to rest.")
+                                    do_rest()
             else:
                 print("[INFO] Race prioritization disabled. Choosing to rest.")
                 do_rest()
@@ -561,7 +622,8 @@ def check_goal_criteria(criteria_data, year, turn):
     turn_less_than_10 = turn < 10 if turn_is_number else False
     
     # Determine if racing should be prioritized (when criteria not met, not pre-debut, turn < 10)
-    should_prioritize_racing = not criteria_met and not is_pre_debut and turn_less_than_10
+    should_prioritize_racing = not criteria_met and not is_pre_debut 
+    # and turn_less_than_10 (Temporarily disabled)
     
     debug_print(f"[DEBUG] Year: '{year}', Criteria met: {criteria_met}, Pre-debut: {is_pre_debut}, Turn < 10: {turn_less_than_10}")
     
