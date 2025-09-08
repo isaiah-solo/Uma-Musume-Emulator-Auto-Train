@@ -409,7 +409,7 @@ def career_lobby():
                         debug_print(f"[DEBUG] Race button not found on attempt {i+1}/2")
             
             race_prep()
-            time.sleep(1)
+            # time.sleep(1)
             # If race failed screen appears, handle retry before proceeding
             handle_race_retry_if_failed()
             after_race()
@@ -483,6 +483,11 @@ def career_lobby():
             "min_wit_score": config.get("min_wit_score", 1.0),
             "priority_stat": config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
         }
+
+        # If race fallback is disabled, ignore min_score entirely from the start
+        do_race_when_bad_training_flag = config.get("do_race_when_bad_training", True)
+        if not do_race_when_bad_training_flag:
+            training_config["min_score"] = 0.0
         
         # Use new scoring algorithm to choose best training (with stat cap filtering)
         debug_print(f"[DEBUG] Choosing best training with stat cap filtering. Current stats: {current_stats}")
@@ -497,7 +502,7 @@ def career_lobby():
             print("[INFO] No suitable training found based on scoring criteria.")
             
             # Check if we should prioritize racing when no good training is available
-            do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
+            do_race_when_bad_training = do_race_when_bad_training_flag
             
             if do_race_when_bad_training:
                 # Check if all training options have failure rates above maximum
@@ -588,7 +593,9 @@ def career_lobby():
                                     print("[INFO] No training selected after relaxation. Choosing to rest.")
                                     do_rest()
             else:
-                print("[INFO] Race prioritization disabled. Choosing to rest.")
+                # Race prioritization disabled: min_score already 0 at initial selection,
+                # so if no training was chosen here, rest (still enforcing failure and min_wit_score)
+                print("[INFO] Race prioritization disabled and no valid training found (min_score ignored). Choosing to rest.")
                 do_rest()
         
         debug_print("[DEBUG] Waiting before next iteration...")
