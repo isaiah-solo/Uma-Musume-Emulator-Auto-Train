@@ -657,10 +657,14 @@ def do_custom_race():
         
         # 2. Load custom races data
         try:
-            with open("custom_races.json", "r", encoding="utf-8") as f:
+            # Read config to get optional custom race file override
+            with open("config.json", "r", encoding="utf-8") as cf:
+                cfg = json.load(cf)
+            custom_race_file = cfg.get("custom_race_file", "custom_races.json")
+            with open(custom_race_file, "r", encoding="utf-8") as f:
                 custom_races = json.load(f)
         except Exception as e:
-            debug_print(f"[DEBUG] Failed to load custom_races.json: {e}")
+            debug_print(f"[DEBUG] Failed to load custom races file: {e}")
             return False
         
         # 3. Check if there's a custom race for the current year
