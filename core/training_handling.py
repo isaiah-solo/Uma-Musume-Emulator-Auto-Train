@@ -70,7 +70,6 @@ def _filtered_template_matches(screenshot, template_path, region_cv, confidence=
 def go_to_training():
     """Go to training screen"""
     debug_print("[DEBUG] Going to training screen...")
-    time.sleep(1)
     return tap_on_image("assets/buttons/training_btn.png", min_search=10)
 
 def check_training():
@@ -206,7 +205,7 @@ def do_train(train):
         return
     
     # Wait for screen to load and verify we're on training screen
-    time.sleep(1.0)
+    time.sleep(0.3)
     
     # Fixed coordinates for each training type
     training_coords = {

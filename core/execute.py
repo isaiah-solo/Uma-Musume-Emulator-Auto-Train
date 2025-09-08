@@ -87,7 +87,7 @@ def claw_machine():
     print("[INFO] Claw machine detected, starting interaction...")
     
     # Wait 2 seconds before interacting
-    time.sleep(2)
+    time.sleep(1)
     
     # Find the claw button location
     claw_location = locate_on_screen("assets/buttons/claw.png", confidence=0.8)
@@ -404,7 +404,7 @@ def career_lobby():
                 for i in range(2):
                     if tap_on_image("assets/buttons/race_btn.png", min_search=2):
                         debug_print(f"[DEBUG] Successfully clicked race button {i+1}/2")
-                        time.sleep(1)
+                        time.sleep(0.5)
                     else:
                         debug_print(f"[DEBUG] Race button not found on attempt {i+1}/2")
             

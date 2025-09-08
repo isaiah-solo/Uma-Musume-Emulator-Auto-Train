@@ -336,7 +336,7 @@ def check_skill_points_cap(screenshot=None):
                 if not entered:
                     print("[ERROR] Could not find/open skills screen")
                     return True
-                time.sleep(2.0)
+                time.sleep(1.0)
 
                 # 2) Scan skills and prepare purchase plan
                 scan_result = scan_all_skills_with_scroll()
@@ -344,13 +344,13 @@ def check_skill_points_cap(screenshot=None):
                     print(f"[ERROR] Skill scanning failed: {scan_result['error']}")
                     # Attempt to go back anyway
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     return True
                 all_skills = scan_result.get('all_skills', [])
                 if not all_skills:
                     print("[WARNING] No skills detected on skill screen")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     return True
 
                 # Read current available skill points from the skill screen
@@ -365,7 +365,7 @@ def check_skill_points_cap(screenshot=None):
                 if not purchase_plan:
                     print("[INFO] No skills from priority list are currently available")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     return True
 
                 # Filter by budget if we have points
@@ -378,7 +378,7 @@ def check_skill_points_cap(screenshot=None):
                 if not final_plan:
                     print("[INFO] Nothing affordable to purchase at the moment")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     return True
 
                 # Execute automated purchases
@@ -390,7 +390,7 @@ def check_skill_points_cap(screenshot=None):
                 back = click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                 if not back:
                     print("[WARNING] Could not find back button after purchases; ensure you return to lobby manually")
-                time.sleep(1.5)
+                time.sleep(1.0)
             except Exception as e:
                 print(f"[ERROR] Auto skill purchase failed: {e}")
             

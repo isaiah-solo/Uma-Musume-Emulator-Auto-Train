@@ -105,7 +105,7 @@ def execute_race_after_selection():
     # Use the existing race_prep function to handle strategy and race execution
     debug_print("[DEBUG] Race started automatically, calling race_prep...")
     race_prep()
-    time.sleep(1)
+    # time.sleep(1)
     # Handle post-race actions
     after_race()
     return True
@@ -141,7 +141,7 @@ def search_race_with_swiping(race_description, year, max_swipes=3):
         if target_x and target_y:
             debug_print(f"[DEBUG] Race found after swipe {swipe_num}! Tapping at ({target_x}, {target_y})")
             tap(target_x, target_y)
-            time.sleep(0.5)
+            # time.sleep(0.5)
             return True
     
     debug_print("[DEBUG] Race not found after all swipes")
@@ -165,8 +165,8 @@ def race_day():
     debug_print("[DEBUG] Clicking race day button...")
     if tap_on_image("assets/buttons/race_day_btn.png", min_search=10):
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
-        time.sleep(1.3)
-        tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=2)
+        time.sleep(0.5)
+        tap_on_image("assets/buttons/ok_btn.png", confidence=0.6, min_search=2)
         
         # Wait for race selection screen to appear by waiting for race button
         debug_print("[DEBUG] Waiting for race selection screen to appear...")
@@ -205,7 +205,7 @@ def race_day():
             
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
-        time.sleep(1)
+        # time.sleep(1)
         
         # Loop to check for either next button or clock icon with unlimited retries
         debug_print("[DEBUG] Checking for next button or clock icon with unlimited retries...")
@@ -240,7 +240,7 @@ def race_day():
             # If neither found, try tapping middle of screen and wait
             debug_print(f"[DEBUG] Neither clock nor next button found (attempt {retry_count}), tapping middle of screen...")
             tap(540, 960)  # Click middle of screen (1080x1920 resolution)
-            time.sleep(1)
+            time.sleep(0.5)
             
             # Safety check to prevent infinite loops
             if retry_count > max_retries_per_race:
@@ -378,7 +378,7 @@ def change_strategy_before_race(expected_strategy: str) -> bool:
         debug_print("[DEBUG] Tapped confirm button")
         
         # Wait a moment for the change to take effect
-        time.sleep(2)
+        time.sleep(1)
         
         debug_print(f"[DEBUG] Strategy change completed for {expected_strategy}")
         return True
@@ -458,11 +458,11 @@ def after_race():
     if not tap_on_image("assets/buttons/next_btn.png", confidence=0.7, min_search=10):
         debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
         tap(540, 960)  # Click middle of screen (1080x1920 resolution)
-        time.sleep(1)
+        time.sleep(0.5)
         debug_print("[DEBUG] Retrying next button search after screen tap...")
         tap_on_image("assets/buttons/next_btn.png", confidence=0.7, min_search=10)
     
-    time.sleep(4)
+    time.sleep(3)
     
     # Try to click second next button with fallback mechanism
     if not tap_on_image("assets/buttons/next2_btn.png", confidence=0.7, min_search=10):
@@ -483,16 +483,16 @@ def enter_race_selection_screen():
         debug_print("[DEBUG] Failed to find races button")
         return False
     
-    time.sleep(1.2)
+    time.sleep(0.5)
     
     # Try to tap OK button if it appears (optional)
-    ok_clicked = tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=1)
+    ok_clicked = tap_on_image("assets/buttons/ok_btn.png", confidence=0.5, min_search=2)
     if ok_clicked:
         debug_print("[DEBUG] OK button found and clicked")
-        time.sleep(1.5)  # Wait for race list to load
+        time.sleep(0.5)  # Wait for race list to load
     else:
         debug_print("[DEBUG] OK button not found, proceeding without it")
-        time.sleep(1.0)  # Shorter wait since no OK button
+        time.sleep(0.5)  # Shorter wait since no OK button
     
     return True
 
