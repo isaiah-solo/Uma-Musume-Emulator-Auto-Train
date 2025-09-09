@@ -137,12 +137,19 @@ class MainWindow:
                 "guts": 600,
                 "wit": 600
             },
+            "capture_method": "adb",
             "adb_config": {
                 "device_address": "127.0.0.1:7555",
                 "adb_path": "adb",
                 "screenshot_timeout": 5,
                 "input_delay": 0.5,
                 "connection_timeout": 10
+            },
+            "nemu_ipc_config": {
+                "nemu_folder": "J:\\MuMuPlayerGlobal",
+                "instance_id": 2,
+                "display_id": 0,
+                "timeout": 1.0
             },
             "debug_mode": False
         }
