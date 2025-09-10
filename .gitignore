@@ -4,6 +4,7 @@ tools/
 screenshots/
 test_screenshots/
 Tesseract-OCR/
+standalone/
 *.pyc
 .DS_Store
 Thumbs.db

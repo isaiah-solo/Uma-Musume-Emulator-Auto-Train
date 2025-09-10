@@ -5,15 +5,15 @@ import os
 
 from PIL import Image, ImageEnhance
 from utils.screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
-from core.ocr import extract_text, extract_number, extract_turn_number, extract_mood_text, extract_failure_text, extract_failure_text_with_confidence
-from utils.recognizer import match_template
+from core.ocr import extract_text, extract_number, extract_turn_number, extract_failure_text, extract_failure_text_with_confidence
+from utils.recognizer import match_template, max_match_confidence
 from core.skill_auto_purchase import execute_skill_purchases, click_image_button, extract_skill_points
 from core.skill_recognizer import scan_all_skills_with_scroll
 from core.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
 
 from utils.constants_phone import (
-    SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, FAILURE_REGION, YEAR_REGION, 
-    MOOD_LIST, CRITERIA_REGION, SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION,
+    SUPPORT_CARD_ICON_REGION, TURN_REGION, FAILURE_REGION, YEAR_REGION, 
+    CRITERIA_REGION, SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION,
     SKILL_PTS_REGION, FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
 )
 
@@ -44,83 +44,57 @@ def stat_state(screenshot=None):
     return result
 
 
-def fuzzy_match_mood(text):
-    """
-    Perform fuzzy matching for mood detection using pattern-based approach.
-    
-    Args:
-        text (str): The OCR text to match (should be uppercase)
-    
-    Returns:
-        str: The matched mood or "UNKNOWN" if no match found
-    """
-    # First, try exact match
-    if text in MOOD_LIST:
-        return text
-    
-    # Clean common OCR errors
-    cleaned_text = text.replace('0', 'O').replace('1', 'I').replace('5', 'S')
-    
-    # Fuzzy pattern matching with priority order (most restrictive first)
-    # AWFUL patterns - check first since it's most likely to be misread
-    if any(pattern in cleaned_text for pattern in ['AWF', 'AWFUL', 'AWFU', 'AWF', 'WAWF']):
-        debug_print(f"[DEBUG] AWFUL pattern match in: '{text}'")
-        return "AWFUL"
-    
-    # GREAT patterns - check before GOOD to avoid conflicts
-    if any(pattern in cleaned_text for pattern in ['GREAT', 'GREA', 'GRE']):
-        debug_print(f"[DEBUG] GREAT pattern match in: '{text}'")
-        return "GREAT"
-    
-    # GOOD patterns
-    if any(pattern in cleaned_text for pattern in ['GOOD', 'GOO', 'OOD', 'GO']):
-        debug_print(f"[DEBUG] GOOD pattern match in: '{text}'")
-        return "GOOD"
-    
-    # NORMAL patterns
-    if any(pattern in cleaned_text for pattern in ['NORMAL', 'NORMA', 'NORM', 'NOR', 'RMAL']):
-        debug_print(f"[DEBUG] NORMAL pattern match in: '{text}'")
-        return "NORMAL"
-    
-    # BAD patterns - check last since it's short and might false positive
-    if any(pattern in cleaned_text for pattern in ['BAD']) and 'AWF' not in cleaned_text:
-        debug_print(f"[DEBUG] BAD pattern match in: '{text}'")
-        return "BAD"
-    
-    # Final fallback: check for partial substring matches
-    for mood in MOOD_LIST:
-        if mood in cleaned_text:
-            debug_print(f"[DEBUG] Substring match: '{mood}' in '{text}'")
-            return mood
-    
-    debug_print(f"[DEBUG] No fuzzy match found for: '{text}'")
-    return "UNKNOWN"
+# Old OCR fuzzy mood helper removed after switching to template-based detection
 
 def check_mood(screenshot=None):
-    # Try up to 3 times to detect mood
-    max_attempts = 3
-    
-    for attempt in range(1, max_attempts + 1):
-        mood_img = enhanced_screenshot(MOOD_REGION, screenshot)
-        mood_text = extract_mood_text(mood_img)
-        
-        # Apply fuzzy matching for mood detection
-        mood_text_upper = mood_text.upper()
-        detected_mood = fuzzy_match_mood(mood_text_upper)
-        
-        if detected_mood != "UNKNOWN":
-            if mood_text != detected_mood:
-                debug_print(f"[DEBUG] Fuzzy mood match: '{mood_text}' -> '{detected_mood}'")
-            return detected_mood
-        
-        print(f"[WARNING] Mood not recognized on attempt {attempt}/{max_attempts}: {mood_text}")
-        
-        if attempt < max_attempts:
-            print(f"{attempt}). Retrying...")
-            time.sleep(0.5)
-    
-    print(f"[WARNING] Mood not recognized after {max_attempts} attempts: {mood_text}")
-    return "UNKNOWN"
+    """Detect mood using template matching in a fixed region.
+
+    Uses the new template-based method instead of OCR. Returns one of
+    MOOD_LIST values, or "UNKNOWN" if confidence is too low.
+    """
+    try:
+        # Use provided screenshot or take a fresh one
+        if screenshot is None:
+            screenshot = take_screenshot()
+
+        # Region (left, top, right, bottom) and its (x, y, w, h) variant
+        region_pil = (774, 203, 1080, 287)
+        x, y = region_pil[0], region_pil[1]
+        region_cv = (x, y, region_pil[2] - region_pil[0], region_pil[3] - region_pil[1])
+
+        templates = {
+            "AWFUL": os.path.join("assets", "mood", "awful.png"),
+            "BAD": os.path.join("assets", "mood", "bad.png"),
+            "NORMAL": os.path.join("assets", "mood", "normal.png"),
+            "GOOD": os.path.join("assets", "mood", "good.png"),
+            "GREAT": os.path.join("assets", "mood", "great.png"),
+        }
+
+        # Allow threshold override via config; default to 0.55
+        threshold = float(config.get("mood_template_threshold", 0.55))
+
+        best_label = None
+        best_score = -1.0
+        scores = {}
+
+        for label, path in templates.items():
+            score = float(max_match_confidence(screenshot, path, region=region_cv) or 0.0)
+            scores[label] = score
+            if score > best_score:
+                best_label = label
+                best_score = score
+
+        if DEBUG_MODE:
+            debug_print(f"[DEBUG] Mood scores: {scores}")
+
+        if best_label is None or best_score < threshold:
+            debug_print(f"[DEBUG] Mood confidence too low: best={best_label} score={best_score:.3f} threshold={threshold:.2f}")
+            return "UNKNOWN"
+
+        return best_label
+    except Exception as e:
+        debug_print(f"[DEBUG] Template mood detection failed: {e}")
+        return "UNKNOWN"
 
 def check_turn(screenshot=None):
     """Fast turn detection with minimal OCR"""
