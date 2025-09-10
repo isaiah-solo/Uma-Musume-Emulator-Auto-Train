@@ -142,7 +142,7 @@ def check_turn(screenshot=None):
         
         # Character replacements for common OCR errors (only for digit extraction)
         original_text = turn_text
-        turn_text = turn_text.replace('y', '9').replace(']', '1').replace('l', '1').replace('I', '1').replace('o', '8').replace('O', '0').replace('/', '7')
+        turn_text = turn_text.replace('y', '9').replace(']', '1').replace('l', '1').replace('I', '1').replace('o', '8').replace('O', '0').replace('/', '7').replace('®', '9')
         debug_print(f"[DEBUG] Turn OCR after character replacement: '{turn_text}' (was '{original_text}')")
         
         # Extract all consecutive digits (not just first digit)
@@ -461,158 +461,97 @@ def check_current_stats(screenshot=None):
 
 
 def check_energy_bar(screenshot=None, debug_visualization=False):
-    """
-    Check the energy bar fill percentage using improved detection algorithm.
-    
-    Enhanced features:
-    - More flexible color detection for better robustness
-    - Improved erosion strategy for precise border removal
-    - Better error handling and debugging capabilities
-    - Optional debug visualization for troubleshooting
-    
-    Args:
-        screenshot: Optional PIL Image. If None, takes a new screenshot.
-        debug_visualization: If True, creates debug visualization files
-    
-    Returns:
-        float: Energy percentage (0.0 to 100.0)
+    """Compute energy percentage using pill-stroke detection and midline analysis.
+
+    - Crop to the energy region
+    - Detect the dark stroke (~80,80,80) to get the pill interior
+    - Use midline and 5px-inward boundaries
+    - Count right-side gray (~117,117,117); colorful left is energy
     """
     try:
         import cv2
         import numpy as np
         from utils.screenshot import take_screenshot
-        
-        # Use provided screenshot or take new one if not provided
+
         if screenshot is None:
             screenshot = take_screenshot()
-        
-        # Crop to energy bar region (updated coordinates from user)
-        x, y, width, height = 330, 203, 492, 72
+
+        # Crop region (x, y, w, h)
+        x, y, width, height = 330, 203, 602, 72
         cropped = screenshot.crop((x, y, x + width, y + height))
-        
-        # Convert to numpy array and handle RGBA -> RGB
-        cropped_np = np.array(cropped, dtype=np.uint8)
-        if cropped_np.shape[2] == 4:
-            cropped_np = cropped_np[:, :, :3]  # Keep only RGB channels
-        
-        # Step 1: Find the white border using flexible detection
-        # More flexible than original (253,253,253) ± 5
-        white_lower = np.array([220, 220, 220])  # Flexible white detection
-        white_upper = np.array([255, 255, 255])
-        white_mask = cv2.inRange(cropped_np, white_lower, white_upper)
-        
-        # Find contours of the white border
-        contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if not contours:
-            debug_print("[DEBUG] No energy bar contour found")
-            return 0.0
-        
-        # Find the largest contour (should be the rounded rectangle border)
-        largest_contour = max(contours, key=cv2.contourArea)
-        
-        # Create mask for the interior of the rounded rectangle
-        border_mask = np.zeros(white_mask.shape, dtype=np.uint8)
-        cv2.fillPoly(border_mask, [largest_contour], 255)
-        
-        # Erode the border mask to get the interior (remove the border pixels)
-        # Slightly stronger erosion to ensure analysis stays off the white border
+
+        img = np.array(cropped, dtype=np.uint8)
+        if img.shape[2] == 4:
+            img = img[:, :, :3]
+
+        # Stroke mask around (80,80,80)
+        lower_stroke = np.array([60, 60, 60], dtype=np.uint8)
+        upper_stroke = np.array([110, 110, 110], dtype=np.uint8)
+        stroke = cv2.inRange(img, lower_stroke, upper_stroke)
         kernel = np.ones((3, 3), np.uint8)
-        interior_mask = cv2.erode(border_mask, kernel, iterations=3)
-        
-        # Step 2: Detect gray (empty) pixels inside the bar
-        # More flexible gray detection than original (117,117,117) ± 10
-        gray_lower = np.array([100, 100, 100])
-        gray_upper = np.array([140, 140, 140])
-        gray_mask = cv2.inRange(cropped_np, gray_lower, gray_upper)
-        
-        # Apply interior mask to only consider pixels inside the rounded rectangle
-        gray_pixels_inside = cv2.bitwise_and(gray_mask, interior_mask)
-        
-        # Step 3: Calculate fill percentage using horizontal line analysis
-        # Get the bounding box of the interior
-        contours_interior, _ = cv2.findContours(interior_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if contours_interior:
-            x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
+        stroke = cv2.morphologyEx(stroke, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-            # Search central rows (50%) for the longest contiguous interior segment
-            start_row = y_rect + max(int(h_rect * 0.25), 0)
-            end_row = y_rect + min(int(h_rect * 0.75), interior_mask.shape[0] - 1)
-            best_row = None
-            best_left = None
-            best_right = None
-            best_len = -1
-
-            for row in range(start_row, end_row + 1):
-                line = interior_mask[row, :]
-                cols = np.where(line > 0)[0]
-                if cols.size == 0:
-                    continue
-                run_start = cols[0]
-                prev = cols[0]
-                for c in cols[1:]:
-                    if c != prev + 1:
-                        run_len = prev - run_start + 1
-                        if run_len > best_len:
-                            best_len = run_len
-                            best_row = row
-                            best_left = run_start
-                            best_right = prev
-                        run_start = c
-                    prev = c
-                # finalize last run
-                run_len = prev - run_start + 1
-                if run_len > best_len:
-                    best_len = run_len
-                    best_row = row
-                    best_left = run_start
-                    best_right = prev
-
-            # Fallback to geometric middle if nothing found
-            middle_y = int(best_row) if best_row is not None else (y_rect + h_rect // 2)
-
-            # Extract the horizontal line from both interior and gray masks
-            interior_line = interior_mask[middle_y, :]
-            gray_line = gray_pixels_inside[middle_y, :]
-
-            # Determine left/right bounds from best run or from full span
-            interior_points = np.where(interior_line > 0)[0]
-            if len(interior_points) > 0:
-                if best_left is not None and best_right is not None:
-                    leftmost = best_left
-                    rightmost = best_right
-                else:
-                    leftmost = interior_points[0]
-                    rightmost = interior_points[-1]
-
-                # Apply a small margin to avoid rounded ends
-                margin = 4
-                leftmost = min(max(leftmost + margin, 0), interior_mask.shape[1] - 1)
-                rightmost = max(min(rightmost - margin, interior_mask.shape[1] - 1), leftmost)
-                total_width = rightmost - leftmost + 1
-
-                # Count gray pixels in this horizontal line
-                gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
-                gray_width = len(gray_points)
-                filled_width = total_width - gray_width
-
-                # Calculate fill percentage based on horizontal line
-                fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
-
-                debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
-
-                # Create debug visualization if requested
-                if debug_visualization:
-                    _create_energy_debug_visualization(cropped_np, largest_contour, interior_mask, gray_pixels_inside, fill_percentage, middle_y, leftmost, rightmost, gray_points + leftmost)
-
-                return fill_percentage
-            else:
-                debug_print("[DEBUG] No interior points found on analysis line")
-                return 0.0
-        else:
-            debug_print("[DEBUG] No interior contour found")
+        contours, _ = cv2.findContours(stroke, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            debug_print("[DEBUG] No stroke contour found for energy pill")
             return 0.0
-            
+        largest = max(contours, key=cv2.contourArea)
+
+        h, w = img.shape[:2]
+        filled = np.zeros((h, w), dtype=np.uint8)
+        cv2.fillPoly(filled, [largest], 255)
+        interior = cv2.erode(filled, kernel, iterations=3)
+
+        ys, xs = np.where(interior > 0)
+        if ys.size == 0:
+            debug_print("[DEBUG] No interior found inside pill stroke")
+            return 0.0
+        mid_y = int((ys.min() + ys.max()) / 2)
+
+        line = interior[mid_y, :]
+        cols = np.where(line > 0)[0]
+        if cols.size == 0:
+            debug_print("[DEBUG] No interior on midline")
+            return 0.0
+        left_edge = int(cols[0])
+        right_edge = int(cols[-1])
+
+        # Move 5px inward
+        shift = 5
+        left_in = min(max(left_edge + shift, 0), w - 1)
+        right_in = max(min(right_edge - shift, w - 1), left_in)
+        total_width = right_in - left_in + 1
+        if total_width <= 0:
+            return 0.0
+
+        # Gray empty (~117,117,117)
+        lower_gray = np.array([100, 100, 100], dtype=np.uint8)
+        upper_gray = np.array([140, 140, 140], dtype=np.uint8)
+        gray = cv2.inRange(img, lower_gray, upper_gray)
+        gray_segment = gray[mid_y, left_in:right_in + 1]
+        gray_width = int(np.count_nonzero(gray_segment))
+        filled_width = max(total_width - gray_width, 0)
+        percentage = float(filled_width / total_width * 100.0)
+
+        if debug_visualization:
+            try:
+                cv2.imwrite("debug_energy_cropped.png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+                debug_img = cv2.cvtColor(img.copy(), cv2.COLOR_RGB2BGR)
+                cv2.line(debug_img, (0, mid_y), (w - 1, mid_y), (0, 255, 0), 2)
+                cv2.line(debug_img, (left_in, 0), (left_in, h - 1), (255, 0, 0), 2)
+                cv2.line(debug_img, (right_in, 0), (right_in, h - 1), (255, 0, 0), 2)
+                cv2.putText(debug_img, f"Left: {left_in}, Right: {right_in}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                cv2.imwrite("debug_horizontal_line.png", debug_img)
+                vis = debug_img.copy()
+                text = f"Energy: {percentage:.1f}%"
+                cv2.putText(vis, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.putText(vis, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
+                cv2.imwrite("debug_energy_visualization.png", vis)
+            except Exception as viz_e:
+                debug_print(f"[DEBUG] Energy debug visualization failed: {viz_e}")
+
+        return percentage
+
     except Exception as e:
         debug_print(f"[DEBUG] Energy bar check failed: {e}")
         return 0.0
