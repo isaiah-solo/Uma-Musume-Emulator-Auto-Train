@@ -186,9 +186,9 @@ def race_day():
                 
                 # Click race button twice like in race_select
                 for j in range(2):
-                    if tap_on_image("assets/buttons/race_btn.png", confidence=0.7, min_search=1):
+                    if tap_on_image("assets/buttons/race_btn.png", confidence=0.7, min_search=5):
                         debug_print(f"[DEBUG] Race button clicked {j+1} time(s)")
-                        time.sleep(0.5)
+                        time.sleep(0.2)
                     else:
                         debug_print(f"[DEBUG] Failed to click race button {j+1} time(s)")
                 
@@ -717,6 +717,13 @@ def do_custom_race():
             # Execute the race after selection
             return execute_race_after_selection()
         
+        # If not found, try to navigate back to lobby to resume loop cleanly
+        debug_print("[DEBUG] Custom race not found after search - navigating back to lobby")
+        # Try tapping the back button image first; if not found, tap a likely back position
+        if not tap_on_image("assets/buttons/back_btn.png", confidence=0.6, min_search=3):
+            # Fallback: common back coordinate in race selection
+            tap(78, 138)
+            time.sleep(0.5)
         return False
         
     except Exception as e:

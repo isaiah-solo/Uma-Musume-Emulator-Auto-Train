@@ -180,6 +180,8 @@ def career_lobby():
     """Main career lobby loop"""
     # Use existing config loaded at module level
     MINIMUM_MOOD = config.get("minimum_mood", "GREAT")
+    # Track last day we attempted a custom race but failed, to avoid re-checking within same day
+    last_failed_custom_race_day = None
 
     # Program start
     while True:
@@ -431,13 +433,22 @@ def career_lobby():
         do_custom_race_enabled = config.get("do_custom_race", False)
         
         if do_custom_race_enabled:
-            debug_print("[DEBUG] Custom race is enabled, checking for custom race...")
-            custom_race_found = do_custom_race()
-            if custom_race_found:
-                print("[INFO] Custom race executed successfully")
-                continue
+            # Build day key using current year and turn to avoid repeat checks in the same day
+            day_key = f"{year}|{turn}"
+            if last_failed_custom_race_day == day_key:
+                debug_print("[DEBUG] Skipping custom race check (already attempted and failed this day)")
             else:
-                debug_print("[DEBUG] No custom race found or executed")
+                debug_print("[DEBUG] Custom race is enabled, checking for custom race...")
+                custom_race_found = do_custom_race()
+                if custom_race_found:
+                    # Reset failure cache on success
+                    last_failed_custom_race_day = None
+                    print("[INFO] Custom race executed successfully")
+                    continue
+                else:
+                    debug_print("[DEBUG] No custom race found or executed")
+                    # Remember that we failed this day to avoid re-checking until day changes
+                    last_failed_custom_race_day = day_key
         else:
             debug_print("[DEBUG] Custom race is disabled in config")
 

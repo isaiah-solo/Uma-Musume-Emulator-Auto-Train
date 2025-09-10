@@ -195,33 +195,6 @@ def extract_turn_number(pil_img: Image.Image) -> str:
         print(f"[WARNING] Turn number extraction failed: {e}")
         return ""
 
-def extract_mood_text(pil_img: Image.Image) -> str:
-    """Extract mood text with specialized configuration for better text recognition"""
-    try:
-        # Convert PIL image to numpy array if needed
-        if isinstance(pil_img, Image.Image):
-            img_np = np.array(pil_img)
-        else:
-            img_np = pil_img
-            
-        # Try multiple PSM modes for better text recognition
-        configs = [
-            '--oem 3 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',  # Single word
-            '--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',  # Single line
-            '--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',  # Uniform block
-        ]
-        
-        for config in configs:
-            text = pytesseract.image_to_string(img_np, config=config, lang='eng')
-            text = text.strip()
-            if text:
-                return text
-                
-        return ""
-    except Exception as e:
-        print(f"[WARNING] Mood text extraction failed: {e}")
-        return ""
-
 def extract_failure_text(pil_img: Image.Image) -> str:
     """Extract failure rate text with specialized configuration"""
     try:
