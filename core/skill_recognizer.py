@@ -663,7 +663,7 @@ def test_skill_recognition():
     debug_print("[DEBUG] " + "=" * 60)
     debug_print("[DEBUG] Test completed!")
 
-def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1492, swipe_end_x=504, swipe_end_y=926,
+def scan_all_skills_with_scroll(swipe_start_x=504, swipe_start_y=1490, swipe_end_x=504, swipe_end_y=926,
                                confidence=0.9, brightness_threshold=150, max_scrolls=20):
     """
     Scan all available skills by scrolling through the list until duplicates are found.

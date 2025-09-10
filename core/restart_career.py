@@ -153,48 +153,63 @@ def finish_career_completion() -> bool:
     
     time.sleep(0.5)
     
-    # Navigate through completion screens
-    max_total_taps = 15
-    total_taps = 0
-    
-    while total_taps < max_total_taps:
-        # Try next button
-        if click_image_button("assets/buttons/next_btn.png", "next button", max_attempts=3):
-            total_taps += 1
-            time.sleep(0.5)
-            continue
-        
-        # Try close button
-        if click_image_button("assets/buttons/close.png", "close button", max_attempts=3):
-            total_taps += 1
-            time.sleep(0.5)
-            continue
-        
-        # Check for to_home button
+    # Navigate through completion screens with spam-tap strategy
+    start_time = time.time()
+    max_duration_seconds = 120  # Safety timeout to avoid infinite loop
+
+    while time.time() - start_time < max_duration_seconds:
+        # Always check if we're already on Career Home
         screenshot = take_screenshot()
-        to_home_matches = match_template(screenshot, "assets/buttons/to_home.png", confidence=0.8)
-        if to_home_matches:
-            if click_image_button("assets/buttons/to_home.png", "to_home button", max_attempts=3):
-                time.sleep(0.5)
-                
-                # Wait for career home screen
-                max_wait_attempts = 30
-                wait_attempts = 0
-                
-                while wait_attempts < max_wait_attempts:
-                    screenshot = take_screenshot()
-                    career_home_matches = match_template(screenshot, "assets/buttons/Career_Home.png", confidence=0.8)
-                    if career_home_matches:
-                        print("✓ Career Home screen detected - Career completion successful")
-                        return True
-                    time.sleep(1.0)
-                    wait_attempts += 1
-                
-                print("Timeout waiting for Career Home screen")
-                return False
-        
-        time.sleep(1.0)
-    
+        career_home_matches = match_template(screenshot, "assets/buttons/Career_Home.png", confidence=0.8)
+        if career_home_matches:
+            print("✓ Career Home screen detected - Career completion successful")
+            return True
+
+        # Look for the first actionable button (Next -> Close -> To Home)
+        first_button = None
+        first_button_name = None
+        for template_path, name in [
+            ("assets/buttons/next_btn.png", "next button"),
+            ("assets/buttons/close.png", "close button"),
+            ("assets/buttons/to_home.png", "to_home button"),
+        ]:
+            matches = match_template(screenshot, template_path, confidence=0.8)
+            if matches:
+                x, y, w, h = matches[0]
+                cx, cy = x + w // 2, y + h // 2
+                first_button = (cx, cy)
+                first_button_name = name
+                break
+
+        if first_button is not None:
+            cx, cy = first_button
+            print(f"[INFO] {first_button_name} detected at ({cx}, {cy}) - spamming taps for 10s")
+
+            # Spam tap on detected button position for 10 seconds
+            spam_end = time.time() + 10
+            while time.time() < spam_end:
+                tap(cx, cy)
+                time.sleep(0.08)
+
+            # After spam, check Career Home briefly
+            for _ in range(5):
+                screenshot = take_screenshot()
+                career_home_matches = match_template(screenshot, "assets/buttons/Career_Home.png", confidence=0.8)
+                if career_home_matches:
+                    print("✓ Career Home screen detected - Career completion successful")
+                    return True
+                time.sleep(1.0)
+
+            # Not at home yet; tap 2 more times then continue loop
+            tap(cx, cy)
+            time.sleep(0.1)
+            tap(cx, cy)
+            time.sleep(0.3)
+            continue
+
+        # If nothing actionable found, short wait and retry
+        time.sleep(0.7)
+
     print("Failed to complete career navigation")
     return False
 
@@ -521,16 +536,8 @@ def execute_restart_cycle(current_restart_count: int, max_restart_times: int,
     )
     
     if not success:
-        # Check if we reached completion criteria
-        should_continue, reason = should_continue_restarting(
-            new_restart_count, max_restart_times, new_total_fans, total_fans_requirement
-        )
-        if not should_continue:
-            print(f"Career completion criteria met: {reason}")
-            return False, new_restart_count, new_total_fans
-        else:
-            print("Failed to complete career")
-            return False, current_restart_count, total_fans_acquired
+        print("Failed to complete career - stopping workflow")
+        return False, current_restart_count, total_fans_acquired
     
     # Start new career
     if not start_career():

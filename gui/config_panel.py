@@ -810,14 +810,13 @@ class ConfigPanel(ctk.CTkFrame):
                         options.append((name, grade_rank.get(r.get('grade',''), 0)))
                 # Sort by grade rank desc, then name
                 options.sort(key=lambda x: (-x[1], x[0]))
-                return [name for name, _ in options]
+                # Always include blank option to allow clearing selection
+                return [''] + [name for name, _ in options]
 
             def refresh_rows():
                 # Rebuild each dropdown's values based on current filters
                 for period, widgets in row_vars.items():
                     race_names = build_options_for_period(period, all_races.get(period, {}))
-                    if not race_names:
-                        race_names = ['']
                     widgets['menu'].configure(values=race_names)
                     # Keep current selection if still valid, else clear
                     current = widgets['var'].get()
@@ -835,8 +834,6 @@ class ConfigPanel(ctk.CTkFrame):
                 middle = ctk.CTkFrame(row, fg_color="transparent")
                 middle.pack(side=tk.LEFT, padx=10, pady=8)
                 race_names = build_options_for_period(period, races)
-                if not race_names:
-                    race_names = ['']
                 var = tk.StringVar(value=selections.get(period, ''))
                 menu = ctk.CTkOptionMenu(middle, values=race_names, variable=var, command=lambda v, p=period: update_details_for(p), fg_color=self.colors['accent_blue'], corner_radius=8, button_color=self.colors['accent_blue'], button_hover_color=self.colors['accent_green'], width=200)
                 menu.pack(side=tk.LEFT)

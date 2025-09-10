@@ -182,6 +182,14 @@ class BotController:
                     pass
             self.bot_running = False
             self.main_window.add_log("Bot stopped", "warning")
+            # Ensure main window state and button reflect auto-stop
+            try:
+                self.main_window.bot_running = False
+                if hasattr(self.main_window, 'log_panel') and hasattr(self.main_window, 'root'):
+                    # Update button on the main UI thread
+                    self.main_window.root.after(0, self.main_window.log_panel.update_start_stop_button, False)
+            except Exception:
+                pass
     
     def process_bot_output(self, output):
         """Process bot output to extract status updates and logs"""

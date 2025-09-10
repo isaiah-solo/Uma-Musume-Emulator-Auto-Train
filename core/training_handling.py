@@ -417,11 +417,11 @@ def check_failure(screenshot, train_type):
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
                     debug_print(f"[DEBUG] Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
-                    if avg_confidence >= 0.7:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.7, accepting result")
+                    if avg_confidence >= 0.8:
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.8, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.7, continuing to retry")
+                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.8, continuing to retry")
         if attempt < 2:
             debug_print("[DEBUG] No valid percentage found, retrying...")
             time.sleep(0.1)

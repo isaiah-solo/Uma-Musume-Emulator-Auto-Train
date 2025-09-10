@@ -513,7 +513,7 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
             screenshot = take_screenshot()
         
         # Crop to energy bar region (updated coordinates from user)
-        x, y, width, height = 294, 203, 648, 102
+        x, y, width, height = 330, 203, 492, 72
         cropped = screenshot.crop((x, y, x + width, y + height))
         
         # Convert to numpy array and handle RGBA -> RGB
@@ -542,9 +542,9 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
         cv2.fillPoly(border_mask, [largest_contour], 255)
         
         # Erode the border mask to get the interior (remove the border pixels)
-        # Improved erosion: (3,3) kernel with 2 iterations vs original (5,5) with 1 iteration
+        # Slightly stronger erosion to ensure analysis stays off the white border
         kernel = np.ones((3, 3), np.uint8)
-        interior_mask = cv2.erode(border_mask, kernel, iterations=2)
+        interior_mask = cv2.erode(border_mask, kernel, iterations=3)
         
         # Step 2: Detect gray (empty) pixels inside the bar
         # More flexible gray detection than original (117,117,117) ± 10
@@ -560,40 +560,77 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
         contours_interior, _ = cv2.findContours(interior_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours_interior:
             x_rect, y_rect, w_rect, h_rect = cv2.boundingRect(contours_interior[0])
-            
-            # Use the middle horizontal line for analysis
-            middle_y = y_rect + h_rect // 2
-            
-            # Ensure middle_y is within bounds (safety check from original)
-            if not (0 <= middle_y < interior_mask.shape[0]):
-                debug_print("[DEBUG] Middle Y coordinate out of bounds")
-                return 0.0
-            
+
+            # Search central rows (50%) for the longest contiguous interior segment
+            start_row = y_rect + max(int(h_rect * 0.25), 0)
+            end_row = y_rect + min(int(h_rect * 0.75), interior_mask.shape[0] - 1)
+            best_row = None
+            best_left = None
+            best_right = None
+            best_len = -1
+
+            for row in range(start_row, end_row + 1):
+                line = interior_mask[row, :]
+                cols = np.where(line > 0)[0]
+                if cols.size == 0:
+                    continue
+                run_start = cols[0]
+                prev = cols[0]
+                for c in cols[1:]:
+                    if c != prev + 1:
+                        run_len = prev - run_start + 1
+                        if run_len > best_len:
+                            best_len = run_len
+                            best_row = row
+                            best_left = run_start
+                            best_right = prev
+                        run_start = c
+                    prev = c
+                # finalize last run
+                run_len = prev - run_start + 1
+                if run_len > best_len:
+                    best_len = run_len
+                    best_row = row
+                    best_left = run_start
+                    best_right = prev
+
+            # Fallback to geometric middle if nothing found
+            middle_y = int(best_row) if best_row is not None else (y_rect + h_rect // 2)
+
             # Extract the horizontal line from both interior and gray masks
             interior_line = interior_mask[middle_y, :]
             gray_line = gray_pixels_inside[middle_y, :]
-            
-            # Find the leftmost and rightmost points of the interior on this line
+
+            # Determine left/right bounds from best run or from full span
             interior_points = np.where(interior_line > 0)[0]
             if len(interior_points) > 0:
-                leftmost = interior_points[0]
-                rightmost = interior_points[-1]
+                if best_left is not None and best_right is not None:
+                    leftmost = best_left
+                    rightmost = best_right
+                else:
+                    leftmost = interior_points[0]
+                    rightmost = interior_points[-1]
+
+                # Apply a small margin to avoid rounded ends
+                margin = 4
+                leftmost = min(max(leftmost + margin, 0), interior_mask.shape[1] - 1)
+                rightmost = max(min(rightmost - margin, interior_mask.shape[1] - 1), leftmost)
                 total_width = rightmost - leftmost + 1
-                
+
                 # Count gray pixels in this horizontal line
                 gray_points = np.where(gray_line[leftmost:rightmost+1] > 0)[0]
                 gray_width = len(gray_points)
                 filled_width = total_width - gray_width
-                
+
                 # Calculate fill percentage based on horizontal line
                 fill_percentage = (filled_width / total_width) * 100.0 if total_width > 0 else 0.0
-                
+
                 debug_print(f"[DEBUG] Energy bar: width={total_width}px, gray={gray_width}px, filled={filled_width}px, percentage={fill_percentage:.1f}%")
-                
+
                 # Create debug visualization if requested
                 if debug_visualization:
                     _create_energy_debug_visualization(cropped_np, largest_contour, interior_mask, gray_pixels_inside, fill_percentage, middle_y, leftmost, rightmost, gray_points + leftmost)
-                
+
                 return fill_percentage
             else:
                 debug_print("[DEBUG] No interior points found on analysis line")
@@ -636,9 +673,12 @@ def _create_energy_debug_visualization(original_image, contour, interior_mask, g
         # Draw the horizontal analysis line in green
         cv2.line(debug_img, (0, middle_y), (original_image.shape[1]-1, middle_y), (0, 255, 0), 2)
         
-        # Draw the left and right boundaries in blue
-        cv2.line(debug_img, (leftmost, 0), (leftmost, original_image.shape[0]-1), (255, 0, 0), 2)
-        cv2.line(debug_img, (rightmost, 0), (rightmost, original_image.shape[0]-1), (255, 0, 0), 2)
+        # Draw the left and right boundaries in blue, shifted inward by 5px
+        shift = 5
+        draw_left = min(max(leftmost + shift, 0), original_image.shape[1]-1)
+        draw_right = max(min(rightmost - shift, original_image.shape[1]-1), draw_left)
+        cv2.line(debug_img, (draw_left, 0), (draw_left, original_image.shape[0]-1), (255, 0, 0), 2)
+        cv2.line(debug_img, (draw_right, 0), (draw_right, original_image.shape[0]-1), (255, 0, 0), 2)
         
         # Mark gray positions with red dots
         for gray_x in gray_positions:
@@ -646,7 +686,7 @@ def _create_energy_debug_visualization(original_image, contour, interior_mask, g
         
         # Add text annotations
         cv2.putText(debug_img, f"Analysis Line: y={middle_y}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        cv2.putText(debug_img, f"Left: {leftmost}, Right: {rightmost}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        cv2.putText(debug_img, f"Left: {draw_left}, Right: {draw_right}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         cv2.putText(debug_img, f"Gray pixels: {len(gray_positions)}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
         cv2.imwrite("debug_horizontal_line.png", debug_img)
