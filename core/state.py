@@ -163,9 +163,8 @@ def check_current_year(screenshot=None):
     """Fast year detection using regular screenshot"""
     year_img = enhanced_screenshot(YEAR_REGION, screenshot)
     
-    # Simple OCR with PSM 7 (single line text)
     import pytesseract
-    text = pytesseract.image_to_string(year_img, config='--oem 3 --psm 7').strip()
+    text = pytesseract.image_to_string(year_img).strip()
     
     if text:
         # Clean OCR result - correct common OCR errors

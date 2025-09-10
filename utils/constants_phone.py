@@ -15,7 +15,7 @@ TURN_REGION=(21, 149, 210, 239)
 FAILURE_REGION=(45, 1357, 1044, 1465)
 
 # Year region (top area)
-YEAR_REGION=(21, 66, 276, 96)
+YEAR_REGION=(21, 66, 333, 96)
 
 # Criteria region (top area)
 CRITERIA_REGION=(363, 153, 867, 201)
