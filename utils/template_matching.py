@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from typing import List, Tuple, Optional
 from utils.log import debug_print
+from utils.log import log_debug, log_info, log_warning, log_error
 
 def deduplicated_matches(matches: List[Tuple[int, int, int, int]], 
                         threshold: int = 30) -> List[Tuple[int, int, int, int]]:
@@ -21,7 +22,7 @@ def deduplicated_matches(matches: List[Tuple[int, int, int, int]],
     
     # Additional safety check: ensure matches is actually a list
     if not isinstance(matches, list):
-        print(f"WARNING: deduplicated_matches received non-list: {type(matches)}, {matches}")
+        log_warning(f"deduplicated_matches received non-list: {type(matches)}, {matches}")
         return []
     
     # Safety check: ensure matches has at least one element
@@ -33,7 +34,7 @@ def deduplicated_matches(matches: List[Tuple[int, int, int, int]],
     for match in matches[1:]:
         # Safety check: ensure match is a valid tuple
         if not isinstance(match, tuple) or len(match) != 4:
-            print(f"WARNING: Invalid match format: {match}")
+            log_warning(f"Invalid match format: {match}")
             continue
             
         match_center = (match[0] + match[2]//2, match[1] + match[3]//2)

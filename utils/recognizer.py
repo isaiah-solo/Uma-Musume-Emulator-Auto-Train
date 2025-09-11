@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image
 import os
 from utils.screenshot import take_screenshot
+from utils.log import log_debug, log_info, log_warning, log_error
 
 def match_template(screenshot, template_path, confidence=0.8, region=None):
     """
@@ -20,12 +21,12 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
     try:
         # Load template
         if not os.path.exists(template_path):
-            print(f"Template not found: {template_path}")
+            log_error(f"Template not found: {template_path}")
             return []
         
         template = cv2.imread(template_path, cv2.IMREAD_COLOR)
         if template is None:
-            print(f"Failed to load template: {template_path}")
+            log_error(f"Failed to load template: {template_path}")
             return []
         
         # Convert screenshot to OpenCV format
@@ -56,7 +57,7 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
         return matches if matches else []
         
     except Exception as e:
-        print(f"Error in template matching: {e}")
+        log_error(f"Error in template matching: {e}")
         return []
 
 def max_match_confidence(screenshot, template_path, region=None):
@@ -73,12 +74,12 @@ def max_match_confidence(screenshot, template_path, region=None):
     """
     try:
         if not os.path.exists(template_path):
-            print(f"Template not found: {template_path}")
+            log_error(f"Template not found: {template_path}")
             return 0.0
 
         template = cv2.imread(template_path, cv2.IMREAD_COLOR)
         if template is None:
-            print(f"Failed to load template: {template_path}")
+            log_error(f"Failed to load template: {template_path}")
             return 0.0
 
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
@@ -91,7 +92,7 @@ def max_match_confidence(screenshot, template_path, region=None):
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         return float(max_val)
     except Exception as e:
-        print(f"Error computing max template confidence: {e}")
+        log_error(f"Error computing max template confidence: {e}")
         return 0.0
 
 def locate_on_screen(template_path, confidence=0.8, region=None):

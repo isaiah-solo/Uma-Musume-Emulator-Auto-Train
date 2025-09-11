@@ -27,7 +27,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
 
-from utils.log import debug_print, safe_print
+from utils.log import log_debug, log_info, log_warning, log_error
 
 # Try to find tesseract executable automatically
 try:
@@ -50,30 +50,30 @@ def verify_tesseract_config():
     try:
         # Get current tesseract command
         tesseract_cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'system PATH')
-        print(f"🔍 Tesseract executable: {tesseract_cmd}")
+        log_info(f"🔍 Tesseract executable: {tesseract_cmd}")
         
         # Get current TESSDATA_PREFIX
         tessdata_prefix = os.environ.get('TESSDATA_PREFIX', 'Not set')
-        print(f"🔍 TESSDATA_PREFIX: {tessdata_prefix}")
+        log_info(f"🔍 TESSDATA_PREFIX: {tessdata_prefix}")
         
         # Check if custom tessdata is accessible
         if os.path.exists(tessdata_dir):
             custom_models = [f for f in os.listdir(tessdata_dir) if f.endswith('.traineddata')]
-            print(f"🔍 Custom tessdata models: {custom_models}")
+            log_info(f"🔍 Custom tessdata models: {custom_models}")
             
             # Try to get tesseract info to see which models it can see
             try:
                 version = pytesseract.get_tesseract_version()
                 languages = pytesseract.get_languages()
-                print(f"🔍 Tesseract version: {version}")
-                print(f"🔍 Available languages: {languages}")
+                log_info(f"🔍 Tesseract version: {version}")
+                log_info(f"🔍 Available languages: {languages}")
             except Exception as e:
-                print(f"🔍 Could not get Tesseract info: {e}")
+                log_info(f"🔍 Could not get Tesseract info: {e}")
         else:
-            print(f"🔍 Custom tessdata directory not found: {tessdata_dir}")
+            log_info(f"🔍 Custom tessdata directory not found: {tessdata_dir}")
             
     except Exception as e:
-        print(f"🔍 Error verifying Tesseract config: {e}")
+        log_info(f"🔍 Error verifying Tesseract config: {e}")
 
 # Verify configuration on import
 if DEBUG_MODE:
@@ -81,8 +81,8 @@ if DEBUG_MODE:
 
 # Verify tessdata directory exists and contains models
 if not os.path.exists(tessdata_dir):
-    print(f"⚠️  Warning: tessdata directory not found: {tessdata_dir}")
-    print("   Falling back to system Tesseract models")
+    log_info(f"⚠️  Warning: tessdata directory not found: {tessdata_dir}")
+    log_info(f"   Falling back to system Tesseract models")
 else:
     # Check what models are available in custom tessdata
     available_models = []
@@ -91,11 +91,11 @@ else:
             available_models.append(file)
     
     if available_models:
-        print(f"✅ Using custom Tesseract models from: {tessdata_dir}")
-        print(f"   Available models: {', '.join(available_models)}")
+        log_info(f"✅ Using custom Tesseract models from: {tessdata_dir}")
+        log_info(f"   Available models: {', '.join(available_models)}")
     else:
-        print(f"⚠️  tessdata directory exists but contains no .traineddata files: {tessdata_dir}")
-        print("   Falling back to system Tesseract models")
+        log_info(f"⚠️  tessdata directory exists but contains no .traineddata files: {tessdata_dir}")
+        log_info(f"   Falling back to system Tesseract models")
 
 def extract_text(pil_img: Image.Image) -> str:
     """Extract text from image using Tesseract OCR"""
@@ -108,27 +108,27 @@ def extract_text(pil_img: Image.Image) -> str:
             
         # Debug info about which tessdata is being used
         if DEBUG_MODE and os.path.exists(tessdata_dir):
-            debug_print(f"[DEBUG] Using custom tessdata from: {tessdata_dir}")
+            log_debug(f"Using custom tessdata from: {tessdata_dir}")
             
         # Use Tesseract with custom configuration for better accuracy
-        config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%().- "'
-        text = pytesseract.image_to_string(img_np, config=config, lang='eng')
+        # config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%().- "'
+        text = pytesseract.image_to_string(img_np, lang='eng')
         result = text.strip()
         
         # If no text extracted and in debug mode, save debug image
         if not result and DEBUG_MODE:
             debug_filename = f"debug_ocr_text_failed_{int(time.time())}.png"
             pil_img.save(debug_filename)
-            debug_print(f"[DEBUG] OCR text extraction failed, saved debug image: {debug_filename}")
-            debug_print(f"[DEBUG] Image size: {pil_img.size}")
+            log_debug(f"OCR text extraction failed, saved debug image: {debug_filename}")
+            log_debug(f"Image size: {pil_img.size}")
         
         return result
     except Exception as e:
         if DEBUG_MODE:
             debug_filename = f"debug_ocr_text_error_{int(time.time())}.png"
             pil_img.save(debug_filename)
-            debug_print(f"[DEBUG] OCR text extraction error: {e}, saved debug image: {debug_filename}")
-        print(f"[WARNING] OCR extraction failed: {e}")
+            log_debug(f"OCR text extraction error: {e}, saved debug image: {debug_filename}")
+        log_warning(f"OCR extraction failed: {e}")
         return ""
 
 def extract_number(pil_img: Image.Image) -> str:
@@ -149,16 +149,16 @@ def extract_number(pil_img: Image.Image) -> str:
         if not result and DEBUG_MODE:
             debug_filename = f"debug_ocr_number_failed_{int(time.time())}.png"
             pil_img.save(debug_filename)
-            debug_print(f"[DEBUG] OCR number extraction failed, saved debug image: {debug_filename}")
-            debug_print(f"[DEBUG] Image size: {pil_img.size}")
+            log_debug(f"OCR number extraction failed, saved debug image: {debug_filename}")
+            log_debug(f"Image size: {pil_img.size}")
         
         return result
     except Exception as e:
         if DEBUG_MODE:
             debug_filename = f"debug_ocr_number_error_{int(time.time())}.png"
             pil_img.save(debug_filename)
-            debug_print(f"[DEBUG] OCR number extraction error: {e}, saved debug image: {debug_filename}")
-        print(f"[WARNING] Number extraction failed: {e}")
+            log_debug(f"OCR number extraction error: {e}, saved debug image: {debug_filename}")
+        log_warning(f"Number extraction failed: {e}")
         return ""
 
 def extract_turn_number(pil_img: Image.Image) -> str:
@@ -192,7 +192,7 @@ def extract_turn_number(pil_img: Image.Image) -> str:
                 
         return ""
     except Exception as e:
-        print(f"[WARNING] Turn number extraction failed: {e}")
+        log_warning(f"Turn number extraction failed: {e}")
         return ""
 
 def extract_failure_text(pil_img: Image.Image) -> str:
@@ -204,23 +204,23 @@ def extract_failure_text(pil_img: Image.Image) -> str:
         else:
             img_np = pil_img
             
-        # Try multiple PSM modes for better text recognition
-        configs = [
-            '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Uniform block
-            '--oem 3 --psm 7 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single line
-            '--oem 3 --psm 8 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single word
-            '--oem 3 --psm 13 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Raw line
-        ]
+        # # Try multiple PSM modes for better text recognition
+        # configs = [
+        #     '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Uniform block
+        #     '--oem 3 --psm 7 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single line
+        #     '--oem 3 --psm 8 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Single word
+        #     '--oem 3 --psm 13 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "',  # Raw line
+        # ]
         
         for config in configs:
-            text = pytesseract.image_to_string(img_np, config=config, lang='eng')
+            text = pytesseract.image_to_string(img_np, lang='eng')
             text = text.strip()
             if text:
                 return text
                 
         return ""
     except Exception as e:
-        print(f"[WARNING] Failure text extraction failed: {e}")
+        log_warning(f"Failure text extraction failed: {e}")
         return ""
 
 def extract_failure_text_with_confidence(pil_img: Image.Image) -> tuple[str, float]:
@@ -232,9 +232,9 @@ def extract_failure_text_with_confidence(pil_img: Image.Image) -> tuple[str, flo
         else:
             img_np = pil_img
             
-        # Use Tesseract with data output to get confidence scores
-        config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "'
-        ocr_data = pytesseract.image_to_data(img_np, config=config, lang='eng', output_type=pytesseract.Output.DICT)
+        # # Use Tesseract with data output to get confidence scores
+        # config = '--oem 3 --psm 6 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%(). "'
+        ocr_data = pytesseract.image_to_data(img_np, lang='eng', output_type=pytesseract.Output.DICT)
         
         # Extract text and calculate average confidence
         text_parts = []
@@ -253,7 +253,7 @@ def extract_failure_text_with_confidence(pil_img: Image.Image) -> tuple[str, flo
             return "", 0.0
             
     except Exception as e:
-        print(f"[WARNING] Failure text extraction with confidence failed: {e}")
+        log_warning(f"Failure text extraction with confidence failed: {e}")
         return "", 0.0
 
 def extract_event_name_text(pil_img: Image.Image) -> str:
@@ -286,18 +286,18 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
             pil_enh = ImageEnhance.Contrast(pil_enh).enhance(1.8)
             pil_enh = ImageEnhance.Sharpness(pil_enh).enhance(1.8)
             enhanced_gray = np.array(pil_enh)
-            debug_print("[DEBUG] Applied autocontrast/contrast/sharpness to grayscale image")
+            log_debug(f"Applied autocontrast/contrast/sharpness to grayscale image")
         except Exception as enh_e:
-            debug_print(f"[DEBUG] Enhancement pipeline failed: {enh_e}")
+            log_debug(f"Enhancement pipeline failed: {enh_e}")
             enhanced_gray = gray
 
         # Simple OCR path (no PSM), preserve spaces
         try:
             cfg_simple = "-c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300"
-            debug_print(f"[DEBUG] Simple OCR cfg: {cfg_simple}")
+            log_debug(f"Simple OCR cfg: {cfg_simple}")
             simple_text = pytesseract.image_to_string(enhanced_gray, config=cfg_simple, lang='eng')
             simple_text = (simple_text or "").strip()
-            debug_print(f"[DEBUG] Simple OCR raw: '{simple_text}'")
+            log_debug(f"Simple OCR raw: '{simple_text}'")
             # Optionally save enhanced image for debugging
             if DEBUG_MODE:
                 from datetime import datetime
@@ -321,7 +321,7 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
                 simple_text = find_best_event_match(simple_text)
                 return simple_text
         except Exception as simple_e:
-            debug_print(f"[DEBUG] Simple OCR path failed: {simple_e}")
+            log_debug(f"Simple OCR path failed: {simple_e}")
 
         # Fallback: binarize and run image_to_data with multiple PSMs
         _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
@@ -335,10 +335,10 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
         ]
         for config in configs:
             try:
-                debug_print(f"[DEBUG] Tesseract config: {config}")
+                log_debug(f"Tesseract config: {config}")
                 data = pytesseract.image_to_data(img_np_proc, config=config, lang='eng', output_type=pytesseract.Output.DICT)
             except Exception as ocr_e:
-                print(f"[WARNING] image_to_data failed for config: {config}. Error: {ocr_e}")
+                log_warning(f"image_to_data failed for config: {config}. Error: {ocr_e}")
                 continue
 
             # Collect words with confidence
@@ -355,12 +355,12 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
                     conf_parts.append(conf_val)
 
             raw_joined = ' '.join([(w or '').strip() for w in data['text'] if (w or '').strip()])
-            debug_print(f"[DEBUG] Raw OCR (no filter): '{raw_joined}'")
+            log_debug(f"Raw OCR (no filter): '{raw_joined}'")
             if conf_parts:
                 avg_conf = sum(conf_parts) / len(conf_parts)
-                debug_print(f"[DEBUG] Filtered words: {len(text_parts)}, avg conf: {avg_conf:.1f}")
+                log_debug(f"Filtered words: {len(text_parts)}, avg conf: {avg_conf:.1f}")
             else:
-                debug_print("[DEBUG] No words passed confidence filter")
+                log_debug(f"No words passed confidence filter")
 
             text = ' '.join(text_parts).strip()
 
@@ -377,12 +377,12 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
                 text = text[match.start():]
             if text:
                 text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-            debug_print(f"[DEBUG] Post-processed OCR text: '{text}'")
+            log_debug(f"Post-processed OCR text: '{text}'")
             if text:
                 return text
         return ""
     except Exception as e:
-        print(f"[WARNING] Event name OCR extraction failed: {e}")
+        log_warning(f"Event name OCR extraction failed: {e}")
         return ""
 
 def find_best_event_match(ocr_text):
@@ -444,13 +444,13 @@ def find_best_event_match(ocr_text):
         # Pass 1: exact case-insensitive
         for name in all_event_names:
             if normalize(name).lower() == ocr_norm.lower():
-                debug_print(f"[DEBUG] Exact match: '{ocr_text}' -> '{name}'")
+                log_debug(f"Exact match: '{ocr_text}' -> '{name}'")
                 return name
 
         # Pass 2: exact ignoring spaces/punct
         for name in all_event_names:
             if strip_spaces_punct(normalize(name)) == ocr_nospace:
-                debug_print(f"[DEBUG] No-space match: '{ocr_text}' -> '{name}'")
+                log_debug(f"No-space match: '{ocr_text}' -> '{name}'")
                 return name
 
         # Pass 3: token containment
@@ -463,7 +463,7 @@ def find_best_event_match(ocr_text):
         if token_candidates:
             # Prefer the shortest candidate (most specific) to avoid mapping to longer unrelated names
             best = min(token_candidates, key=lambda n: len(n))
-            debug_print(f"[DEBUG] Token match: '{ocr_text}' -> '{best}'")
+            log_debug(f"Token match: '{ocr_text}' -> '{best}'")
             return best
 
         # Pass 4: similarity ratio with threshold
@@ -478,12 +478,12 @@ def find_best_event_match(ocr_text):
                 best_match = db_event_name
 
         if best_match != ocr_text:
-            debug_print(f"[DEBUG] OCR: '{ocr_text}' -> Matched: '{best_match}' (ratio: {best_ratio:.3f})")
+            log_debug(f"OCR: '{ocr_text}' -> Matched: '{best_match}' (ratio: {best_ratio:.3f}")
         else:
-            debug_print(f"[DEBUG] OCR: '{ocr_text}' -> No match found (best ratio: {best_ratio:.3f})")
+            log_debug(f"OCR: '{ocr_text}' -> No match found (best ratio: {best_ratio:.3f}")
         return best_match
     except Exception as e:
-        print(f"[WARNING] Event name matching failed: {e}")
+        log_warning(f"Event name matching failed: {e}")
         return ocr_text
 
 def extract_event_name_text_debug(pil_img: Image.Image, save_prefix: str = "event_debug") -> dict:

@@ -10,7 +10,7 @@ from utils.recognizer import locate_on_screen, locate_all_on_screen, is_image_on
 from utils.input import tap, triple_click, swipe, tap_on_image
 from utils.screenshot import take_screenshot, enhanced_screenshot
 from utils.constants_phone import *
-from utils.log import debug_print
+from utils.log import log_debug, log_info, log_warning, log_error
 from utils.template_matching import wait_for_image, deduplicated_matches
 
 # Load config for DEBUG_MODE
@@ -69,13 +69,13 @@ def _filtered_template_matches(screenshot, template_path, region_cv, confidence=
 
 def go_to_training():
     """Go to training screen"""
-    debug_print("[DEBUG] Going to training screen...")
+    log_debug(f"Going to training screen...")
     return tap_on_image("assets/buttons/training_btn.png", min_search=10)
 
 def check_training():
     """Check training results using fixed coordinates, collecting support counts,
     bond levels and hint presence in one hover pass before computing failure rates."""
-    debug_print("[DEBUG] Checking training options...")
+    log_debug(f"Checking training options...")
     
     # Fixed coordinates for each training type
     training_coords = {
@@ -88,13 +88,13 @@ def check_training():
     results = {}
 
     for key, coords in training_coords.items():
-        debug_print(f"[DEBUG] Checking {key.upper()} training at coordinates {coords}...")
+        log_debug(f"Checking {key.upper()} training at coordinates {coords}...")
         
         # Proper hover simulation: move to position, hold, check, move away, release
-        debug_print(f"[DEBUG] Hovering over {key.upper()} training to check support cards...")
+        log_debug(f"Hovering over {key.upper()} training to check support cards...")
         
         # Step 1: Hold at button position and move mouse up 300 pixels to simulate hover
-        debug_print(f"[DEBUG] Holding at {key.upper()} training button and moving mouse up...")
+        log_debug(f"Holding at {key.upper()} training button and moving mouse up...")
         # Swipe from button position up 300 pixels with longer duration to simulate holding and moving
         start_x, start_y = coords
         end_x, end_y = start_x, start_y - 200  # Move up 300 pixels
@@ -143,9 +143,9 @@ def check_training():
         # Calculate score for this training type
         score = calculate_training_score(detailed_support, hint_found, key)
 
-        debug_print(f"[DEBUG] Support counts: {support_counts} | hint_found={hint_found} | score={score}")
+        log_debug(f"Support counts: {support_counts} | hint_found={hint_found} | score={score}")
 
-        debug_print(f"[DEBUG] Checking failure rate for {key.upper()} training...")
+        log_debug(f"Checking failure rate for {key.upper()} training...")
         # Pass screenshot to avoid taking new ones
         failure_chance, confidence = check_failure(screenshot, key)  # ✅ Pass screenshot
         
@@ -160,7 +160,7 @@ def check_training():
         }
         
         # Use clean format matching training_score_test.py exactly
-        print(f"\n[{key.upper()}]")
+        log_info(f"\n[{key.upper()}]")
         
         # Show support card details (similar to test script)
         if detailed_support:
@@ -173,35 +173,35 @@ def check_training():
                     if is_rainbow:
                         label += " (Rainbow)"
                     support_lines.append(label)
-            print(", ".join(support_lines))
+            log_info(f", ".join(support_lines))
         else:
-            print("-")
+            log_info(f"-")
         
-        print(f"hint={hint_found}")
-        print(f"Fail: {failure_chance}% - Confident: {confidence:.2f}")
-        print(f"Score: {score}")
+        log_info(f"hint={hint_found}")
+        log_info(f"Fail: {failure_chance}% - Confident: {confidence:.2f}")
+        log_info(f"Score: {score}")
         
 
     
-    debug_print("[DEBUG] Going back from training screen...")
+    log_debug(f"Going back from training screen...")
     tap_on_image("assets/buttons/back_btn.png")
     
     # Print overall summary
-    print("\n=== Overall ===")
+    log_info(f"\n=== Overall ===")
     for k in ["spd", "sta", "pwr", "guts", "wit"]:
         if k in results:
             data = results[k]
-            print(f"{k.upper()}: Score={data['score']:.2f}, Fail={data['failure']}% - Confident: {data['confidence']:.2f}")
+            log_info(f"{k.upper()}: Score={data['score']:.2f}, Fail={data['failure']}% - Confident: {data['confidence']:.2f}")
     
     return results
 
 def do_train(train):
     """Perform training of specified type"""
-    debug_print(f"[DEBUG] Performing {train.upper()} training...")
+    log_debug(f"Performing {train.upper()} training...")
     
     # First, go to training screen
     if not go_to_training():
-        debug_print(f"[DEBUG] Failed to go to training screen, cannot perform {train.upper()} training")
+        log_debug(f"Failed to go to training screen, cannot perform {train.upper()} training")
         return
     
     # Wait for screen to load and verify we're on training screen
@@ -218,14 +218,14 @@ def do_train(train):
     
     # Check if the requested training type exists
     if train not in training_coords:
-        debug_print(f"[DEBUG] Unknown training type: {train}")
+        log_debug(f"Unknown training type: {train}")
         return
     
     # Get the coordinates for the requested training type
     train_coords = training_coords[train]
-    debug_print(f"[DEBUG] Found {train.upper()} training at coordinates {train_coords}")
+    log_debug(f"Found {train.upper()} training at coordinates {train_coords}")
     triple_click(train_coords[0], train_coords[1], interval=0.1)
-    debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
+    log_debug(f"Triple clicked {train.upper()} training button")
 
 # Training-related functions moved from state.py
 def check_support_card(screenshot, threshold=0.9):
@@ -246,56 +246,56 @@ def check_support_card(screenshot, threshold=0.9):
     # Save full screenshot for debugging only in debug mode
     if DEBUG_MODE:
         screenshot.save("debug_support_cards_screenshot.png")
-        debug_print(f"[DEBUG] Saved full screenshot to debug_support_cards_screenshot.png")
+        log_debug(f"Saved full screenshot to debug_support_cards_screenshot.png")
 
     # Convert PIL region format (left, top, right, bottom) to OpenCV format (x, y, width, height)
     left, top, right, bottom = SUPPORT_CARD_ICON_REGION
     region_cv = (left, top, right - left, bottom - top)
-    debug_print(f"[DEBUG] Searching in region: {region_cv} (PIL format: {SUPPORT_CARD_ICON_REGION})")
+    log_debug(f"Searching in region: {region_cv} (PIL format: {SUPPORT_CARD_ICON_REGION})")
     
     # Crop and save the search region for debugging only in debug mode
     if DEBUG_MODE:
         search_region = screenshot.crop(SUPPORT_CARD_ICON_REGION)
         search_region.save("debug_support_cards_search_region.png")
-        debug_print(f"[DEBUG] Saved search region to debug_support_cards_search_region.png")
+        log_debug(f"Saved search region to debug_support_cards_search_region.png")
 
     for key, icon_path in SUPPORT_ICONS.items():
-        debug_print(f"\n[DEBUG] Testing {key.upper()} support card detection...")
+        log_debug(f"\nTesting {key.upper()} support card detection...")
         
         # Use single threshold for faster detection
         matches = match_template(screenshot, icon_path, 0.8, region_cv)
-        debug_print(f"[DEBUG] Raw matches for {key.upper()}: {matches}")
+        log_debug(f"Raw matches for {key.upper()}: {matches}")
         
         filtered_matches = deduplicated_matches(matches, threshold=30) if matches else []
-        debug_print(f"[DEBUG] After deduplication for {key.upper()}: {filtered_matches}")
+        log_debug(f"After deduplication for {key.upper()}: {filtered_matches}")
         
         # Ensure filtered_matches is always a list
         if filtered_matches is None:
-            debug_print(f"[DEBUG] WARNING: filtered_matches is None for {key.upper()}, setting to empty list")
+            log_debug(f"WARNING: filtered_matches is None for {key.upper()}, setting to empty list")
             filtered_matches = []
         
         # Additional safety check
         if not isinstance(filtered_matches, list):
-            debug_print(f"[DEBUG] WARNING: filtered_matches is not a list for {key.upper()}, type: {type(filtered_matches)}, setting to empty list")
+            log_debug(f"WARNING: filtered_matches is not a list for {key.upper()}, type: {type(filtered_matches)}, setting to empty list")
             filtered_matches = []
         
-        debug_print(f"[DEBUG] Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches) if matches else 0})")
+        log_debug(f" Found {len(filtered_matches)} {key.upper()} support cards (filtered from {len(matches) if matches else 0})")
         
         # Show coordinates of each match
         for i, match in enumerate(filtered_matches):
             x, y, w, h = match
             center_x, center_y = x + w//2, y + h//2
-            debug_print(f"[DEBUG]   {key.upper()} match {i+1}: center=({center_x}, {center_y}), bbox=({x}, {y}, {w}, {h})")
+            log_debug(f"   {key.upper()} match {i+1}: center=({center_x}, {center_y}), bbox=({x}, {y}, {w}, {h})")
         
         # Skip expensive image annotation and only save debug images when DEBUG_MODE is true
         if not filtered_matches:
-            debug_print(f"[DEBUG] No {key.upper()} support cards found")
+            log_debug(f" No {key.upper()} support cards found")
         
         count_result[key] = len(filtered_matches)
         
         # Debug output for each support card type
         if count_result[key] > 0:
-            debug_print(f"[DEBUG] {key.upper()} support cards found: {count_result[key]}")
+            log_debug(f" {key.upper()} support cards found: {count_result[key]}")
 
     return count_result
 
@@ -316,22 +316,22 @@ def check_hint(screenshot, template_path: str = "assets/icons/hint.png", confide
         # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
         region_cv = (left, top, right - left, bottom - top)
-        debug_print(f"[DEBUG] Checking hint in region: {region_cv} using template: {template_path}")
+        log_debug(f" Checking hint in region: {region_cv} using template: {template_path}")
 
         if DEBUG_MODE:
             try:
                 screenshot.crop(SUPPORT_CARD_ICON_REGION).save("debug_hint_search_region.png")
-                debug_print("[DEBUG] Saved hint search region to debug_hint_search_region.png")
+                log_debug(f" Saved hint search region to debug_hint_search_region.png")
             except Exception:
                 pass
 
         matches = match_template(screenshot, template_path, confidence, region_cv)
 
         found = bool(matches and len(matches) > 0)
-        debug_print(f"[DEBUG] Hint icon found: {found}")
+        log_debug(f" Hint icon found: {found}")
         return found
     except Exception as e:
-        debug_print(f"[DEBUG] check_hint failed: {e}")
+        log_debug(f" check_hint failed: {e}")
         return False
 
 def check_failure(screenshot, train_type):
@@ -343,7 +343,7 @@ def check_failure(screenshot, train_type):
     Returns:
         (rate, confidence)
     """
-    debug_print(f"[DEBUG] ===== STARTING FAILURE DETECTION for {train_type.upper()} =====")
+    log_debug(f" ===== STARTING FAILURE DETECTION for {train_type.upper()} =====")
     from utils.constants_phone import FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
     from utils.screenshot import enhanced_screenshot, take_screenshot
     import numpy as np
@@ -367,11 +367,11 @@ def check_failure(screenshot, train_type):
     
     # Step 1: Try white-specialized OCR 3 times
     for attempt in range(3):
-        debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        log_debug(f" White OCR attempt {attempt+1}/3 for {train_type.upper()}")
         
         # Take new screenshot for each retry instead of shifting region
         if attempt > 0:
-            debug_print(f"[DEBUG] Taking new screenshot for retry {attempt+1}")
+            log_debug(f" Taking new screenshot for retry {attempt+1}")
             current_screenshot = take_screenshot()
         else:
             current_screenshot = screenshot
@@ -405,7 +405,7 @@ def check_failure(screenshot, train_type):
         # Get OCR data with confidence from enhanced white image
         ocr_data = pytesseract.image_to_data(np.array(white_img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
         text = pytesseract.image_to_string(np.array(white_img), config='--oem 3 --psm 6').strip()
-        debug_print(f"[DEBUG] White OCR result: '{text}'")
+        log_debug(f" White OCR result: '{text}'")
         
         # Calculate average confidence from OCR data
         confidences = [conf for conf in ocr_data['conf'] if conf != -1]
@@ -416,23 +416,23 @@ def check_failure(screenshot, train_type):
             if match:
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
-                    debug_print(f"[DEBUG] Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
+                    log_debug(f" Found percentage: {rate}% (white) confidence: {avg_confidence:.2f} for {train_type.upper()}")
                     if avg_confidence >= 0.8:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.8, accepting result")
+                        log_debug(f" Confidence {avg_confidence:.2f} meets minimum 0.8, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.8, continuing to retry")
+                        log_debug(f" Confidence {avg_confidence:.2f} below minimum 0.8, continuing to retry")
         if attempt < 2:
-            debug_print("[DEBUG] No valid percentage found, retrying...")
+            log_debug(f" No valid percentage found, retrying...")
             time.sleep(0.1)
     
     # Step 2: Try yellow threshold OCR 3 times
     for attempt in range(3):
-        debug_print(f"[DEBUG] Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
+        log_debug(f" Yellow OCR attempt {attempt+1}/3 for {train_type.upper()}")
         
         # Take new screenshot for each retry instead of shifting region
         if attempt > 0:
-            debug_print(f"[DEBUG] Taking new screenshot for retry {attempt+1}")
+            log_debug(f" Taking new screenshot for retry {attempt+1}")
             current_screenshot = take_screenshot()
         else:
             current_screenshot = screenshot
@@ -457,7 +457,7 @@ def check_failure(screenshot, train_type):
         # Get OCR data with confidence
         ocr_data = pytesseract.image_to_data(np.array(yellow_img), config='--oem 3 --psm 6', output_type=pytesseract.Output.DICT)
         text = pytesseract.image_to_string(np.array(yellow_img), config='--oem 3 --psm 6').strip()
-        debug_print(f"[DEBUG] Yellow OCR result: '{text}'")
+        log_debug(f" Yellow OCR result: '{text}'")
         
         # Calculate average confidence from OCR data
         confidences = [conf for conf in ocr_data['conf'] if conf != -1]
@@ -468,35 +468,35 @@ def check_failure(screenshot, train_type):
             if match:
                 rate = int(match.group(1))
                 if 0 <= rate <= 100:
-                    debug_print(f"[DEBUG] Found percentage: {rate}% (yellow) confidence: {avg_confidence:.2f} for {train_type.upper()}")
+                    log_debug(f" Found percentage: {rate}% (yellow) confidence: {avg_confidence:.2f} for {train_type.upper()}")
                     if avg_confidence >= 0.9:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} meets minimum 0.9, accepting result")
+                        log_debug(f" Confidence {avg_confidence:.2f} meets minimum 0.9, accepting result")
                         return (rate, avg_confidence)
                     else:
-                        debug_print(f"[DEBUG] Confidence {avg_confidence:.2f} below minimum 0.9, continuing to retry")
+                        log_debug(f" Confidence {avg_confidence:.2f} below minimum 0.9, continuing to retry")
         if attempt < 2:
-            debug_print("[DEBUG] No valid yellow percentage found, retrying...")
+            log_debug(f" No valid yellow percentage found, retrying...")
             time.sleep(0.1)
     
     # If we get here, all OCR attempts failed
-    debug_print(f"[DEBUG] ===== FAILURE DETECTION FAILED for {train_type.upper()} =====")
-    debug_print(f"[DEBUG] All OCR attempts failed to extract failure rate")
+    log_debug(f" ===== FAILURE DETECTION FAILED for {train_type.upper()} =====")
+    log_debug(f" All OCR attempts failed to extract failure rate")
     
     if DEBUG_MODE:
         # Save the original cropped region for debugging
         original_crop = screenshot.crop(region)
         debug_filename = f"debug_failure_{train_type}_failed_region.png"
         original_crop.save(debug_filename)
-        debug_print(f"[DEBUG] Saved failed region to: {debug_filename}")
-        debug_print(f"[DEBUG] Region coordinates: {region}")
-        debug_print(f"[DEBUG] Region size: {original_crop.size}")
+        log_debug(f" Saved failed region to: {debug_filename}")
+        log_debug(f" Region coordinates: {region}")
+        log_debug(f" Region size: {original_crop.size}")
         
         # Stop execution in debug mode
-        debug_print(f"[DEBUG] Stopping execution due to failure rate extraction failure for {train_type.upper()}")
-        debug_print(f"[DEBUG] Please check the debug image: {debug_filename}")
+        log_debug(f" Stopping execution due to failure rate extraction failure for {train_type.upper()}")
+        log_debug(f" Please check the debug image: {debug_filename}")
         raise RuntimeError(f"Failure rate extraction failed for {train_type.upper()} training. Debug image saved to {debug_filename}")
     
-    debug_print(f"[DEBUG] No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
+    log_debug(f" No valid failure rate found for {train_type.upper()}, returning 100% (safe fallback)")
     return (100, 0.0)  # 100% failure rate when detection completely fails (prevents choosing unknown training)
 
 def choose_best_training(training_results, config, current_stats):
@@ -524,7 +524,7 @@ def choose_best_training(training_results, config, current_stats):
                    if v.get('failure', 100) <= max_failure}
     
     if not safe_options:
-        debug_print(f"[DEBUG] No training options with failure rate <= {max_failure}%")
+        log_debug(f" No training options with failure rate <= {max_failure}%")
         return None
     
     # Filter by stat caps BEFORE other filtering
@@ -532,14 +532,14 @@ def choose_best_training(training_results, config, current_stats):
     
     # Safety check for current_stats
     if not current_stats:
-        debug_print("[DEBUG] No current stats available, skipping stat cap filtering")
+        log_debug(f" No current stats available, skipping stat cap filtering")
         capped_options = safe_options
     else:
-        debug_print(f"[DEBUG] Applying stat cap filtering with current stats: {current_stats}")
+        log_debug(f" Applying stat cap filtering with current stats: {current_stats}")
         capped_options = filter_by_stat_caps(safe_options, current_stats)
     
     if not capped_options:
-        debug_print(f"[DEBUG] All training options filtered out by stat caps")
+        log_debug(f" All training options filtered out by stat caps")
         return None
     
     # Filter by minimum score requirements
@@ -553,7 +553,7 @@ def choose_best_training(training_results, config, current_stats):
         valid_options[k] = v
     
     if not valid_options:
-        debug_print(f"[DEBUG] No training options meet minimum score requirements")
+        log_debug(f" No training options meet minimum score requirements")
         return None
     
     # Sort by score first (desc), use priority as tiebreaker only
@@ -565,7 +565,7 @@ def choose_best_training(training_results, config, current_stats):
     sorted_options = sorted(valid_options.items(), key=sort_key)
     best_training = sorted_options[0][0]
     
-    debug_print(f"[DEBUG] Best training selected: {best_training} (score: {sorted_options[0][1].get('score', 0):.2f})")
+    log_debug(f" Best training selected: {best_training} (score: {sorted_options[0][1].get('score', 0):.2f})")
     return best_training
 
 def calculate_training_score(support_detail, hint_found, training_type):
@@ -588,7 +588,7 @@ def calculate_training_score(support_detail, hint_found, training_type):
             config = json.load(f)
             scoring_rules = config.get('scoring_rules', {})
     except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"Warning: Could not load training_score.json: {e}")
+        log_warning(f"Could not load training_score.json: {e}")
         # Fallback to default values if config file is not available
         scoring_rules = {
             "rainbow_support": {"points": 1.0},

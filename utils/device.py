@@ -1,6 +1,7 @@
 import subprocess
 import time
 import json
+from utils.log import log_debug, log_info, log_warning, log_error
 
 def _load_adb_config():
     try:
@@ -39,10 +40,10 @@ def run_adb(command, binary=False, add_input_delay=True):
         result = subprocess.run(full_cmd, capture_output=True, check=True)
         return result.stdout if binary else result.stdout.decode(errors='ignore').strip()
     except subprocess.CalledProcessError as e:
-        print(f"ADB command failed: {e}")
+        log_error(f"ADB command failed: {e}")
         return None
     except Exception as e:
-        print(f"Error running ADB command: {e}")
+        log_error(f"Error running ADB command: {e}")
         return None
 
 

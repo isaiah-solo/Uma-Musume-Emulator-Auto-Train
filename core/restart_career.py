@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from utils.log import log_info, log_warning, log_error, log_debug, log_success
 """
 Restart Career functionality for Uma Musume Emulator Auto Train.
 Handles career completion and auto-restart based on configuration.
@@ -27,7 +28,7 @@ def load_restart_config() -> Dict[str, Any]:
             config = json.load(f)
         return config.get('restart_career', {})
     except Exception as e:
-        print(f"Error loading config: {e}")
+        log_info(f"Error loading config: {e}")
         return {}
 
 
@@ -37,10 +38,10 @@ def check_complete_career_screen(screenshot=None) -> bool:
         screenshot = take_screenshot()
     matches = match_template(screenshot, "assets/buttons/complete_career.png", confidence=0.8)
     if matches:
-        print("✓ Complete Career screen detected")
+        log_info(f"✓ Complete Career screen detected")
         return True
     else:
-        print("✗ Complete Career screen not detected")
+        log_info(f"✗ Complete Career screen not detected")
         return False
 
 
@@ -53,10 +54,10 @@ def extract_total_fans(screenshot) -> int:
     
     try:
         fans = int(cleaned_text) if cleaned_text else 0
-        print(f"Total Fans acquired this run: {fans}")
+        log_info(f"Total Fans acquired this run: {fans}")
         return fans
     except ValueError:
-        print("Could not parse total fans, defaulting to 0")
+        log_info(f"Could not parse total fans, defaulting to 0")
         return 0
 
 
@@ -68,10 +69,10 @@ def extract_skill_points(screenshot) -> int:
     
     try:
         points = int(number) if number and number.isdigit() else 0
-        print(f"Skill Points available: {points}")
+        log_info(f"Skill Points available: {points}")
         return points
     except ValueError:
-        print("Could not parse skill points, defaulting to 0")
+        log_info(f"Could not parse skill points, defaulting to 0")
         return 0
 
 
@@ -91,7 +92,7 @@ def should_continue_restarting(current_restart_count: int, max_restart_times: in
 
 def execute_skill_purchase_workflow(available_points: int):
     """Execute the skill purchase workflow"""
-    print("=== Auto Skill Purchase Workflow ===")
+    log_info(f"=== Auto Skill Purchase Workflow ===")
     
     # Import here to avoid circular imports
     from core.skill_auto_purchase import click_image_button
@@ -102,7 +103,7 @@ def execute_skill_purchase_workflow(available_points: int):
     
     # Tap end skill button
     if not click_image_button("assets/buttons/end_skill.png", "end skill button", max_attempts=5):
-        print("Failed to tap end skill button")
+        log_info(f"Failed to tap end skill button")
         return
     
     time.sleep(2)
@@ -137,18 +138,18 @@ def return_to_complete_career_screen():
 
 def finish_career_completion() -> bool:
     """Complete the career and navigate through completion screens"""
-    print("=== Completing Career ===")
+    log_info(f"=== Completing Career ===")
     
     # Click complete career button
     if not click_image_button("assets/buttons/complete_career.png", "complete career button", max_attempts=5):
-        print("Failed to click complete career button")
+        log_info(f"Failed to click complete career button")
         return False
     
     time.sleep(0.5)
     
     # Click finish button
     if not click_image_button("assets/buttons/finish.png", "finish button", max_attempts=5):
-        print("Failed to click finish button")
+        log_info(f"Failed to click finish button")
         return False
     
     time.sleep(0.5)
@@ -162,7 +163,7 @@ def finish_career_completion() -> bool:
         screenshot = take_screenshot()
         career_home_matches = match_template(screenshot, "assets/buttons/Career_Home.png", confidence=0.8)
         if career_home_matches:
-            print("✓ Career Home screen detected - Career completion successful")
+            log_info(f"✓ Career Home screen detected - Career completion successful")
             return True
 
         # Look for the first actionable button (Next -> Close -> To Home)
@@ -183,7 +184,7 @@ def finish_career_completion() -> bool:
 
         if first_button is not None:
             cx, cy = first_button
-            print(f"[INFO] {first_button_name} detected at ({cx}, {cy}) - spamming taps for 10s")
+            log_info(f"{first_button_name} detected at ({cx}, {cy}) - spamming taps for 10s")
 
             # Spam tap on detected button position for 10 seconds
             spam_end = time.time() + 10
@@ -196,7 +197,7 @@ def finish_career_completion() -> bool:
                 screenshot = take_screenshot()
                 career_home_matches = match_template(screenshot, "assets/buttons/Career_Home.png", confidence=0.8)
                 if career_home_matches:
-                    print("✓ Career Home screen detected - Career completion successful")
+                    log_info(f"✓ Career Home screen detected - Career completion successful")
                     return True
                 time.sleep(1.0)
 
@@ -210,7 +211,7 @@ def finish_career_completion() -> bool:
         # If nothing actionable found, short wait and retry
         time.sleep(0.7)
 
-    print("Failed to complete career navigation")
+    log_info(f"Failed to complete career navigation")
     return False
 
 
@@ -220,7 +221,7 @@ def load_config():
         with open('config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"Error loading config: {e}")
+        log_info(f"Error loading config: {e}")
         return {}
 
 
@@ -229,7 +230,7 @@ from utils.template_matching import wait_for_image
 
 def filter_support():
     """Filter support cards based on configuration."""
-    print("Filtering support cards...")
+    log_info(f"Filtering support cards...")
     
     config = load_config()
     auto_start_career = config.get('auto_start_career', {})
@@ -303,7 +304,7 @@ def filter_support():
 
 def skip_check():
     """Check which skip button is on screen and adjust accordingly."""
-    print("Checking skip button...")
+    log_info(f"Checking skip button...")
     
     screenshot = take_screenshot()
     
@@ -343,7 +344,7 @@ def skip_check():
 
 def start_career() -> bool:
     """Start a new career using the existing start_career logic"""
-    print("=== Starting New Career ===")
+    log_info(f"=== Starting New Career ===")
     
     config = load_config()
     auto_start_career = config.get('auto_start_career', {})
@@ -358,7 +359,7 @@ def start_career() -> bool:
             tap(center[0], center[1])
             time.sleep(10)
         else:
-            print("Career Home not found")
+            log_info(f"Career Home not found")
             return False
         
         # Step 2: Tap Next button twice
@@ -373,7 +374,7 @@ def start_career() -> bool:
                 return False
         
         # Step 3: Tap Auto Select
-        print("Auto Select...")
+        log_info(f"Auto Select...")
         auto_select_matches = match_template(take_screenshot(), "assets/buttons/auto_select.png", confidence=0.8)
         if auto_select_matches:
             x, y, w, h = auto_select_matches[0]
@@ -409,7 +410,7 @@ def start_career() -> bool:
             return False
         
         # Step 7: Tap Friend Support Choose
-        print("Friend Support...")
+        log_info(f"Friend Support...")
         friend_support_matches = match_template(take_screenshot(), "assets/buttons/Friend_support_choose.png", confidence=0.8)
         if friend_support_matches:
             x, y, w, h = friend_support_matches[0]
@@ -420,7 +421,7 @@ def start_career() -> bool:
             return False
         
         # Step 8: Filter support
-        print("Filtering...")
+        log_info(f"Filtering...")
         filter_support()
         time.sleep(1)
         
@@ -444,7 +445,7 @@ def start_career() -> bool:
             return False
         
         # Step 11: Wait for skip button and double tap
-        print("Skip button...")
+        log_info(f"Skip button...")
         skip_matches = wait_for_image("assets/buttons/skip_btn.png", timeout=30, confidence=0.8)
         if skip_matches:
             tap(skip_matches[0], skip_matches[1])
@@ -455,7 +456,7 @@ def start_career() -> bool:
             return False
         
         # Step 12: Wait for confirm button
-        print("Confirm button...")
+        log_info(f"Confirm button...")
         confirm_matches = wait_for_image("assets/buttons/confirm.png", timeout=30, confidence=0.8)
         if not confirm_matches:
             return False
@@ -480,20 +481,20 @@ def start_career() -> bool:
         # Step 16: Wait for Tazuna hint
         tazuna_hint_matches = wait_for_image("assets/ui/tazuna_hint.png", timeout=60, confidence=0.8)
         if tazuna_hint_matches:
-            print("Career start completed!")
+            log_info(f"Career start completed!")
             return True
         else:
             return False
             
     except Exception as e:
-        print(f"Error: {e}")
+        log_error(f"{e}")
         return False
 
 
 def complete_career(current_restart_count: int, max_restart_times: int, 
                    total_fans_acquired: int, total_fans_requirement: int) -> Tuple[bool, int, int]:
     """Execute the complete career workflow including skill purchase"""
-    print("=== Executing Complete Career Workflow ===")
+    log_info(f"=== Executing Complete Career Workflow ===")
     
     # Extract fans and skill points first
     screenshot = take_screenshot()
@@ -502,19 +503,19 @@ def complete_career(current_restart_count: int, max_restart_times: int,
     
     # Add fans to total
     total_fans_acquired += run_fans
-    print(f"Total fans acquired so far: {total_fans_acquired}")
+    log_info(f"Total fans acquired so far: {total_fans_acquired}")
     
     # Check if we should continue
     should_continue, reason = should_continue_restarting(
         current_restart_count, max_restart_times, total_fans_acquired, total_fans_requirement
     )
     if not should_continue:
-        print(f"Career completion criteria met: {reason}")
+        log_info(f"Career completion criteria met: {reason}")
         return False, current_restart_count, total_fans_acquired
     
     # Increment restart count
     current_restart_count += 1
-    print(f"Restart count: {current_restart_count}/{max_restart_times}")
+    log_info(f"Restart count: {current_restart_count}/{max_restart_times}")
     
     # Execute skill purchase workflow (if skill points available)
     if skill_points > 0:
@@ -528,7 +529,7 @@ def complete_career(current_restart_count: int, max_restart_times: int,
 def execute_restart_cycle(current_restart_count: int, max_restart_times: int, 
                          total_fans_acquired: int, total_fans_requirement: int) -> Tuple[bool, int, int]:
     """Execute one complete restart cycle"""
-    print(f"\n=== Restart Cycle {current_restart_count + 1}/{max_restart_times} ===")
+    log_info(f"\n=== Restart Cycle {current_restart_count + 1}/{max_restart_times} ===")
     
     # Complete the current career
     success, new_restart_count, new_total_fans = complete_career(
@@ -536,21 +537,21 @@ def execute_restart_cycle(current_restart_count: int, max_restart_times: int,
     )
     
     if not success:
-        print("Failed to complete career - stopping workflow")
+        log_info(f"Failed to complete career - stopping workflow")
         return False, current_restart_count, total_fans_acquired
     
     # Start new career
     if not start_career():
-        print("Failed to start new career")
+        log_info(f"Failed to start new career")
         return False, new_restart_count, new_total_fans
     
-    print(f"✓ Restart cycle {new_restart_count} completed successfully")
+    log_info(f"✓ Restart cycle {new_restart_count} completed successfully")
     return True, new_restart_count, new_total_fans
 
 
 def run_restart_workflow() -> bool:
     """Main restart workflow - continues until criteria are met"""
-    print("=== Starting Career Restart Workflow ===")
+    log_info(f"=== Starting Career Restart Workflow ===")
     
     # Load configuration
     restart_config = load_restart_config()
@@ -558,12 +559,12 @@ def run_restart_workflow() -> bool:
     max_restart_times = restart_config.get('restart_times', 5)
     total_fans_requirement = restart_config.get('total_fans_requirement', 0)
     
-    print(f"Restart enabled: {restart_enabled}")
-    print(f"Max restarts: {max_restart_times}")
-    print(f"Total fans requirement: {total_fans_requirement}")
+    log_info(f"Restart enabled: {restart_enabled}")
+    log_info(f"Max restarts: {max_restart_times}")
+    log_info(f"Total fans requirement: {total_fans_requirement}")
     
     if not restart_enabled:
-        print("Restart is disabled in config")
+        log_info(f"Restart is disabled in config")
         return False
     
     # Runtime state - managed in function scope
@@ -576,7 +577,7 @@ def run_restart_workflow() -> bool:
             current_restart_count, max_restart_times, total_fans_acquired, total_fans_requirement
         )
         if not should_continue:
-            print(f"Restart criteria met: {reason}")
+            log_info(f"Restart criteria met: {reason}")
             break
         
         success, new_restart_count, new_total_fans = execute_restart_cycle(
@@ -589,19 +590,19 @@ def run_restart_workflow() -> bool:
                 new_restart_count, max_restart_times, new_total_fans, total_fans_requirement
             )
             if not should_continue:
-                print(f"Career completion criteria met: {reason}")
+                log_info(f"Career completion criteria met: {reason}")
                 break
             else:
-                print("Restart cycle failed")
+                log_info(f"Restart cycle failed")
                 break
         
         # Update state for next iteration
         current_restart_count = new_restart_count
         total_fans_acquired = new_total_fans
     
-    print("=== Career Restart Workflow Complete ===")
-    print(f"Total restarts completed: {current_restart_count}")
-    print(f"Total fans acquired: {total_fans_acquired}")
+    log_info(f"=== Career Restart Workflow Complete ===")
+    log_info(f"Total restarts completed: {current_restart_count}")
+    log_info(f"Total fans acquired: {total_fans_acquired}")
     
     return True
 
@@ -613,12 +614,12 @@ def career_lobby_check(screenshot=None) -> bool:
     restart_enabled = restart_config.get('restart_enabled', False)
     
     if not restart_enabled:
-        print("Restart is disabled - stopping bot")
+        log_info(f"Restart is disabled - stopping bot")
         return False
     
     # Check if complete career screen is visible
     if check_complete_career_screen(screenshot):
-        print("Complete Career screen detected - starting restart workflow")
+        log_info(f"Complete Career screen detected - starting restart workflow")
         return run_restart_workflow()
     
     return True  # Continue with normal career lobby
@@ -626,17 +627,17 @@ def career_lobby_check(screenshot=None) -> bool:
 
 def main():
     """Main function for testing"""
-    print("=== Career Restart Manager Test ===")
+    log_info(f"=== Career Restart Manager Test ===")
     
     if check_complete_career_screen():
-        print("Complete Career screen found - executing restart workflow")
+        log_info(f"Complete Career screen found - executing restart workflow")
         success = run_restart_workflow()
         if success:
-            print("✓ Restart workflow completed successfully")
+            log_info(f"✓ Restart workflow completed successfully")
         else:
-            print("✗ Restart workflow failed or completed early")
+            log_info(f"✗ Restart workflow failed or completed early")
     else:
-        print("No Complete Career screen found")
+        log_info(f"No Complete Career screen found")
 
 
 if __name__ == "__main__":

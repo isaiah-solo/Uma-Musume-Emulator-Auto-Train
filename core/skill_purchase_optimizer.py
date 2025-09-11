@@ -3,7 +3,7 @@ import os
 import sys
 from difflib import SequenceMatcher
 from core.skill_recognizer import scan_all_skills_with_scroll
-from utils.log import debug_print
+from utils.log import log_debug, log_info, log_warning, log_error
 
 # Fix Windows console encoding for Unicode support
 if os.name == 'nt':  # Windows
@@ -34,18 +34,18 @@ def load_skill_config(config_path=None):
             with open("config.json", 'r', encoding='utf-8') as f:
                 main_config = json.load(f)
                 config_path = main_config.get("skill_file", "skills.json")
-                debug_print(f"[DEBUG] Loading skills from config file: {config_path}")
+                log_debug(f"Loading skills from config file: {config_path}")
         except Exception as e:
-            debug_print(f"[DEBUG] Could not read config.json, using default skills.json: {e}")
+            log_debug(f"Could not read config.json, using default skills.json: {e}")
             config_path = "skills.json"
     
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-            debug_print(f"[DEBUG] Successfully loaded skills config from: {config_path}")
+            log_debug(f"Successfully loaded skills config from: {config_path}")
             return config
     except FileNotFoundError:
-        print(f"[ERROR] {config_path} not found. Creating default config")
+        log_error(f"{config_path} not found. Creating default config")
         default_config = {
             "skill_priority": [],
             "gold_skill_upgrades": {}
@@ -54,7 +54,7 @@ def load_skill_config(config_path=None):
             json.dump(default_config, f, indent=4)
         return default_config
     except Exception as e:
-        print(f"[ERROR] Error loading {config_path}: {e}")
+        log_error(f"Error loading {config_path}: {e}")
         return {"skill_priority": [], "gold_skill_upgrades": {}}
 
 def fuzzy_match_skill_name(skill_name, target_name, threshold=0.8):
@@ -100,7 +100,7 @@ def find_matching_skill(skill_name, available_skills):
     # Try fuzzy matching
     for skill in available_skills:
         if fuzzy_match_skill_name(skill['name'], skill_name):
-            debug_print(f"[DEBUG] Fuzzy match: '{skill['name']}' matches '{skill_name}'")
+            log_debug(f"Fuzzy match: '{skill['name']}' matches '{skill_name}'")
             return skill
     
     return None
@@ -128,10 +128,10 @@ def create_purchase_plan(available_skills, config):
     
     purchase_plan = []
     
-    print("[INFO] Creating purchase plan")
-    debug_print(f"[DEBUG] Priority list: {len(skill_priority)} skills")
-    debug_print(f"[DEBUG] Gold upgrades: {len(gold_upgrades)} relationships")
-    debug_print(f"[DEBUG] Available skills: {len(available_skills)} skills")
+    log_info(f"Creating purchase plan")
+    log_debug(f"Priority list: {len(skill_priority)} skills")
+    log_debug(f"Gold upgrades: {len(gold_upgrades)} relationships")
+    log_debug(f"Available skills: {len(available_skills)} skills")
     
     for priority_skill in skill_priority:
         # Check if this is a gold skill (key in gold_upgrades)
@@ -142,21 +142,21 @@ def create_purchase_plan(available_skills, config):
             skill = available_by_name.get(priority_skill) or find_matching_skill(priority_skill, available_skills)
             if skill:
                 purchase_plan.append(skill)
-                print(f"[INFO] Gold skill found: {skill['name']} - {skill['price']}")
+                log_info(f"Gold skill found: {skill['name']} - {skill['price']}")
                 
             # Rule 2: If gold not available but base skill appears → buy base
             else:
                 base_skill = available_by_name.get(base_skill_name) or find_matching_skill(base_skill_name, available_skills)
                 if base_skill:
                     purchase_plan.append(base_skill)
-                    print(f"[INFO] Base skill found: {base_skill['name']} - {base_skill['price']} (for {priority_skill})")
+                    log_info(f"Base skill found: {base_skill['name']} - {base_skill['price']} (for {priority_skill}")
                 
         else:
             # Regular skill - just buy if available (try exact then fuzzy match)
             skill = available_by_name.get(priority_skill) or find_matching_skill(priority_skill, available_skills)
             if skill:
                 purchase_plan.append(skill)
-                print(f"[INFO] Regular skill: {skill['name']} - {skill['price']}")
+                log_info(f"Regular skill: {skill['name']} - {skill['price']}")
     
     return purchase_plan
 
@@ -174,8 +174,8 @@ def filter_affordable_skills(purchase_plan, available_points):
     affordable_skills = []
     total_cost = 0
     
-    print(f"\n[INFO] Filtering skills by available points ({available_points})")
-    print("=" * 60)
+    log_info(f"\n[INFO] Filtering skills by available points ({available_points})")
+    log_info(f"=" * 60)
     
     for skill in purchase_plan:
         try:
@@ -185,22 +185,22 @@ def filter_affordable_skills(purchase_plan, available_points):
                 affordable_skills.append(skill)
                 total_cost += skill_cost
                 remaining_points = available_points - total_cost
-                print(f"✅ {skill['name']:<30} | Cost: {skill_cost:<4} | Remaining: {remaining_points}")
+                log_info(f"✅ {skill['name']:<30} | Cost: {skill_cost:<4} | Remaining: {remaining_points}")
             else:
                 needed_points = skill_cost - (available_points - total_cost)
-                print(f"❌ {skill['name']:<30} | Cost: {skill_cost:<4} | Need {needed_points} more points")
+                log_info(f"❌ {skill['name']:<30} | Cost: {skill_cost:<4} | Need {needed_points} more points")
                 
         except ValueError:
-            print(f"⚠️  {skill['name']:<30} | Invalid price: {skill['price']}")
+            log_info(f"⚠️  {skill['name']:<30} | Invalid price: {skill['price']}")
     
     remaining_points = available_points - total_cost
     
-    print("=" * 60)
-    print(f"[INFO] Budget Summary:")
-    print(f"   Available points: {available_points}")
-    print(f"   Total cost: {total_cost}")
-    print(f"   Remaining points: {remaining_points}")
-    print(f"   Affordable skills: {len(affordable_skills)}/{len(purchase_plan)}")
+    log_info(f"=" * 60)
+    log_info(f"Budget Summary:")
+    log_info(f"   Available points: {available_points}")
+    log_info(f"   Total cost: {total_cost}")
+    log_info(f"   Remaining points: {remaining_points}")
+    log_info(f"   Affordable skills: {len(affordable_skills)}/{len(purchase_plan)}")
     
     return affordable_skills, total_cost, remaining_points
 
@@ -212,37 +212,37 @@ def calculate_total_cost(purchase_plan):
 def print_purchase_summary(purchase_plan):
     """Print a nice summary of the purchase plan."""
     if not purchase_plan:
-        print("📋 No skills to purchase based on your priority list.")
+        log_info(f"📋 No skills to purchase based on your priority list.")
         return
     
-    print(f"\n📋 PURCHASE PLAN:")
-    print("=" * 60)
+    log_info(f"\n📋 PURCHASE PLAN:")
+    log_info(f"=" * 60)
     
     total_cost = 0
     for i, skill in enumerate(purchase_plan, 1):
         price = skill['price']
         if price.isdigit():
             total_cost += int(price)
-        print(f"  {i:2d}. {skill['name']:<30} | Price: {price}")
+        log_info(f"  {i:2d}. {skill['name']:<30} | Price: {price}")
     
-    print("=" * 60)
-    print(f"Total Cost: {total_cost} skill points")
-    print(f"Skills to buy: {len(purchase_plan)}")
+    log_info(f"=" * 60)
+    log_info(f"Total Cost: {total_cost} skill points")
+    log_info(f"Skills to buy: {len(purchase_plan)}")
 
 def test_purchase_optimizer():
     """Test function for the purchase optimizer."""
-    print("🧪 Testing Purchase Optimizer...")
+    log_info(f"🧪 Testing Purchase Optimizer...")
     
     # Load config
     config = load_skill_config()
 
     # Live scan via scroll to collect skills from the UI
-    print("[INFO] Scanning skills via scroll to build available list...")
+    log_info(f"Scanning skills via scroll to build available list...")
     scan = scan_all_skills_with_scroll(confidence=0.9, brightness_threshold=150, max_scrolls=20)
     available_skills = [{"name": s.get("name", "Unknown"), "price": s.get("price", "0")} for s in scan.get("all_skills", [])]
 
     if not available_skills:
-        print("[WARNING] No skills found via scan. Falling back to sample data.")
+        log_warning(f"No skills found via scan. Falling back to sample data.")
         available_skills = [
             {"name": "Shooting For Victory", "price": "160"},
             {"name": "Homestretch Haste", "price": "153"},

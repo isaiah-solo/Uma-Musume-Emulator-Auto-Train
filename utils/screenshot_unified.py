@@ -8,6 +8,7 @@ from typing import Optional, Union
 from PIL import Image, ImageEnhance
 import numpy as np
 from utils.device import run_adb
+from utils.log import log_debug, log_info, log_warning, log_error
 
 
 class NemuIpcIncompatible(Exception):
@@ -190,7 +191,7 @@ class AdbCapture:
             img = Image.frombytes('RGBA', (width, height), pixel_data)
             return img
         except Exception as e:
-            print(f"Error taking ADB screenshot: {e}")
+            log_error(f"Error taking ADB screenshot: {e}")
             raise
 
 
@@ -216,17 +217,17 @@ class UnifiedScreenshot:
                 )
                 # Only print once during initialization, not every screenshot
                 if not hasattr(self, '_nemu_initialized'):
-                    print(f"Initialized Nemu IPC capture with method: {self.capture_method}")
-                    print("Note: DLL connection messages may appear in console (won't affect GUI)")
+                    log_info(f"Initialized Nemu IPC capture with method: {self.capture_method}")
+                    log_info("Note: DLL connection messages may appear in console (won't affect GUI)")
                     self._nemu_initialized = True
             except Exception as e:
-                print(f"Failed to initialize Nemu IPC capture: {e}")
-                print("Falling back to ADB capture")
+                log_error(f"Failed to initialize Nemu IPC capture: {e}")
+                log_info("Falling back to ADB capture")
                 self.capture_method = 'adb'
 
         if self.capture_method == 'adb':
             self.adb_capture = AdbCapture(self.config.get('adb_config', {}))
-            print(f"Using ADB capture method: {self.capture_method}")
+            log_info(f"Using ADB capture method: {self.capture_method}")
 
     def _load_config(self) -> dict:
         """Load configuration from config.json"""
@@ -234,7 +235,7 @@ class UnifiedScreenshot:
             with open('config.json', 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading config: {e}")
+            log_error(f"Error loading config: {e}")
             return {}
 
     def take_screenshot(self) -> Image.Image:
@@ -253,8 +254,8 @@ class UnifiedScreenshot:
                     img = Image.fromarray(flipped_array, 'RGBA')
                     return img
             except Exception as e:
-                print(f"Nemu IPC capture failed: {e}")
-                print("Falling back to ADB capture")
+                log_error(f"Nemu IPC capture failed: {e}")
+                log_info("Falling back to ADB capture")
                 self.capture_method = 'adb'
 
         # Fallback to ADB capture
@@ -288,7 +289,7 @@ class UnifiedScreenshot:
                     screenshot = self.take_screenshot()
                     return screenshot.size
         except Exception as e:
-            print(f"Error getting screen size: {e}")
+            log_error(f"Error getting screen size: {e}")
             # Default fallback size
             return 1080, 1920
 
@@ -311,7 +312,7 @@ class UnifiedScreenshot:
 
             return enhanced
         except Exception as e:
-            print(f"Error taking enhanced screenshot: {e}")
+            log_error(f"Error taking enhanced screenshot: {e}")
             raise
 
     def enhanced_screenshot_for_failure(self, region, screenshot=None):
@@ -374,7 +375,7 @@ class UnifiedScreenshot:
 
             return pil_img
         except Exception as e:
-            print(f"Error taking failure screenshot: {e}")
+            log_error(f"Error taking failure screenshot: {e}")
             raise
 
     def enhanced_screenshot_for_year(self, region, screenshot=None):
@@ -393,7 +394,7 @@ class UnifiedScreenshot:
 
             return enhanced
         except Exception as e:
-            print(f"Error taking year screenshot: {e}")
+            log_error(f"Error taking year screenshot: {e}")
             raise
 
     def capture_region(self, region):
@@ -402,7 +403,7 @@ class UnifiedScreenshot:
             screenshot = self.take_screenshot()
             return screenshot.crop(region)
         except Exception as e:
-            print(f"Error capturing region: {e}")
+            log_error(f"Error capturing region: {e}")
             raise
 
 
@@ -447,7 +448,7 @@ def enhanced_screenshot(region, screenshot=None):
 
         return enhanced
     except Exception as e:
-        print(f"Error taking enhanced screenshot: {e}")
+        log_error(f"Error taking enhanced screenshot: {e}")
         raise
 
 
@@ -511,7 +512,7 @@ def enhanced_screenshot_for_failure(region, screenshot=None):
 
         return pil_img
     except Exception as e:
-        print(f"Error taking failure screenshot: {e}")
+        log_error(f"Error taking failure screenshot: {e}")
         raise
 
 
@@ -531,7 +532,7 @@ def enhanced_screenshot_for_year(region, screenshot=None):
 
         return enhanced
     except Exception as e:
-        print(f"Error taking year screenshot: {e}")
+        log_error(f"Error taking year screenshot: {e}")
         raise
 
 
@@ -541,5 +542,5 @@ def capture_region(region):
         screenshot = take_screenshot()
         return screenshot.crop(region)
     except Exception as e:
-        print(f"Error capturing region: {e}")
+        log_error(f"Error capturing region: {e}")
         raise

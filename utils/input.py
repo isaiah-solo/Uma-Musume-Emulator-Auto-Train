@@ -4,6 +4,7 @@ import json
 from utils.device import run_adb
 from utils.recognizer import locate_on_screen
 
+from utils.log import log_info, log_warning, log_error, log_debug, log_success
 def load_config():
     """Load ADB configuration from config.json"""
     try:
@@ -11,7 +12,7 @@ def load_config():
             config = json.load(f)
             return config.get('adb_config', {})
     except Exception as e:
-        print(f"Error loading config: {e}")
+        log_error(f"Error loading config: {e}")
         return {}
 
 def tap(x, y):
@@ -39,7 +40,7 @@ def tap_on_image(img, confidence=0.8, min_search=1, text="", region=None):
         btn = locate_on_screen(img, confidence=confidence, region=region)
         if btn:
             if text:
-                print(text)
+                log_info(text)
             tap(btn[0], btn[1])
             return True
         if attempt < int(min_search) - 1:  # Don't sleep on last attempt

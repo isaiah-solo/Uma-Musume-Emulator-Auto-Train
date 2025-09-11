@@ -22,7 +22,7 @@ with open("config.json", "r", encoding="utf-8") as config_file:
     config = json.load(config_file)
     DEBUG_MODE = config.get("debug_mode", False)
 
-from utils.log import debug_print
+from utils.log import log_debug, log_info, log_warning, log_error
 from utils.template_matching import deduplicated_matches
 
 # Get Stat
@@ -85,28 +85,28 @@ def check_mood(screenshot=None):
                 best_score = score
 
         if DEBUG_MODE:
-            debug_print(f"[DEBUG] Mood scores: {scores}")
+            log_debug(f"Mood scores: {scores}")
 
         if best_label is None or best_score < threshold:
-            debug_print(f"[DEBUG] Mood confidence too low: best={best_label} score={best_score:.3f} threshold={threshold:.2f}")
+            log_debug(f"Mood confidence too low: best={best_label} score={best_score:.3f} threshold={threshold:.2f}")
             return "UNKNOWN"
 
         return best_label
     except Exception as e:
-        debug_print(f"[DEBUG] Template mood detection failed: {e}")
+        log_debug(f"Template mood detection failed: {e}")
         return "UNKNOWN"
 
 def check_turn(screenshot=None):
     """Fast turn detection with minimal OCR"""
-    debug_print("[DEBUG] Starting turn detection...")
+    log_debug(f"Starting turn detection...")
     
     try:
         turn_img = enhanced_screenshot(TURN_REGION, screenshot)
-        debug_print(f"[DEBUG] Turn region screenshot taken: {TURN_REGION}")
+        log_debug(f"Turn region screenshot taken: {TURN_REGION}")
         
         # Save the turn region image for debugging
         turn_img.save("debug_turn_region.png")
-        debug_print("[DEBUG] Saved turn region image to debug_turn_region.png")
+        log_debug(f"Saved turn region image to debug_turn_region.png")
         
         # Apply additional enhancement for better digit recognition
         from PIL import ImageEnhance
@@ -121,7 +121,7 @@ def check_turn(screenshot=None):
         
         # Save the enhanced version
         turn_img.save("debug_turn_enhanced.png")
-        debug_print("[DEBUG] Saved enhanced turn image to debug_turn_enhanced.png")
+        log_debug(f"Saved enhanced turn image to debug_turn_enhanced.png")
         
         # Use the best method found in testing: basic processing + PSM 7
         import pytesseract
@@ -133,30 +133,30 @@ def check_turn(screenshot=None):
         
         # Use PSM 7 (single line) which had 94% confidence in testing
         turn_text = pytesseract.image_to_string(turn_img, config='--oem 3 --psm 7').strip()
-        debug_print(f"[DEBUG] Turn OCR raw result: '{turn_text}'")
+        log_debug(f"Turn OCR raw result: '{turn_text}'")
         
         # Check for "Race Day" first (before character replacements that would corrupt it)
         if "Race Day" in turn_text or "RaceDay" in turn_text or "Race Da" in turn_text:
-            debug_print(f"[DEBUG] Race Day detected: {turn_text}")
+            log_debug(f"Race Day detected: {turn_text}")
             return "Race Day"
         
         # Character replacements for common OCR errors (only for digit extraction)
         original_text = turn_text
         turn_text = turn_text.replace('y', '9').replace(']', '1').replace('l', '1').replace('I', '1').replace('o', '8').replace('O', '0').replace('/', '7').replace('®', '9')
-        debug_print(f"[DEBUG] Turn OCR after character replacement: '{turn_text}' (was '{original_text}')")
+        log_debug(f"Turn OCR after character replacement: '{turn_text}' (was '{original_text})')")
         
         # Extract all consecutive digits (not just first digit)
         digit_match = re.search(r'(\d+)', turn_text)
         if digit_match:
             turn_num = int(digit_match.group(1))
-            debug_print(f"[DEBUG] Turn OCR result: {turn_num} (from '{turn_text}')")
+            log_debug(f"Turn OCR result: {turn_num} (from '{turn_text})')")
             return turn_num
         
-        debug_print(f"[DEBUG] No digits found in turn text: '{turn_text}', defaulting to 1")
+        log_debug(f"No digits found in turn text: '{turn_text}', defaulting to 1")
         return 1  # Default to turn 1
         
     except Exception as e:
-        debug_print(f"[DEBUG] Turn detection failed with error: {e}")
+        log_debug(f"Turn detection failed with error: {e}")
         return 1
 
 def check_current_year(screenshot=None):
@@ -171,7 +171,7 @@ def check_current_year(screenshot=None):
         if "Pre-Debu" in text:
             text = text.replace("Pre-Debu", "Pre-Debut")
         
-        debug_print(f"[DEBUG] Year OCR result: '{text}'")
+        log_debug(f"Year OCR result: '{text}'")
         return text
     
     return "Unknown Year"
@@ -191,12 +191,12 @@ def check_criteria(screenshot=None):
         text = text.replace("criteriamet", "criteria met")
         text = text.replace("Goalachieved", "Goal achieved")
         
-        debug_print(f"[DEBUG] Criteria OCR result: '{text}'")
+        log_debug(f"Criteria OCR result: '{text}'")
     else:
         # Single fallback attempt
         fallback_text = extract_text(criteria_img)
         if fallback_text.strip():
-            debug_print(f"[DEBUG] Using fallback criteria OCR result: '{fallback_text}'")
+            log_debug(f"Using fallback criteria OCR result: '{fallback_text}'")
             text = fallback_text.strip()
         else:
             text = "Unknown Criteria"
@@ -236,11 +236,11 @@ def check_goal_name(screenshot=None):
         # Fallback once to the shared OCR helper
         fallback_text = extract_text(goal_img)
         if fallback_text.strip():
-            debug_print(f"[DEBUG] Using fallback goal OCR result: '{fallback_text}'")
+            log_debug(f"Using fallback goal OCR result: '{fallback_text}'")
             text = fallback_text.strip()
 
     if DEBUG_MODE:
-        debug_print(f"[DEBUG] Goal name OCR result: '{text}'")
+        log_debug(f"Goal name OCR result: '{text}'")
 
     return text
 
@@ -256,19 +256,19 @@ def check_skill_points(screenshot=None):
     # Save debug images for skill points OCR troubleshooting
     skill_img.save("debug_skill_points_original.png")
     skill_img_sharp.save("debug_skill_points_sharpened.png")
-    debug_print(f"[DEBUG] Saved original skill points image to debug_skill_points_original.png")
-    debug_print(f"[DEBUG] Saved sharpened skill points image to debug_skill_points_sharpened.png")
-    debug_print(f"[DEBUG] Skill points region: {SKILL_PTS_REGION}")
+    log_debug(f"Saved original skill points image to debug_skill_points_original.png")
+    log_debug(f"Saved sharpened skill points image to debug_skill_points_sharpened.png")
+    log_debug(f"Skill points region: {SKILL_PTS_REGION}")
     
     # Use sharpened image for OCR
     skill_text = extract_number(skill_img_sharp)
     digits = ''.join(filter(str.isdigit, skill_text))
     
-    debug_print(f"[DEBUG] Skill points OCR raw result: '{skill_text}'")
-    debug_print(f"[DEBUG] Extracted digits: '{digits}'")
+    log_debug(f"Skill points OCR raw result: '{skill_text}'")
+    log_debug(f"Extracted digits: '{digits}'")
     
     result = int(digits) if digits.isdigit() else 0
-    debug_print(f"[DEBUG] Final skill points value: {result}")
+    log_debug(f"Final skill points value: {result}")
     
     # Cache the skill points for reuse in skill auto-purchase
     if result > 0:
@@ -288,55 +288,55 @@ def check_skill_points_cap(screenshot=None):
         with open("config.json", "r", encoding="utf-8") as file:
             config = json.load(file)
     except Exception as e:
-        print(f"Error loading config: {e}")
+        log_error(f"Error loading config: {e}")
         return True
     
     skill_point_cap = config.get("skill_point_cap", 9999)
     current_skill_points = check_skill_points(screenshot)
     
-    print(f"[INFO] Current skill points: {current_skill_points}, Cap: {skill_point_cap}")
+    log_info(f"Current skill points: {current_skill_points}, Cap: {skill_point_cap}")
     
     if current_skill_points > skill_point_cap:
-        print(f"[WARNING] Skill points ({current_skill_points}) exceed cap ({skill_point_cap})")
+        log_warning(f"Skill points ({current_skill_points}) exceed cap ({skill_point_cap})")
         
         # Decide flow based on config
         skill_purchase_mode = config.get("skill_purchase", "manual").lower()
         if skill_purchase_mode == "auto":
-            print("[INFO] Auto skill purchase enabled - starting automation")
+            log_info(f"Auto skill purchase enabled - starting automation")
             try:
                 # 1) Enter skill screen
                 entered = click_image_button("assets/buttons/skills_btn.png", "skills button", max_attempts=5)
                 if not entered:
-                    print("[ERROR] Could not find/open skills screen")
+                    log_error(f"Could not find/open skills screen")
                     return True
                 time.sleep(1.0)
 
                 # 2) Scan skills and prepare purchase plan
                 scan_result = scan_all_skills_with_scroll()
                 if 'error' in scan_result:
-                    print(f"[ERROR] Skill scanning failed: {scan_result['error']}")
+                    log_error(f"Skill scanning failed: {scan_result['error']}")
                     # Attempt to go back anyway
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                     time.sleep(1.0)
                     return True
                 all_skills = scan_result.get('all_skills', [])
                 if not all_skills:
-                    print("[WARNING] No skills detected on skill screen")
+                    log_warning(f"No skills detected on skill screen")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                     time.sleep(1.0)
                     return True
 
                 # Read current available skill points from the skill screen
                 available_points = extract_skill_points()
-                print(f"[INFO] Detected available skill points: {available_points}")
+                log_info(f"Detected available skill points: {available_points}")
 
                 # Build purchase plan from config priorities
                 skill_file = config.get("skill_file", "skills.json")
-                print(f"[INFO] Loading skills from: {skill_file}")
+                log_info(f"Loading skills from: {skill_file}")
                 cfg = load_skill_config(skill_file)
                 purchase_plan = create_purchase_plan(all_skills, cfg)
                 if not purchase_plan:
-                    print("[INFO] No skills from priority list are currently available")
+                    log_info(f"No skills from priority list are currently available")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                     time.sleep(1.0)
                     return True
@@ -346,10 +346,10 @@ def check_skill_points_cap(screenshot=None):
                 if isinstance(available_points, int) and available_points > 0:
                     affordable_skills, total_cost, remaining_points = filter_affordable_skills(purchase_plan, available_points)
                     final_plan = affordable_skills if affordable_skills else []
-                    print(f"[INFO] Affordable skills: {len(final_plan)}; Total cost: {total_cost}; Remaining: {remaining_points}")
+                    log_info(f"Affordable skills: {len(final_plan)}; Total cost: {total_cost}; Remaining: {remaining_points}")
 
                 if not final_plan:
-                    print("[INFO] Nothing affordable to purchase at the moment")
+                    log_info(f"Nothing affordable to purchase at the moment")
                     click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                     time.sleep(1.0)
                     return True
@@ -357,15 +357,15 @@ def check_skill_points_cap(screenshot=None):
                 # Execute automated purchases
                 exec_result = execute_skill_purchases(final_plan)
                 if not exec_result.get('success'):
-                    print(f"[WARNING] Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
+                    log_warning(f"Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
 
                 # 3) Return to lobby
                 back = click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
                 if not back:
-                    print("[WARNING] Could not find back button after purchases; ensure you return to lobby manually")
+                    log_warning(f"Could not find back button after purchases; ensure you return to lobby manually")
                 time.sleep(1.0)
             except Exception as e:
-                print(f"[ERROR] Auto skill purchase failed: {e}")
+                log_error(f"Auto skill purchase failed: {e}")
             
             return True
         
@@ -384,11 +384,11 @@ def check_skill_points_cap(screenshot=None):
             # Destroy the root window
             root.destroy()
             
-            print("[INFO] Player acknowledged skill points cap warning")
+            log_info(f"Player acknowledged skill points cap warning")
             
         except Exception as e:
-            print(f"[ERROR] Failed to show GUI popup: {e}")
-            print("[INFO] Skill points cap reached - automation continuing")
+            log_error(f"Failed to show GUI popup: {e}")
+            log_info(f"Skill points cap reached - automation continuing")
         
         return True
     
@@ -442,19 +442,19 @@ def check_current_stats(screenshot=None):
                 numbers = re.findall(r'\d+', stat_text)
                 if numbers:
                     stats[stat_name] = int(numbers[0])
-                    debug_print(f"[DEBUG] {stat_name.upper()} stat: {stats[stat_name]}")
+                    log_debug(f"{stat_name.upper()} stat: {stats[stat_name]}")
                 else:
                     stats[stat_name] = 0
-                    debug_print(f"[DEBUG] Failed to extract {stat_name.upper()} stat from text: '{stat_text}'")
+                    log_debug(f"Failed to extract {stat_name.upper()} stat from text: '{stat_text}'")
             else:
                 stats[stat_name] = 0
-                debug_print(f"[DEBUG] No text found for {stat_name.upper()} stat")
+                log_debug(f"No text found for {stat_name.upper()} stat")
                 
         except Exception as e:
-            debug_print(f"[DEBUG] Error reading {stat_name.upper()} stat: {e}")
+            log_debug(f"Error reading {stat_name.upper()} stat: {e}")
             stats[stat_name] = 0
     
-    debug_print(f"[DEBUG] Current stats: {stats}")
+    log_debug(f"Current stats: {stats}")
     return stats
 
 
@@ -492,7 +492,7 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
 
         contours, _ = cv2.findContours(stroke, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
-            debug_print("[DEBUG] No stroke contour found for energy pill")
+            log_debug(f"No stroke contour found for energy pill")
             return 0.0
         largest = max(contours, key=cv2.contourArea)
 
@@ -503,14 +503,14 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
 
         ys, xs = np.where(interior > 0)
         if ys.size == 0:
-            debug_print("[DEBUG] No interior found inside pill stroke")
+            log_debug(f"No interior found inside pill stroke")
             return 0.0
         mid_y = int((ys.min() + ys.max()) / 2)
 
         line = interior[mid_y, :]
         cols = np.where(line > 0)[0]
         if cols.size == 0:
-            debug_print("[DEBUG] No interior on midline")
+            log_debug(f"No interior on midline")
             return 0.0
         left_edge = int(cols[0])
         right_edge = int(cols[-1])
@@ -547,12 +547,12 @@ def check_energy_bar(screenshot=None, debug_visualization=False):
                 cv2.putText(vis, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
                 cv2.imwrite("debug_energy_visualization.png", vis)
             except Exception as viz_e:
-                debug_print(f"[DEBUG] Energy debug visualization failed: {viz_e}")
+                log_debug(f"Energy debug visualization failed: {viz_e}")
 
         return percentage
 
     except Exception as e:
-        debug_print(f"[DEBUG] Energy bar check failed: {e}")
+        log_debug(f"Energy bar check failed: {e}")
         return 0.0
 
 
@@ -577,7 +577,7 @@ def _create_energy_debug_visualization(original_image, contour, interior_mask, g
         
         # Create cropped region debug
         cv2.imwrite("debug_energy_cropped.png", cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
-        debug_print("[DEBUG] Saved cropped region to: debug_energy_cropped.png")
+        log_debug(f"Saved cropped region to: debug_energy_cropped.png")
         
         # Create horizontal line analysis debug
         debug_img = cv2.cvtColor(original_image.copy(), cv2.COLOR_RGB2BGR)
@@ -602,7 +602,7 @@ def _create_energy_debug_visualization(original_image, contour, interior_mask, g
         cv2.putText(debug_img, f"Gray pixels: {len(gray_positions)}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
         cv2.imwrite("debug_horizontal_line.png", debug_img)
-        debug_print("[DEBUG] Saved horizontal line analysis to: debug_horizontal_line.png")
+        log_debug(f"Saved horizontal line analysis to: debug_horizontal_line.png")
         
         # Create final visualization
         vis_image = cv2.cvtColor(original_image.copy(), cv2.COLOR_RGB2BGR)
@@ -627,9 +627,7 @@ def _create_energy_debug_visualization(original_image, contour, interior_mask, g
         
         # Save visualization
         cv2.imwrite("debug_energy_visualization.png", vis_image)
-        debug_print("[DEBUG] Saved visualization to: debug_energy_visualization.png")
+        log_debug(f"Saved visualization to: debug_energy_visualization.png")
         
     except Exception as e:
-        debug_print(f"[DEBUG] Failed to create debug visualization: {e}")
-
- 
+        log_debug(f"Failed to create debug visualization: {e}")

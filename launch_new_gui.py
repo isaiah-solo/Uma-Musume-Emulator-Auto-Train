@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from utils.log import log_info, log_warning, log_error, log_debug, log_success
 """
 Uma Musume Auto-Train Bot - New GUI Launcher (Root Directory)
 

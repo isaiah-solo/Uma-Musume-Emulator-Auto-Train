@@ -1,7 +1,7 @@
 import json
 
 from core.state import check_current_year, stat_state
-from utils.log import debug_print
+from utils.log import log_debug, log_info, log_warning, log_error
 
 with open("config.json", "r", encoding="utf-8") as file:
   config = json.load(file)
@@ -28,18 +28,18 @@ def all_training_unsafe(results, maximum_failure=None):
 
 def filter_by_stat_caps(results, current_stats):
   filtered = {}
-  debug_print(f"[DEBUG] Filtering training options by stat caps. Current stats: {current_stats}")
-  debug_print(f"[DEBUG] Available training options: {list(results.keys())}")
+  log_debug(f"Filtering training options by stat caps. Current stats: {current_stats}")
+  log_debug(f"Available training options: {list(results.keys())}")
   
   for stat, data in results.items():
     current_stat_value = current_stats.get(stat, 0)
     stat_cap = STAT_CAPS.get(stat, 1200)
     if current_stat_value < stat_cap:
       filtered[stat] = data
-      debug_print(f"[DEBUG] {stat.upper()} training allowed: current {current_stat_value} < cap {stat_cap}")
+      log_debug(f"{stat.upper()} training allowed: current {current_stat_value} < cap {stat_cap}")
     else:
-      print(f"[INFO] {stat.upper()} training filtered out: current {current_stat_value} >= cap {stat_cap}")
-      debug_print(f"[DEBUG] {stat.upper()} training filtered out: current {current_stat_value} >= cap {stat_cap}")
+      log_info(f"{stat.upper()} training filtered out: current {current_stat_value} >= cap {stat_cap}")
+      log_debug(f"{stat.upper()} training filtered out: current {current_stat_value} >= cap {stat_cap}")
   
-  debug_print(f"[DEBUG] After stat cap filtering: {list(filtered.keys())} training options remaining")
+  log_debug(f"After stat cap filtering: {list(filtered.keys())} training options remaining")
   return filtered

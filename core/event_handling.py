@@ -19,7 +19,7 @@ if os.name == 'nt':  # Windows
 from utils.recognizer import locate_all_on_screen, match_template
 from utils.screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
-from utils.log import debug_print, safe_print
+from utils.log import log_debug, log_info, log_warning, log_error, log_success
 from utils.template_matching import deduplicated_matches
 
 # Load config and check debug mode
@@ -40,17 +40,17 @@ def count_event_choices():
     template_path = "assets/icons/event_choice_1.png"
     
     if not os.path.exists(template_path):
-        debug_print(f"[DEBUG] Template not found: {template_path}")
+        log_debug(f" Template not found: {template_path}")
         return 0, []
     
     try:
-        debug_print(f"[DEBUG] Searching for event choices using: {template_path}")
+        log_debug(f" Searching for event choices using: {template_path}")
         # Search for all instances of the template in the event choice region
         event_choice_region = (6, 450, 126, 1776)
         locations = locate_all_on_screen(template_path, confidence=0.45, region=event_choice_region)
-        debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
+        log_debug(f" Raw locations found: {len(locations)}")
         if not locations:
-            debug_print("[DEBUG] No event choice locations found")
+            log_debug(f" No event choice locations found")
             return 0, []
         # Sort locations by y, then x (top to bottom, left to right)
         locations = sorted(locations, key=lambda loc: (loc[1], loc[0]))
@@ -64,17 +64,17 @@ def count_event_choices():
             try:
                 region_img = grayscale.crop((x, y, x + w, y + h))
                 avg_brightness = ImageStat.Stat(region_img).mean[0]
-                debug_print(f"[DEBUG] Choice at ({x},{y},{w},{h}) brightness: {avg_brightness:.1f}")
+                log_debug(f" Choice at ({x},{y},{w},{h}) brightness: {avg_brightness:.1f}")
                 if avg_brightness > bright_threshold:
                     bright_locations.append((x, y, w, h))
             except Exception:
                 # If brightness calc fails, skip this location
                 continue
 
-        debug_print(f"[DEBUG] Final unique bright locations: {len(bright_locations)} (threshold: {bright_threshold})")
+        log_debug(f" Final unique bright locations: {len(bright_locations)} (threshold: {bright_threshold})")
         return len(bright_locations), bright_locations
     except Exception as e:
-        safe_print(f"❌ Error counting event choices: {str(e)}")
+        log_info(f"❌ Error counting event choices: {str(e)}")
         return 0, []
 
 def load_event_priorities():
@@ -85,10 +85,10 @@ def load_event_priorities():
                 priorities = json.load(f)
             return priorities
         else:
-            safe_print("Warning: event_priority.json not found")
+            log_info(f"Warning: event_priority.json not found")
             return {"Good_choices": [], "Bad_choices": []}
     except Exception as e:
-        safe_print(f"Error loading event priorities: {e}")
+        log_info(f"Error loading event priorities: {e}")
         return {"Good_choices": [], "Bad_choices": []}
 
 def analyze_event_options(options, priorities):
@@ -334,7 +334,7 @@ def analyze_event_options(options, priorities):
                 recommendation_reason = f"Recommended based on highest priority good choice: '{option_analysis[best_option]['good_matches'][0]}'"
         else:
             # No clean options (good without bad) found, try options with good choices even if they have bad choices
-            debug_print("[DEBUG] No clean options found, considering options with good choices despite bad choices...")
+            log_debug(f" No clean options found, considering options with good choices despite bad choices...")
             fallback_options = []
             best_priority = -1
             
@@ -614,7 +614,7 @@ def handle_event_choice():
     from utils.constants_phone import EVENT_REGION
     event_region = EVENT_REGION
     
-    safe_print("Event detected, scan event")
+    log_info(f"Event detected, scan event")
     
     try:
         # Wait for event to stabilize (1.5 seconds)
@@ -622,9 +622,9 @@ def handle_event_choice():
 
         # Re-validate that this is a choices event before OCR (avoid scanning non-choice dialogs)
         recheck_count, recheck_locations = count_event_choices()
-        debug_print(f"[DEBUG] Recheck choices after delay: {recheck_count}")
+        log_debug(f" Recheck choices after delay: {recheck_count}")
         if recheck_count == 0:
-            safe_print("[INFO] Event choices not visible after delay, skipping analysis")
+            log_info(f"[INFO] Event choices not visible after delay, skipping analysis")
             return 1, False, []
 
         # Capture the event name
@@ -633,11 +633,11 @@ def handle_event_choice():
         event_name = event_name.strip()
         
         if not event_name:
-            safe_print("No text detected in event region")
+            log_info(f"No text detected in event region")
             # Choices were visible and stabilized earlier; provide locations for fallback top-choice click
             return 1, False, recheck_locations
         
-        safe_print(f"Event found: {event_name}")
+        log_info(f"Event found: {event_name}")
 
         # Prefer exact name lookup to ensure options align with the specific event instance
         def search_events_exact(name):
@@ -696,8 +696,8 @@ def handle_event_choice():
             event_data = found_events[event_name_key]
             options = event_data["options"]
             
-            safe_print(f"Source: {event_data['source']}")
-            safe_print("Options:")
+            log_info(f"Source: {event_data['source']}")
+            log_info(f"Options:")
             
             if options:
                 # Analyze options with priorities
@@ -718,10 +718,10 @@ def handle_event_choice():
                         indicators.append("🎯 RECOMMENDED")
                     
                     indicator_text = f" [{', '.join(indicators)}]" if indicators else ""
-                    safe_print(f"  {option_name}: {reward_single_line}{indicator_text}")
+                    log_info(f"  {option_name}: {reward_single_line}{indicator_text}")
                 
                 # Print recommendation
-                safe_print(f"Recommend: {analysis['recommended_option']}")
+                log_info(f"Recommend: {analysis['recommended_option']}")
                 
                 # Determine which choice to select based on recommendation and choice count
                 expected_options = len(options)
@@ -729,7 +729,7 @@ def handle_event_choice():
                 
                 # If no recommendation, default to first choice
                 if recommended_option is None:
-                    safe_print("No recommendation found, defaulting to first choice")
+                    log_info(f"No recommendation found, defaulting to first choice")
                     choice_number = 1
                 else:
                     # Map recommended option to choice number
@@ -755,28 +755,28 @@ def handle_event_choice():
                 
                 # Verify choice number is valid
                 if choice_number > choices_found:
-                    safe_print(f"Warning: Recommended choice {choice_number} exceeds available choices ({choices_found})")
+                    log_info(f"Warning: Recommended choice {choice_number} exceeds available choices ({choices_found})")
                     choice_number = 1  # Fallback to first choice
                 
-                safe_print(f"Choose choice: {choice_number}")
+                log_info(f"Choose choice: {choice_number}")
                 return choice_number, True, choice_locations
             else:
-                safe_print("No valid options found in database")
+                log_info(f"No valid options found in database")
                 return 1, False, choice_locations
         else:
             # Unknown event
-            safe_print("Unknown event - not found in database")
-            safe_print(f"Choices found: {choices_found}")
+            log_info(f"Unknown event - not found in database")
+            log_info(f"Choices found: {choices_found}")
             return 1, False, choice_locations  # Default to first choice for unknown events
     
     except Exception as e:
         # Handle Unicode characters in error messages gracefully
         try:
             error_msg = str(e)
-            safe_print(f"Error during event handling: {error_msg}")
+            log_info(f"Error during event handling: {error_msg}")
         except UnicodeEncodeError:
             # Fallback: print error without problematic characters
-            safe_print(f"Error during event handling: {repr(e)}")
+            log_info(f"Error during event handling: {repr(e)}")
         
         # If choices are visible, return their locations to allow fallback top-choice click
         try:
@@ -801,12 +801,12 @@ def click_event_choice(choice_number, choice_locations=None):
         
         # Use pre-found locations if provided, otherwise search again
         if choice_locations is None:
-            debug_print("[DEBUG] No pre-found locations, searching for event choices...")
+            log_debug(f" No pre-found locations, searching for event choices...")
             event_choice_region = (6, 450, 126, 1776)
             choice_locations = locate_all_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
             
             if not choice_locations:
-                safe_print("No event choice icons found")
+                log_info(f"No event choice icons found")
                 return False
             
             # Filter out duplicates
@@ -830,7 +830,7 @@ def click_event_choice(choice_number, choice_locations=None):
             # Sort locations by Y coordinate (top to bottom)
             unique_locations.sort(key=lambda loc: loc[1])
         else:
-            debug_print("[DEBUG] Using pre-found choice locations")
+            log_debug(f" Using pre-found choice locations")
             unique_locations = choice_locations
         
         # Click the specified choice
@@ -839,13 +839,13 @@ def click_event_choice(choice_number, choice_locations=None):
             x, y, w, h = target_location
             center = (x + w//2, y + h//2)
             
-            safe_print(f"Clicking choice {choice_number} at position {center}")
+            log_info(f"Clicking choice {choice_number} at position {center}")
             tap(center[0], center[1])
             return True
         else:
-            safe_print(f"Invalid choice number: {choice_number} (available: 1-{len(unique_locations)})")
+            log_info(f"Invalid choice number: {choice_number} (available: 1-{len(unique_locations)})")
             return False
     
     except Exception as e:
-        safe_print(f"Error clicking event choice: {e}")
+        log_info(f"Error clicking event choice: {e}")
         return False
