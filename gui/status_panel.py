@@ -1,6 +1,12 @@
 import customtkinter as ctk
 import tkinter as tk
 
+# Import centralized font management
+try:
+    from .font_manager import get_font_manager, get_font, get_font_tuple
+except ImportError:
+    from font_manager import get_font_manager, get_font, get_font_tuple
+
 class StatusPanel(ctk.CTkFrame):
     def __init__(self, parent, main_window, colors):
         super().__init__(parent, fg_color=colors['bg_medium'], corner_radius=15)
@@ -8,7 +14,7 @@ class StatusPanel(ctk.CTkFrame):
         self.colors = colors
 
         # Title label
-        title_label = ctk.CTkLabel(self, text="Real-time Status", font=ctk.CTkFont(size=16, weight="bold"), text_color=colors['text_light'])
+        title_label = ctk.CTkLabel(self, text="Real-time Status", font=get_font('status_title'), text_color=colors['text_light'])
         title_label.pack(pady=(15, 10))
 
         # Create status display widgets
@@ -30,15 +36,15 @@ class StatusPanel(ctk.CTkFrame):
         # Year display card
         year_card = ctk.CTkFrame(top_frame, fg_color=self.colors['bg_light'], corner_radius=8)
         year_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-        ctk.CTkLabel(year_card, text="YEAR", font=ctk.CTkFont(size=10, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(8, 2))
-        self.year_label = ctk.CTkLabel(year_card, text="Unknown", font=ctk.CTkFont(size=12, weight="bold"), text_color=self.colors['text_light'])
+        ctk.CTkLabel(year_card, text="YEAR", font=get_font('status_label'), text_color=self.colors['text_gray']).pack(pady=(8, 2))
+        self.year_label = ctk.CTkLabel(year_card, text="Unknown", font=get_font('status_value'), text_color=self.colors['text_light'])
         self.year_label.pack(pady=(0, 8))
         
         # Energy display card
         energy_card = ctk.CTkFrame(top_frame, fg_color=self.colors['bg_light'], corner_radius=8)
         energy_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        ctk.CTkLabel(energy_card, text="ENERGY", font=ctk.CTkFont(size=10, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(8, 2))
-        self.energy_label = ctk.CTkLabel(energy_card, text="0.0%", font=ctk.CTkFont(size=12, weight="bold"), text_color=self.colors['text_light'])
+        ctk.CTkLabel(energy_card, text="ENERGY", font=get_font('status_label'), text_color=self.colors['text_gray']).pack(pady=(8, 2))
+        self.energy_label = ctk.CTkLabel(energy_card, text="0.0%", font=get_font('status_value'), text_color=self.colors['text_light'])
         self.energy_label.pack(pady=(0, 8))
         
         # Middle row - Turn, Mood, Goal (modern rounded cards)
@@ -48,22 +54,22 @@ class StatusPanel(ctk.CTkFrame):
         # Turn display card
         turn_card = ctk.CTkFrame(middle_frame, fg_color=self.colors['bg_light'], corner_radius=8)
         turn_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-        ctk.CTkLabel(turn_card, text="TURN", font=ctk.CTkFont(size=10, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(8, 2))
-        self.turn_label = ctk.CTkLabel(turn_card, text="Unknown", font=ctk.CTkFont(size=14, weight="bold"), text_color=self.colors['text_light'])
+        ctk.CTkLabel(turn_card, text="TURN", font=get_font('status_label'), text_color=self.colors['text_gray']).pack(pady=(8, 2))
+        self.turn_label = ctk.CTkLabel(turn_card, text="Unknown", font=get_font('status_value'), text_color=self.colors['text_light'])
         self.turn_label.pack(pady=(0, 8))
         
         # Mood display card
         mood_card = ctk.CTkFrame(middle_frame, fg_color=self.colors['bg_light'], corner_radius=8)
         mood_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-        ctk.CTkLabel(mood_card, text="MOOD", font=ctk.CTkFont(size=10, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(8, 2))
-        self.mood_label = ctk.CTkLabel(mood_card, text="Unknown", font=ctk.CTkFont(size=14, weight="bold"), text_color=self.colors['text_light'])
+        ctk.CTkLabel(mood_card, text="MOOD", font=get_font('status_label'), text_color=self.colors['text_gray']).pack(pady=(8, 2))
+        self.mood_label = ctk.CTkLabel(mood_card, text="Unknown", font=get_font('status_value'), text_color=self.colors['text_light'])
         self.mood_label.pack(pady=(0, 8))
         
         # Goal display card
         goal_card = ctk.CTkFrame(middle_frame, fg_color=self.colors['bg_light'], corner_radius=8)
         goal_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        ctk.CTkLabel(goal_card, text="GOAL", font=ctk.CTkFont(size=10, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(8, 2))
-        self.goal_label = ctk.CTkLabel(goal_card, text="❓", font=ctk.CTkFont(size=18), text_color=self.colors['text_light'])
+        ctk.CTkLabel(goal_card, text="GOAL", font=get_font('status_label'), text_color=self.colors['text_gray']).pack(pady=(8, 2))
+        self.goal_label = ctk.CTkLabel(goal_card, text="❓", font=get_font('title_large'), text_color=self.colors['text_light'])
         self.goal_label.pack(pady=(0, 8))
         
         # Bottom row - Stats (beautiful stat cards)
@@ -78,8 +84,8 @@ class StatusPanel(ctk.CTkFrame):
             stat_card = ctk.CTkFrame(stats_frame, fg_color=self.colors['bg_light'], corner_radius=8)
             stat_card.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 3) if i < len(stats) - 1 else (0, 0))
             
-            ctk.CTkLabel(stat_card, text=stat, font=ctk.CTkFont(size=9, weight="bold"), text_color=self.colors['text_gray']).pack(pady=(6, 2))
-            stat_label = ctk.CTkLabel(stat_card, text="0", font=ctk.CTkFont(size=12, weight="bold"), text_color=self.colors['text_light'])
+            ctk.CTkLabel(stat_card, text=stat, font=get_font('body_small'), text_color=self.colors['text_gray']).pack(pady=(6, 2))
+            stat_label = ctk.CTkLabel(stat_card, text="0", font=get_font('body_large'), text_color=self.colors['text_light'])
             stat_label.pack(pady=(0, 6))
             self.stat_labels[stat.lower()] = stat_label
     

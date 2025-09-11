@@ -3,6 +3,12 @@ import tkinter as tk
 from tkinter import filedialog, scrolledtext
 from datetime import datetime
 
+# Import centralized font management
+try:
+    from .font_manager import get_font_manager, get_font, get_font_tuple
+except ImportError:
+    from font_manager import get_font_manager, get_font, get_font_tuple
+
 class LogPanel(ctk.CTkFrame):
     def __init__(self, parent, main_window, colors):
         super().__init__(parent, fg_color=colors['bg_medium'], corner_radius=15)
@@ -10,7 +16,7 @@ class LogPanel(ctk.CTkFrame):
         self.colors = colors
 
         # Title label
-        title_label = ctk.CTkLabel(self, text="LOG", font=ctk.CTkFont(size=16, weight="bold"), text_color=colors['text_light'])
+        title_label = ctk.CTkLabel(self, text="LOG", font=get_font('title_medium'), text_color=colors['text_light'])
         title_label.pack(pady=(15, 10))
 
         # Create log controls
@@ -34,21 +40,23 @@ class LogPanel(ctk.CTkFrame):
                                           hover_color="#2d5a27",
                                           corner_radius=8,
                                           width=80,
-                                          height=32)
+                                          height=32,
+                                          font=get_font('button'))
         self.start_stop_btn.pack(side=tk.LEFT, padx=(0, 10))
         
         # Auto-scroll Toggle (modern switch)
         auto_scroll_frame = ctk.CTkFrame(controls_frame, fg_color="transparent")
         auto_scroll_frame.pack(side=tk.LEFT)
         
-        ctk.CTkLabel(auto_scroll_frame, text="Auto-scroll:", text_color=self.colors['text_light']).pack(side=tk.LEFT)
+        ctk.CTkLabel(auto_scroll_frame, text="Auto-scroll:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.auto_scroll_btn = ctk.CTkButton(auto_scroll_frame, text="ON", 
                                            command=self.toggle_auto_scroll,
                                            fg_color=self.colors['accent_blue'],
                                            hover_color="#1f4a7a",
                                            corner_radius=8,
                                            width=50,
-                                           height=32)
+                                           height=32,
+                                           font=get_font('button'))
         self.auto_scroll_btn.pack(side=tk.LEFT, padx=(10, 0))
         
         # Log management buttons (modern rounded buttons)
@@ -61,14 +69,16 @@ class LogPanel(ctk.CTkFrame):
                      hover_color="#6b5214",
                      corner_radius=8,
                      width=80,
-                     height=32).pack(side=tk.LEFT, padx=(0, 5))
+                     height=32,
+                     font=get_font('button')).pack(side=tk.LEFT, padx=(0, 5))
         ctk.CTkButton(log_management_frame, text="Save Logs", 
                      command=self.save_logs,
                      fg_color=self.colors['accent_blue'],
                      hover_color="#1f4a7a",
                      corner_radius=8,
                      width=80,
-                     height=32).pack(side=tk.LEFT)
+                     height=32,
+                     font=get_font('button')).pack(side=tk.LEFT)
     
     def create_log_display(self):
         """Create the modern log text display area"""
@@ -80,7 +90,7 @@ class LogPanel(ctk.CTkFrame):
         self.log_text = scrolledtext.ScrolledText(
             log_frame,
             height=20,
-            font=('Segoe UI', 10),  # Use Segoe UI for better Unicode support
+            font=get_font_tuple('log_text'),  # Use defined log text font
             bg=self.colors['bg_light'],
             fg=self.colors['text_light'],
             insertbackground=self.colors['text_light'],
@@ -146,7 +156,7 @@ class LogPanel(ctk.CTkFrame):
                 elif "DEBUG" in log_entry.upper():
                     tag = "debug"
             
-            # Add timestamp
+            # Add timestamp (GUI provides its own timestamp)
             timestamp = datetime.now().strftime("%H:%M:%S")
             formatted_entry = f"[{timestamp}] {log_entry}"
             

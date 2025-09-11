@@ -201,8 +201,10 @@ class BotController:
             if not isinstance(output, str):
                 output = str(output)
             
-            # Add to log queue for display
-            self.log_queue.put(output)
+            # Filter out unwanted shell output - only show actual logging messages
+            if self.should_display_output(output):
+                # Add to log queue for display
+                self.log_queue.put(output)
             
             # Try to extract status information from the output
             self.extract_status_from_output(output)
@@ -211,9 +213,51 @@ class BotController:
             print(f"Error processing bot output: {e}")
             # Try to add the raw output to logs anyway
             try:
-                self.log_queue.put(str(output))
+                if self.should_display_output(str(output)):
+                    self.log_queue.put(str(output))
             except:
                 pass
+    
+    def should_display_output(self, output):
+        """Determine if output should be displayed in GUI log"""
+        if not output or not isinstance(output, str):
+            return False
+        
+        output_lower = output.lower().strip()
+        
+        # Filter out unwanted shell messages (be specific about what to exclude)
+        unwanted_patterns = [
+            'nemu_connect instance_name:',
+            'connect not same day',
+        ]
+        
+        # Check if output contains any unwanted patterns
+        for pattern in unwanted_patterns:
+            if pattern in output_lower:
+                return False
+        
+        # Show lines that contain standard logging level indicators
+        if re.search(r'\b(INFO|WARNING|ERROR|DEBUG|SUCCESS)\b', output, re.IGNORECASE):
+            return True
+        
+        # Show lines that start with timestamps (common logging format)
+        if re.match(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', output):
+            return True
+        
+        # Show lines with brackets indicating log levels
+        if re.search(r'\[(INFO|WARNING|ERROR|DEBUG|SUCCESS)\]', output, re.IGNORECASE):
+            return True
+        
+        # Show lines with common logging format patterns
+        if re.search(r'- (INFO|WARNING|ERROR|DEBUG|SUCCESS) -', output, re.IGNORECASE):
+            return True
+        
+        # If it doesn't match unwanted patterns and has some content, show it
+        # This is more permissive approach - exclude specific bad patterns rather than only include specific good ones
+        if len(output.strip()) > 0:
+            return True
+        
+        return False
     
     def extract_status_from_output(self, output):
         """Extract status information from bot output"""
