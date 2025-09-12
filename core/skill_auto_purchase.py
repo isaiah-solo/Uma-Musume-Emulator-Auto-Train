@@ -246,7 +246,7 @@ def fast_swipe_to_top():
     log_info(f"Fast scrolling to top of skill list")
     
     for i in range(8):
-        debug_print(f"[DEBUG] Fast swipe {i+1}/8")
+        log_debug(f"[DEBUG] Fast swipe {i+1}/8")
         success = perform_swipe(504, 800, 504, 1400, duration=300)  # Swipe DOWN on screen to scroll UP in list
         if success:
             time.sleep(0.3)  # Short wait between fast swipes

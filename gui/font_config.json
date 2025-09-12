@@ -1,7 +1,6 @@
 {
   "_description": "Font configuration for Uma Musume Auto-Train Bot GUI",
   "_instructions": "Change font families, sizes, and weights here. All GUI elements will use these settings.",
-  
   "fonts": {
     "title_large": {
       "family": "Segoe UI",
@@ -9,13 +8,13 @@
       "weight": "bold"
     },
     "title_medium": {
-      "family": "Segoe UI", 
+      "family": "Segoe UI",
       "size": 16,
       "weight": "bold"
     },
     "title_small": {
       "family": "Segoe UI",
-      "size": 14, 
+      "size": 14,
       "weight": "bold"
     },
     "body_large": {
@@ -35,17 +34,17 @@
     },
     "monospace_large": {
       "family": "Consolas",
-      "size": 18,
+      "size": 14,
       "weight": "normal"
     },
     "monospace_medium": {
       "family": "Consolas",
-      "size": 14,
+      "size": 12,
       "weight": "normal"
     },
     "monospace_small": {
       "family": "Consolas",
-      "size": 14,
+      "size": 12,
       "weight": "normal"
     },
     "button": {
@@ -90,7 +89,7 @@
     },
     "log_text": {
       "family": "Consolas",
-      "size": 18,
+      "size": 12,
       "weight": "normal"
     },
     "dropdown": {
@@ -114,9 +113,19 @@
       "weight": "normal"
     }
   },
-  
   "fallback_fonts": {
-    "sans_serif": ["Segoe UI", "Segoe UI", "Arial", "Helvetica", "sans-serif"],
-    "monospace": ["Consolas", "Courier New", "Monaco", "monospace"]
+    "sans_serif": [
+      "Segoe UI",
+      "Segoe UI",
+      "Arial",
+      "Helvetica",
+      "sans-serif"
+    ],
+    "monospace": [
+      "Consolas",
+      "Courier New",
+      "Monaco",
+      "monospace"
+    ]
   }
 }
