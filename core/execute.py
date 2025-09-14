@@ -27,7 +27,7 @@ from utils.constants_phone import (
 from core.state import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_current_stats, check_energy_bar
 
 # Import event handling functions
-from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
+from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, handle_event_choice, click_event_choice
 
 # Import training handling functions
 from core.training_handling import go_to_training, check_training, do_train, check_support_card, check_failure, check_hint, choose_best_training, calculate_training_score
