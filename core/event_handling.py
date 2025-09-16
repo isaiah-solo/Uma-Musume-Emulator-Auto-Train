@@ -3,6 +3,8 @@ import json
 import re
 import time
 import sys
+import cv2
+import numpy as np
 from PIL import ImageStat
 
 # Fix Windows console encoding for Unicode support
@@ -16,10 +18,10 @@ if os.name == 'nt':  # Windows
     except:
         pass
 
-from utils.recognizer import locate_all_on_screen, match_template
+from utils.recognizer import locate_all_on_screen
 from utils.screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
-from utils.log import log_debug, log_info, log_warning, log_error, log_success
+from utils.log import log_debug, log_info, log_warning, log_error
 from utils.template_matching import deduplicated_matches
 
 # Load config and check debug mode
@@ -45,18 +47,42 @@ def count_event_choices():
     
     try:
         log_debug(f" Searching for event choices using: {template_path}")
-        # Search for all instances of the template in the event choice region
-        event_choice_region = (6, 450, 126, 1776)
-        locations = locate_all_on_screen(template_path, confidence=0.45, region=event_choice_region)
-        log_debug(f" Raw locations found: {len(locations)}")
-        if not locations:
+        
+        # Take screenshot and convert to OpenCV format
+        screenshot = take_screenshot()
+        img_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+        
+        # Load template
+        template = cv2.imread(template_path)
+        if template is None:
+            log_debug(f" Could not load template: {template_path}")
+            return 0, []
+        
+        # Search in the event choice region (x, y, width, height)
+        x, y, w, h = 6, 450, 126, 1776
+        roi = img_cv[y:y+h, x:x+w]
+        
+        # Template matching with same confidence as before
+        result = cv2.matchTemplate(roi, template, cv2.TM_CCOEFF_NORMED)
+        locations = np.where(result >= 0.45)
+        
+        # Convert to absolute coordinates
+        raw_locations = []
+        for pt in zip(*locations[::-1]):
+            abs_x, abs_y = pt[0] + x, pt[1] + y
+            tw, th = template.shape[1], template.shape[0]
+            raw_locations.append((abs_x, abs_y, tw, th))
+        
+        log_debug(f" Raw locations found: {len(raw_locations)}")
+        if not raw_locations:
             log_debug(f" No event choice locations found")
             return 0, []
+        
         # Sort locations by y, then x (top to bottom, left to right)
-        locations = sorted(locations, key=lambda loc: (loc[1], loc[0]))
-        unique_locations = deduplicated_matches(locations, threshold=150)
+        raw_locations = sorted(raw_locations, key=lambda loc: (loc[1], loc[0]))
+        unique_locations = deduplicated_matches(raw_locations, threshold=150)
+        
         # Compute brightness and filter
-        screenshot = take_screenshot()
         grayscale = screenshot.convert("L")
         bright_threshold = 160.0
         bright_locations = []
@@ -92,22 +118,7 @@ def load_event_priorities():
         return {"Good_choices": [], "Bad_choices": []}
 
 def analyze_event_options(options, priorities):
-    """
-    Analyze event options and recommend the best choice based on priorities.
-    
-    Args:
-        options: Dict of option_name -> option_reward
-        priorities: Dict with "Good_choices" and "Bad_choices" lists
-    
-    Returns:
-        Dict with recommendation info:
-        {
-            "recommended_option": str,
-            "recommendation_reason": str,
-            "option_analysis": dict,
-            "all_options_bad": bool
-        }
-    """
+    """Analyze event options and recommend the best choice based on priorities (optimized version)"""
     good_choices = priorities.get("Good_choices", [])
     bad_choices = priorities.get("Bad_choices", [])
     
@@ -142,98 +153,56 @@ def analyze_event_options(options, priorities):
         if len(good_matches) > 0:
             all_options_bad = False
     
-    # Check if ALL options have bad choices (regardless of good choices)
-    all_options_have_bad = all(analysis["has_bad"] for analysis in option_analysis.values())
-    
     # Determine recommendation
     recommended_option = None
     recommendation_reason = ""
     
-    if all_options_have_bad:
-        # If all options have bad choices, ignore bad choices and pick based on good choice priority
-        best_options = []  # Store all options with the same best priority
+    if all_options_bad:
+        # If all options have bad choices, pick based on good choice priority
+        best_options = []
         best_priority = -1
         
         for option_name, analysis in option_analysis.items():
-            # Find the highest priority good choice in this option
             for good_choice in analysis["good_matches"]:
                 try:
                     priority = good_choices.index(good_choice)
                     if priority < best_priority or best_priority == -1:
-                        # New best priority found, reset the list
                         best_priority = priority
                         best_options = [option_name]
                     elif priority == best_priority:
-                        # Same priority, add to the list
-                        if option_name not in best_options:
-                            best_options.append(option_name)
+                        best_options.append(option_name)
                 except ValueError:
                     continue
         
         if best_options:
-            # If we have multiple options with the same priority, use tie-breaking
-            if len(best_options) > 1:
-                # Enhanced tie-breaking: consider second-highest priority good choice
-                best_option = None
-                best_second_priority = -1
-                max_good_choices = -1
-                
-                for option_name in best_options:
-                    analysis = option_analysis[option_name]
-                    good_count = len(analysis["good_matches"])
-                    
-                    # Find the second-highest priority good choice (skip the highest priority one)
-                    second_priority = -1
-                    if len(analysis["good_matches"]) > 1:
-                        # Sort good matches by priority and get the second one
-                        good_priorities = []
-                        for good_choice in analysis["good_matches"]:
-                            try:
-                                priority = good_choices.index(good_choice)
-                                good_priorities.append(priority)
-                            except ValueError:
-                                continue
-                        if len(good_priorities) > 1:
-                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
-                            second_priority = good_priorities[1]  # Get second-highest priority
-                    
-                    # Determine if this option is better
-                    is_better = False
-                    if best_option is None:
-                        is_better = True
-                    elif second_priority != -1 and best_second_priority != -1:
-                        # Both have second priorities - prefer the one with higher priority (lower number)
-                        if second_priority < best_second_priority:
-                            is_better = True
-                        elif second_priority == best_second_priority:
-                            # Same second priority, prefer more good choices
-                            if good_count > max_good_choices:
-                                is_better = True
-                    else:
-                        # Fall back to original logic if second priorities aren't available
-                        if good_count > max_good_choices:
-                            is_better = True
-                    
-                    if is_better:
-                        best_option = option_name
-                        best_second_priority = second_priority
-                        max_good_choices = good_count
-                
-                # If still tied after enhanced tie-breaking, choose the first option (top choice)
-                if best_option is None:
-                    best_option = best_options[0]
-                
-                recommended_option = best_option
-                if best_second_priority != -1:
-                    recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}', then more good choices, then top choice)."
-                else:
-                    recommendation_reason = f"All options have bad choices. Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then top choice)."
-            else:
-                best_option = best_options[0]
-                recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Recommended based on highest priority good choice: '{option_analysis[best_option]['good_matches'][0]}'"
+            recommended_option = best_options[0]
+            best_option_analysis = option_analysis[recommended_option]
+            recommendation_reason = f"All options have bad choices. Recommended based on highest priority good choice: '{best_option_analysis['good_matches'][0]}'"
+    else:
+        # Normal case: avoid bad choices completely
+        best_options = []
+        best_priority = -1
+        
+        for option_name, analysis in option_analysis.items():
+            # Only consider options that have good choices AND NO bad choices
+            if analysis["has_good"] and not analysis["has_bad"]:
+                for good_choice in analysis["good_matches"]:
+                    try:
+                        priority = good_choices.index(good_choice)
+                        if priority < best_priority or best_priority == -1:
+                            best_priority = priority
+                            best_options = [option_name]
+                        elif priority == best_priority:
+                            best_options.append(option_name)
+                    except ValueError:
+                        continue
+        
+        if best_options:
+            recommended_option = best_options[0]
+            best_option_analysis = option_analysis[recommended_option]
+            recommendation_reason = f"Recommended based on highest priority good choice: '{best_option_analysis['good_matches'][0]}'"
         else:
-            # No good choices found, pick the option with the least bad choices
+            # Fallback: pick option with least bad choices
             best_option = None
             min_bad_choices = 999
             
@@ -245,183 +214,7 @@ def analyze_event_options(options, priorities):
             
             if best_option:
                 recommended_option = best_option
-                recommendation_reason = f"All options have bad choices. Selected option with least bad choices: {len(option_analysis[best_option]['bad_matches'])} bad choices"
-            else:
-                recommendation_reason = "All options have bad choices. No recommendation possible."
-    else:
-        # Normal case: some options don't have bad choices - avoid bad choices completely
-        best_options = []
-        best_priority = -1
-        
-        for option_name, analysis in option_analysis.items():
-            # ONLY consider options that have good choices AND NO bad choices
-            if analysis["has_good"] and not analysis["has_bad"]:
-                # Find the highest priority good choice in this option
-                for good_choice in analysis["good_matches"]:
-                    try:
-                        priority = good_choices.index(good_choice)
-                        if priority < best_priority or best_priority == -1:
-                            # New best priority found, reset the list
-                            best_priority = priority
-                            best_options = [option_name]
-                        elif priority == best_priority:
-                            # Same priority, add to the list
-                            if option_name not in best_options:
-                                best_options.append(option_name)
-                    except ValueError:
-                        continue
-        
-        if best_options:
-            # If we have multiple options with the same priority, use tie-breaking
-            if len(best_options) > 1:
-                # Enhanced tie-breaking: consider second-highest priority good choice
-                best_option = None
-                best_second_priority = -1
-                max_good_choices = -1
-                min_bad_choices = 999
-                
-                for option_name in best_options:
-                    analysis = option_analysis[option_name]
-                    good_count = len(analysis["good_matches"])
-                    bad_count = len(analysis["bad_matches"])
-                    
-                    # Find the second-highest priority good choice (skip the highest priority one)
-                    second_priority = -1
-                    if len(analysis["good_matches"]) > 1:
-                        # Sort good matches by priority and get the second one
-                        good_priorities = []
-                        for good_choice in analysis["good_matches"]:
-                            try:
-                                priority = good_choices.index(good_choice)
-                                good_priorities.append(priority)
-                            except ValueError:
-                                continue
-                        if len(good_priorities) > 1:
-                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
-                            second_priority = good_priorities[1]  # Get second-highest priority
-                    
-                    # Determine if this option is better
-                    is_better = False
-                    if best_option is None:
-                        is_better = True
-                    elif second_priority != -1 and best_second_priority != -1:
-                        # Both have second priorities - prefer the one with higher priority (lower number)
-                        if second_priority < best_second_priority:
-                            is_better = True
-                        elif second_priority == best_second_priority:
-                            # Same second priority, fall back to other criteria
-                            if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
-                                is_better = True
-                    else:
-                        # Fall back to original logic if second priorities aren't available
-                        if good_count > max_good_choices or (good_count == max_good_choices and bad_count < min_bad_choices):
-                            is_better = True
-                    
-                    if is_better:
-                        best_option = option_name
-                        best_second_priority = second_priority
-                        max_good_choices = good_count
-                        min_bad_choices = bad_count
-                
-                recommended_option = best_option
-                if best_second_priority != -1:
-                    recommendation_reason = f"Multiple options have same priority good choice. Selected based on enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}', then more good choices, then fewer bad choices)."
-                else:
-                    recommendation_reason = f"Multiple options have same priority good choice. Selected based on tie-breaking (more good choices, then fewer bad choices)."
-            else:
-                best_option = best_options[0]
-                recommended_option = best_option
-                recommendation_reason = f"Recommended based on highest priority good choice: '{option_analysis[best_option]['good_matches'][0]}'"
-        else:
-            # No clean options (good without bad) found, try options with good choices even if they have bad choices
-            log_debug(f" No clean options found, considering options with good choices despite bad choices...")
-            fallback_options = []
-            best_priority = -1
-            
-            for option_name, analysis in option_analysis.items():
-                if analysis["has_good"]:  # Has good choices (ignoring bad choices for now)
-                    # Find the highest priority good choice in this option
-                    for good_choice in analysis["good_matches"]:
-                        try:
-                            priority = good_choices.index(good_choice)
-                            if priority < best_priority or best_priority == -1:
-                                # New best priority found, reset the list
-                                best_priority = priority
-                                fallback_options = [option_name]
-                            elif priority == best_priority:
-                                # Same priority, add to the list
-                                if option_name not in fallback_options:
-                                    fallback_options.append(option_name)
-                        except ValueError:
-                            continue
-            
-            if fallback_options:
-                # Enhanced fallback tie-breaking: consider second-highest priority good choice
-                best_option = None
-                best_second_priority = -1
-                min_bad_choices = 999
-                
-                for option_name in fallback_options:
-                    analysis = option_analysis[option_name]
-                    bad_count = len(analysis["bad_matches"])
-                    
-                    # Find the second-highest priority good choice (skip the highest priority one)
-                    second_priority = -1
-                    if len(analysis["good_matches"]) > 1:
-                        # Sort good matches by priority and get the second one
-                        good_priorities = []
-                        for good_choice in analysis["good_matches"]:
-                            try:
-                                priority = good_choices.index(good_choice)
-                                good_priorities.append(priority)
-                            except ValueError:
-                                continue
-                        if len(good_priorities) > 1:
-                            good_priorities.sort()  # Sort by priority (lower number = higher priority)
-                            second_priority = good_priorities[1]  # Get second-highest priority
-                    
-                    # Determine if this option is better
-                    is_better = False
-                    if best_option is None:
-                        is_better = True
-                    elif second_priority != -1 and best_second_priority != -1:
-                        # Both have second priorities - prefer the one with higher priority (lower number)
-                        if second_priority < best_second_priority:
-                            is_better = True
-                        elif second_priority == best_second_priority:
-                            # Same second priority, prefer fewer bad choices
-                            if bad_count < min_bad_choices:
-                                is_better = True
-                    else:
-                        # Fall back to original logic if second priorities aren't available
-                        if bad_count < min_bad_choices:
-                            is_better = True
-                    
-                    if is_better:
-                        best_option = option_name
-                        best_second_priority = second_priority
-                        min_bad_choices = bad_count
-                
-                if best_second_priority != -1:
-                    recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices, enhanced tie-breaking (second-highest priority: '{good_choices[best_second_priority]}'): {min_bad_choices} bad choices"
-                else:
-                    recommendation_reason = f"No clean options available. Selected option with good choices but fewest bad choices: {min_bad_choices} bad choices"
-            else:
-                # Absolutely no good choices found, pick the option with the least bad choices
-                best_option = None
-                min_bad_choices = 999
-                
-                for option_name, analysis in option_analysis.items():
-                    bad_count = len(option_analysis[option_name]["bad_matches"])
-                    if bad_count < min_bad_choices:
-                        min_bad_choices = bad_count
-                        best_option = option_name
-                
-                if best_option:
-                    recommended_option = best_option
-                    recommendation_reason = f"No good choices found. Selected option with least bad choices: {len(option_analysis[best_option]['bad_matches'])} bad choices"
-                else:
-                    recommendation_reason = "No good choices found. No recommendation possible."
+                recommendation_reason = f"No clean options available. Selected option with fewest bad choices: {min_bad_choices} bad choices"
     
     return {
         "recommended_option": recommended_option,
@@ -430,177 +223,44 @@ def analyze_event_options(options, priorities):
         "all_options_bad": all_options_bad
     }
 
-def generate_event_variations(event_name):
-    """
-    Generate variations of an event name for better matching.
-    
-    Args:
-        event_name: The base event name
-    
-    Returns:
-        List of event name variations
-    """
-    variations = [event_name]
-    
-    # Add common variations
-    if " " in event_name:
-        # Split by spaces and create combinations
-        parts = event_name.split()
-        variations.extend(parts)
-        
-        # Add combinations of parts
-        for i in range(len(parts)):
-            for j in range(i + 1, len(parts) + 1):
-                combination = " ".join(parts[i:j])
-                if combination not in variations:
-                    variations.append(combination)
-    
-    # Add lowercase versions
-    variations.append(event_name.lower())
-    
-    # Add versions without special characters
-    clean_name = event_name.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
-    if clean_name not in variations:
-        variations.append(clean_name)
-    
-    return variations
-
-def search_events(event_variations):
-    """Search for matching events in databases (same as original PC version)"""
-    found_events = {}
-    import re
-
-    def normalize_for_match(name: str) -> str:
-        # Lowercase, remove chain symbols and trim
-        n = (name or "").lower()
-        n = n.replace("(❯)", "").replace("(❯❯)", "").replace("(❯❯❯)", "").strip()
-        return n
-
-    def strip_punct_spaces(name: str) -> str:
-        # Keep letters, numbers, star, and spaces; drop the rest
-        return re.sub(r"[^a-z0-9☆\s]", "", name)
-
-    def nospace(name: str) -> str:
-        # Remove all spaces and punctuation entirely for permissive matching
-        return re.sub(r"[^a-z0-9☆]", "", name)
-
-    def is_match(db_name_raw: str, search_raw: str) -> bool:
-        dbn = normalize_for_match(db_name_raw)
-        srch = normalize_for_match(search_raw)
-        if not dbn or not srch:
-            return False
-        # Guard: ignore trivial variations like just a star or single short token
-        srch_tokens = [t for t in strip_punct_spaces(srch).split() if t]
-        if (len(srch) < 3) or (len(srch_tokens) == 1 and len(srch_tokens[0]) < 3) or (srch.strip() == '☆'):
-            return False
-        # Exact match
-        if dbn == srch:
-            return True
-        # Substring match ignoring punctuation (handles names like "Acupuncture (Just an Acupuncturist, No Worries! ☆)")
-        dbn_np = strip_punct_spaces(dbn).replace("  ", " ").strip()
-        srch_np = strip_punct_spaces(srch).replace("  ", " ").strip()
-        if srch_np and (srch_np in dbn_np or dbn_np in srch_np):
-            return True
-        # Substring match ignoring all spaces/punct
-        dbn_ns = nospace(dbn)
-        srch_ns = nospace(srch)
-        if srch_ns and (srch_ns in dbn_ns or dbn_ns in srch_ns):
-            return True
-        # Token containment (all search tokens in db tokens)
-        db_tokens = set([t for t in dbn_np.split() if t])
-        srch_tokens = set([t for t in srch_np.split() if t])
-        if srch_tokens and srch_tokens.issubset(db_tokens):
-            return True
-        return False
-    
-    # Load support card events
-    support_events = []
+def search_events_exact(event_name):
+    """Search for exact event name match in all databases"""
+    results = {}
+    # Support Card
     if os.path.exists("assets/events/support_card.json"):
         with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-            support_events = json.load(f)
-    
-    # Load uma data events
-    uma_events = []
+            for ev in json.load(f):
+                if ev.get("EventName") == event_name:
+                    entry = results.setdefault(event_name, {"source": "Support Card", "options": {}})
+                    # Merge options across duplicate entries of the same event
+                    entry["options"].update(ev.get("EventOptions", {}))
+    # Uma Data
     if os.path.exists("assets/events/uma_data.json"):
         with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-            uma_data = json.load(f)
-            # Extract all UmaEvents from all characters
-            for character in uma_data:
-                if "UmaEvents" in character:
-                    uma_events.extend(character["UmaEvents"])
-    
-    # Load ura finale events
-    ura_events = []
+            for character in json.load(f):
+                for ev in character.get("UmaEvents", []):
+                    if ev.get("EventName") == event_name:
+                        entry = results.setdefault(event_name, {"source": "Uma Data", "options": {}})
+                        # Merge source labels
+                        if entry["source"] == "Support Card":
+                            entry["source"] = "Both"
+                        elif entry["source"].startswith("Support Card +"):
+                            entry["source"] = entry["source"].replace("Support Card +", "Both +")
+                        entry["options"].update(ev.get("EventOptions", {}))
+    # Ura Finale
     if os.path.exists("assets/events/ura_finale.json"):
         with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-            ura_events = json.load(f)
-    
-    # Search in support card events
-    for event in support_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Support Card", "options": {}}
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in uma events
-    for event in uma_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Uma Data", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Both"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in ura finale events
-    for event in ura_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Ura Finale", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Support Card + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Uma Data":
-                    found_events[event_name_key]["source"] = "Uma Data + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Both":
-                    found_events[event_name_key]["source"] = "All Sources"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    return found_events
+            for ev in json.load(f):
+                if ev.get("EventName") == event_name:
+                    entry = results.setdefault(event_name, {"source": "Ura Finale", "options": {}})
+                    if entry["source"] == "Support Card":
+                        entry["source"] = "Support Card + Ura Finale"
+                    elif entry["source"] == "Uma Data":
+                        entry["source"] = "Uma Data + Ura Finale"
+                    elif entry["source"] == "Both":
+                        entry["source"] = "All Sources"
+                    entry["options"].update(ev.get("EventOptions", {}))
+    return results
 
 def handle_event_choice():
     """
@@ -671,7 +331,7 @@ def handle_event_choice():
                             entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
                             if entry["source"] == "Support Card":
                                 entry["source"] = "Support Card + Ura Finale"
-                            elif entry["source"] == "Uma Data":
+                            elif entry["source"]["source"] == "Uma Data":
                                 entry["source"] = "Uma Data + Ura Finale"
                             elif entry["source"] == "Both":
                                 entry["source"] = "All Sources"
@@ -679,10 +339,6 @@ def handle_event_choice():
             return results
 
         found_events = search_events_exact(event_name)
-        if not found_events:
-            # Fallback variations-based search
-            event_variations = generate_event_variations(event_name)
-            found_events = search_events(event_variations)
         
         # Count event choices on screen
         choices_found, choice_locations = count_event_choices()

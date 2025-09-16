@@ -257,9 +257,7 @@ def extract_failure_text_with_confidence(pil_img: Image.Image) -> tuple[str, flo
         return "", 0.0
 
 def extract_event_name_text(pil_img: Image.Image) -> str:
-    """Extract event name text using a simple OCR path first, then a robust fallback.
-    Steps: 2x upscale -> grayscale -> autocontrast/contrast/sharpness -> OCR with whitelist preserving spaces.
-    """
+    """Extract event name text using improved white specialization and OCR with confidence filtering"""
     try:
         # Normalize input to numpy array
         if isinstance(pil_img, Image.Image):
@@ -267,136 +265,47 @@ def extract_event_name_text(pil_img: Image.Image) -> str:
         else:
             img_np = pil_img
 
-        # 2x upscale
-        height, width = img_np.shape[:2]
-        new_width = int(width * 2.0)
-        new_height = int(height * 2.0)
-        scaled_img = cv2.resize(img_np, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
-
-        # Grayscale
-        if len(scaled_img.shape) == 3:
-            gray = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
+        # Convert to grayscale
+        if len(img_np.shape) == 3:
+            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
         else:
-            gray = scaled_img
+            gray = img_np
 
-        # White specialization and sharpness using PIL
-        try:
-            pil_gray = Image.fromarray(gray).convert("L")
-            pil_enh = ImageOps.autocontrast(pil_gray, cutoff=1)
-            pil_enh = ImageEnhance.Contrast(pil_enh).enhance(1.8)
-            pil_enh = ImageEnhance.Sharpness(pil_enh).enhance(1.8)
-            enhanced_gray = np.array(pil_enh)
-            log_debug(f"Applied autocontrast/contrast/sharpness to grayscale image")
-        except Exception as enh_e:
-            log_debug(f"Enhancement pipeline failed: {enh_e}")
-            enhanced_gray = gray
+        # White specialization - find bright pixels (white text)
+        _, cleaned = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
 
-        # Simple OCR path (no PSM), preserve spaces
-        try:
-            cfg_simple = "-c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300"
-            log_debug(f"Simple OCR cfg: {cfg_simple}")
-            simple_text = pytesseract.image_to_string(enhanced_gray, config=cfg_simple, lang='eng')
-            simple_text = (simple_text or "").strip()
-            log_debug(f"Simple OCR raw: '{simple_text}'")
-            # Optionally save enhanced image for debugging
-            if DEBUG_MODE:
-                from datetime import datetime
-                ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-                try:
-                    Image.fromarray(enhanced_gray).save(f"event_ocr_simple_{ts}.png")
-                except Exception:
-                    pass
-            if simple_text:
-                import re
-                simple_text = re.sub(r'\b(Star|star)\b', '☆', simple_text)
-                if 'Escape' in simple_text and not simple_text.endswith('!'):
-                    simple_text += '!'
-                # Keep spaces; just clean prefix before first uppercase
-                m = re.search(r'[A-Z]', simple_text)
-                if m:
-                    simple_text = simple_text[m.start():]
-                # CamelCase spacing if any
-                simple_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', simple_text)
-                # Fuzzy match against DB
-                simple_text = find_best_event_match(simple_text)
-                return simple_text
-        except Exception as simple_e:
-            log_debug(f"Simple OCR path failed: {simple_e}")
+        # Clean up text with morphological operations
+        kernel = np.ones((1,1), np.uint8)
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel)
 
-        # Fallback: binarize and run image_to_data with multiple PSMs
-        _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
-        processed = cv2.bitwise_not(binary)
-        img_np_proc = processed
-
-        configs = [
-            "--oem 3 --psm 8 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
-            "--oem 3 --psm 7 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
-            "--oem 3 --psm 6 -c tessedit_char_whitelist=\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'!,♪☆():.-?!\" -c preserve_interword_spaces=1 -c user_defined_dpi=300",
-        ]
-        for config in configs:
-            try:
-                log_debug(f"Tesseract config: {config}")
-                data = pytesseract.image_to_data(img_np_proc, config=config, lang='eng', output_type=pytesseract.Output.DICT)
-            except Exception as ocr_e:
-                log_warning(f"image_to_data failed for config: {config}. Error: {ocr_e}")
-                continue
-
-            # Collect words with confidence
-            text_parts = []
-            conf_parts = []
-            for i, word in enumerate(data['text']):
-                w = (word or '').strip()
-                try:
-                    conf_val = float(data['conf'][i])
-                except Exception:
-                    conf_val = -1
-                if w and conf_val >= 60:
-                    text_parts.append(w)
-                    conf_parts.append(conf_val)
-
-            raw_joined = ' '.join([(w or '').strip() for w in data['text'] if (w or '').strip()])
-            log_debug(f"Raw OCR (no filter): '{raw_joined}'")
-            if conf_parts:
-                avg_conf = sum(conf_parts) / len(conf_parts)
-                log_debug(f"Filtered words: {len(text_parts)}, avg conf: {avg_conf:.1f}")
-            else:
-                log_debug(f"No words passed confidence filter")
-
-            text = ' '.join(text_parts).strip()
-
-            # Post-processing and fuzzy match
-            import re
-            text = re.sub(r'\b(Star|star)\b', '☆', text)
-            text = re.sub(r'\b(star)\b', '☆', text)
-            text = re.sub(r'\b(Star)\b', '☆', text)
-            if 'Escape' in text and not text.endswith('!'):
-                text += '!'
-            text = find_best_event_match(text)
-            match = re.search(r'[A-Z]', text)
-            if match:
-                text = text[match.start():]
-            if text:
-                text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-            log_debug(f"Post-processed OCR text: '{text}'")
-            if text:
-                return text
+        # OCR with confidence filtering
+        data = pytesseract.image_to_data(cleaned, config="-c preserve_interword_spaces=1", lang='eng', output_type=pytesseract.Output.DICT)
+        
+        high_confidence_words = []
+        for i in range(len(data['text'])):
+            word = data['text'][i].strip()
+            conf = int(data['conf'][i])
+            if word and conf >= 80:
+                high_confidence_words.append(word)
+        
+        result_text = ' '.join(high_confidence_words).strip()
+        
+        # Apply database matching (handles all post-processing internally)
+        if result_text:
+            result_text = find_best_event_match(result_text)
+            log_debug(f"Event name OCR result: '{result_text}'")
+            return result_text
+        
         return ""
     except Exception as e:
         log_warning(f"Event name OCR extraction failed: {e}")
         return ""
 
 def find_best_event_match(ocr_text):
-    """Find the best matching event name from the database using robust heuristics.
-    Preference order:
-      1) Exact case-insensitive match
-      2) Exact match ignoring spaces/punctuation
-      3) Token containment (all OCR tokens present in DB name)
-      4) Highest similarity ratio (>= 0.80), with prefix match allowed only when OCR length >= 4
-    """
+    """Find best matching event from database using simple and efficient method"""
     try:
         import json
         import os
-        import re
         from difflib import SequenceMatcher
         
         # Load event databases
@@ -421,164 +330,50 @@ def find_best_event_match(ocr_text):
                             event_name = event.get("EventName", "")
                             if event_name and event_name not in all_event_names:
                                 all_event_names.append(event_name)
-
-        # Helper normalizers
-        def normalize(s: str) -> str:
-            return s.replace("(❯)", "").replace("(❯❯)", "").replace("(❯❯❯)", "").strip()
-
-        def strip_spaces_punct(s: str) -> str:
-            return re.sub(r"[^A-Za-z0-9☆']+", "", s).lower()
-
-        def tokens(s: str) -> set[str]:
-            return set(re.findall(r"[A-Za-z0-9☆']+", s.lower()))
-
-        # Clean OCR
-        clean_ocr_text = (ocr_text or "").strip().rstrip("'\"`").strip()
-        if not clean_ocr_text:
+        
+        # Load ura finale events
+        if os.path.exists("assets/events/ura_finale.json"):
+            with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
+                ura_events = json.load(f)
+                for event in ura_events:
+                    event_name = event.get("EventName", "")
+                    if event_name and event_name not in all_event_names:
+                        all_event_names.append(event_name)
+        
+        if not ocr_text or not all_event_names:
             return ocr_text
-
-        ocr_norm = normalize(clean_ocr_text)
-        ocr_nospace = strip_spaces_punct(ocr_norm)
-        ocr_tokens = tokens(ocr_norm)
-
-        # Pass 1: exact case-insensitive
-        for name in all_event_names:
-            if normalize(name).lower() == ocr_norm.lower():
-                log_debug(f"Exact match: '{ocr_text}' -> '{name}'")
-                return name
-
-        # Pass 2: exact ignoring spaces/punct
-        for name in all_event_names:
-            if strip_spaces_punct(normalize(name)) == ocr_nospace:
-                log_debug(f"No-space match: '{ocr_text}' -> '{name}'")
-                return name
-
-        # Pass 3: token containment
-        token_candidates = []
-        for name in all_event_names:
-            name_norm = normalize(name)
-            name_tokens = tokens(name_norm)
-            if ocr_tokens and ocr_tokens.issubset(name_tokens):
-                token_candidates.append(name)
-        if token_candidates:
-            # Prefer the shortest candidate (most specific) to avoid mapping to longer unrelated names
-            best = min(token_candidates, key=lambda n: len(n))
-            log_debug(f"Token match: '{ocr_text}' -> '{best}'")
-            return best
-
-        # Pass 4: similarity ratio with threshold
+        
+        def normalize(s):
+            return s.replace("(❯)", "").replace("(❯❯)", "").replace("(❯❯❯)", "").strip()
+        
+        clean_ocr = normalize(ocr_text.strip())
+        if not clean_ocr:
+            return ocr_text
+        
         best_match = ocr_text
         best_ratio = 0.0
-        for db_event_name in all_event_names:
-            clean_db_name = normalize(db_event_name)
-            ratio = SequenceMatcher(None, ocr_norm.lower(), clean_db_name.lower()).ratio()
-            prefix_ok = len(ocr_norm) >= 4 and clean_db_name.lower().startswith(ocr_norm.lower())
-            if ((ratio >= 0.80 and ratio > best_ratio) or prefix_ok):
-                best_ratio = ratio
-                best_match = db_event_name
-
-        if best_match != ocr_text:
-            log_debug(f"OCR: '{ocr_text}' -> Matched: '{best_match}' (ratio: {best_ratio:.3f}")
-        else:
-            log_debug(f"OCR: '{ocr_text}' -> No match found (best ratio: {best_ratio:.3f}")
+        
+        for db_event in all_event_names:
+            db_norm = normalize(db_event)
+            
+            # Exact match
+            if db_norm.lower() == clean_ocr.lower():
+                return db_event
+            
+            # OCR contained in DB name
+            if clean_ocr.lower() in db_norm.lower():
+                if not best_match or len(db_norm) < len(best_match):
+                    best_match = db_event
+                    best_ratio = 0.92
+            
+            # Similarity match
+            else:
+                ratio = SequenceMatcher(None, clean_ocr.lower(), db_norm.lower()).ratio()
+                if ratio > best_ratio and ratio >= 0.6:
+                    best_ratio = ratio
+                    best_match = db_event
+        
         return best_match
     except Exception as e:
         log_warning(f"Event name matching failed: {e}")
         return ocr_text
-
-def extract_event_name_text_debug(pil_img: Image.Image, save_prefix: str = "event_debug") -> dict:
-    """
-    Extract event name text from image using Tesseract OCR with PSM 6, 7, 8.
-    Uses the exact same approach as event_ocr.py for consistency.
-    """
-    import cv2
-    import numpy as np
-    import pytesseract
-    from PIL import ImageDraw
-
-    if isinstance(pil_img, Image.Image):
-        img_np = np.array(pil_img)
-    else:
-        img_np = pil_img
-    if img_np.shape[-1] == 4:
-        img_np = cv2.cvtColor(img_np, cv2.COLOR_RGBA2RGB)
-
-    # Use the exact same config as event_ocr.py
-    config = '-c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 \'!,♪☆():.-?!" -c tessedit_pageseg_mode=7 -c user_defined_dpi=300'
-    
-    # Use image_to_data to get confidence scores (like event_ocr.py)
-    data = pytesseract.image_to_data(img_np, config=config, lang='eng', output_type=pytesseract.Output.DICT)
-    
-    # Extract text and bounding boxes with confidence filtering (>= 90% like event_ocr.py)
-    text_results = []
-    full_text = ""
-    
-    for i in range(len(data['text'])):
-        text = data['text'][i].strip()
-        conf = data['conf'][i]
-        
-        if text and conf >= 60:  # Lower threshold to catch more text including special characters
-            x = data['left'][i]
-            y = data['top'][i]
-            w = data['width'][i]
-            h = data['height'][i]
-            
-            text_results.append({
-                'text': text,
-                'confidence': conf,
-                'bbox': (x, y, w, h)
-            })
-            
-            full_text += text + " "
-    
-    full_text = full_text.strip()
-    
-    # Post-processing: Handle common OCR mistakes with special characters
-    import re
-    # Replace common OCR mistakes for special characters
-    full_text = re.sub(r'\b(Star|star)\b', '☆', full_text)  # OCR might read ☆ as "Star"
-    full_text = re.sub(r'\b(star)\b', '☆', full_text)  # Lowercase "star"
-    full_text = re.sub(r'\b(Star)\b', '☆', full_text)  # Capital "Star"
-    
-    # Add missing exclamation marks if the event name suggests it
-    if 'Escape' in full_text and not full_text.endswith('!'):
-        full_text += '!'
-    
-    # General post-processing: Try to find the best matching event name from database
-    full_text = find_best_event_match(full_text)
-    
-    # Post-processing: Remove everything before first uppercase letter
-    match = re.search(r'[A-Z]', full_text)
-    if match:
-        full_text = full_text[match.start():]
-    
-    # Post-processing: Insert spaces before uppercase letters that follow lowercase letters
-    if full_text:
-        full_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', full_text)
-    
-    # Calculate average confidence
-    if text_results:
-        avg_conf = sum(result['confidence'] for result in text_results) / len(text_results) / 100.0
-    else:
-        avg_conf = 0.0
-    
-    # Draw bounding boxes
-    annotated = pil_img.copy() if isinstance(pil_img, Image.Image) else Image.fromarray(img_np)
-    draw = ImageDraw.Draw(annotated)
-    for result in text_results:
-        x, y, w, h = result['bbox']
-        draw.rectangle([x, y, x + w, y + h], outline='red', width=2)
-    
-    img_path = f"{save_prefix}_result.png"
-    annotated.save(img_path)
-    
-    # Return in the same format as before for compatibility
-    results = {
-        7: {  # Use PSM 7 as the main result
-            'text': full_text,
-            'confidence': avg_conf,
-            'image_path': img_path,
-        }
-    }
-    
-    return results
