@@ -671,7 +671,7 @@ def handle_event_choice():
                             entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
                             if entry["source"] == "Support Card":
                                 entry["source"] = "Support Card + Ura Finale"
-                            elif entry["source"]["source"] == "Uma Data":
+                            elif entry["source"] == "Uma Data":
                                 entry["source"] = "Uma Data + Ura Finale"
                             elif entry["source"] == "Both":
                                 entry["source"] = "All Sources"

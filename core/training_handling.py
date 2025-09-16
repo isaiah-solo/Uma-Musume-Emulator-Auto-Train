@@ -610,7 +610,8 @@ def calculate_training_score(support_detail, hint_found, training_type):
             else:
                 if level < 4:
                     score += scoring_rules.get("not_rainbow_support_low", {}).get("points", 0.7)
-                # bond >= 4 for non-rainbow gets points from not_rainbow_support_high (0.0)
+                else:  # bond >= 4 for non-rainbow
+                    score += scoring_rules.get("not_rainbow_support_high", {}).get("points", 0.0)
     
     # Add hint bonus
     if hint_found:
