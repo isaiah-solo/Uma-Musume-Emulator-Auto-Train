@@ -32,7 +32,7 @@ GUTS_REGION=(621, 1281, 711, 1323)
 WIT_REGION=(780, 1284, 876, 1323)
 
 # Event detection region (middle area)
-EVENT_REGION=(165, 348, 732, 435)
+EVENT_REGION=(168, 347, 825, 434)
 
 # Race selection regions
 RACE_CARD_REGION=(0, 0, 610, 220)  # Dynamic region calculated as (x, y, 350, 110)
