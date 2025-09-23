@@ -409,6 +409,45 @@ def handle_event_choice():
         
         log_info(f"Event found: {event_name}")
 
+        # Prefer exact name lookup to ensure options align with the specific event instance
+        def search_events_exact(name):
+            results = {}
+            # Support Card
+            if os.path.exists("assets/events/support_card.json"):
+                with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
+                    for ev in json.load(f):
+                        if ev.get("EventName") == name:
+                            entry = results.setdefault(name, {"source": "Support Card", "options": {}})
+                            # Merge options across duplicate entries of the same event
+                            entry["options"].update(ev.get("EventOptions", {}))
+            # Uma Data
+            if os.path.exists("assets/events/uma_data.json"):
+                with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
+                    for character in json.load(f):
+                        for ev in character.get("UmaEvents", []):
+                            if ev.get("EventName") == name:
+                                entry = results.setdefault(name, {"source": "Uma Data", "options": {}})
+                                # Merge source labels
+                                if entry["source"] == "Support Card":
+                                    entry["source"] = "Both"
+                                elif entry["source"].startswith("Support Card +"):
+                                    entry["source"] = entry["source"].replace("Support Card +", "Both +")
+                                entry["options"].update(ev.get("EventOptions", {}))
+            # Ura Finale
+            if os.path.exists("assets/events/ura_finale.json"):
+                with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
+                    for ev in json.load(f):
+                        if ev.get("EventName") == name:
+                            entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
+                            if entry["source"] == "Support Card":
+                                entry["source"] = "Support Card + Ura Finale"
+                            elif entry["source"]["source"] == "Uma Data":
+                                entry["source"] = "Uma Data + Ura Finale"
+                            elif entry["source"] == "Both":
+                                entry["source"] = "All Sources"
+                            entry["options"].update(ev.get("EventOptions", {}))
+            return results
+
         found_events = search_events_exact(event_name)
         if not found_events:
             # Fallback to fuzzy search for partial matches
