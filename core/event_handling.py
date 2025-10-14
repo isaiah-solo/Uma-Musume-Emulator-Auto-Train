@@ -317,61 +317,6 @@ def search_events_fuzzy(event_name):
     
     return results
 
-def search_events_fuzzy(event_name):
-    """Search for fuzzy event name match in all databases (fallback)"""
-    results = {}
-    event_name_lower = event_name.lower().strip()
-    
-    # Support Card
-    if os.path.exists("assets/events/support_card.json"):
-        with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-            for ev in json.load(f):
-                db_name = ev.get("EventName", "")
-                db_name_lower = db_name.lower().strip()
-                
-                # Check if OCR text is contained in database name
-                if event_name_lower in db_name_lower or db_name_lower in event_name_lower:
-                    entry = results.setdefault(db_name, {"source": "Support Card", "options": {}})
-                    entry["options"].update(ev.get("EventOptions", {}))
-    
-    # Uma Data
-    if os.path.exists("assets/events/uma_data.json"):
-        with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-            for character in json.load(f):
-                for ev in character.get("UmaEvents", []):
-                    db_name = ev.get("EventName", "")
-                    db_name_lower = db_name.lower().strip()
-                    
-                    # Check if OCR text is contained in database name
-                    if event_name_lower in db_name_lower or db_name_lower in event_name_lower:
-                        entry = results.setdefault(db_name, {"source": "Uma Data", "options": {}})
-                        # Merge source labels
-                        if entry["source"] == "Support Card":
-                            entry["source"] = "Both"
-                        elif entry["source"].startswith("Support Card +"):
-                            entry["source"] = entry["source"].replace("Support Card +", "Both +")
-                        entry["options"].update(ev.get("EventOptions", {}))
-    
-    # Ura Finale
-    if os.path.exists("assets/events/ura_finale.json"):
-        with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-            for ev in json.load(f):
-                db_name = ev.get("EventName", "")
-                db_name_lower = db_name.lower().strip()
-                
-                # Check if OCR text is contained in database name
-                if event_name_lower in db_name_lower or db_name_lower in event_name_lower:
-                    entry = results.setdefault(db_name, {"source": "Ura Finale", "options": {}})
-                    if entry["source"] == "Support Card":
-                        entry["source"] = "Support Card + Ura Finale"
-                    elif entry["source"] == "Uma Data":
-                        entry["source"] = "Uma Data + Ura Finale"
-                    elif entry["source"] == "Both":
-                        entry["source"] = "All Sources"
-                    entry["options"].update(ev.get("EventOptions", {}))
-    
-    return results
-
 def handle_event_choice():
     """
     Main function to handle event detection and choice selection.
@@ -441,7 +386,7 @@ def handle_event_choice():
                             entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
                             if entry["source"] == "Support Card":
                                 entry["source"] = "Support Card + Ura Finale"
-                            elif entry["source"]["source"] == "Uma Data":
+                            elif entry["source"] == "Uma Data":
                                 entry["source"] = "Uma Data + Ura Finale"
                             elif entry["source"] == "Both":
                                 entry["source"] = "All Sources"
