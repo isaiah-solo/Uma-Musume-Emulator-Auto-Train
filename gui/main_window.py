@@ -56,6 +56,11 @@ class MainWindow:
         self.bot_running = False
         self.config_file = "config.json"
         
+        # Auto-save configuration
+        self.auto_save_enabled = True
+        self.auto_save_delay = 1000  # 1 second delay after last change
+        self.auto_save_timer = None
+        
         # Load configuration
         self.load_config()
         
@@ -205,6 +210,29 @@ class MainWindow:
         except Exception as e:
             self.add_log(f"Error saving config: {e}")
     
+    def schedule_auto_save(self):
+        """Schedule an auto-save after a delay"""
+        if not self.auto_save_enabled:
+            return
+            
+        # Cancel any existing timer
+        if self.auto_save_timer:
+            self.root.after_cancel(self.auto_save_timer)
+        
+        # Schedule new auto-save
+        self.auto_save_timer = self.root.after(self.auto_save_delay, self.auto_save)
+    
+    def auto_save(self):
+        """Perform automatic save without showing success message"""
+        try:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            self.add_log("Configuration auto-saved", "info")
+        except Exception as e:
+            self.add_log(f"Error auto-saving config: {e}", "error")
+        finally:
+            self.auto_save_timer = None
+    
 
     
 
@@ -245,8 +273,20 @@ class MainWindow:
     def set_config(self, new_config):
         """Update configuration"""
         self.config = new_config
-        self.save_config()
+        self.schedule_auto_save()
         self.config_panel.refresh_config()
+    
+    def update_config_value(self, key, value):
+        """Update a single configuration value and trigger auto-save"""
+        self.config[key] = value
+        self.schedule_auto_save()
+    
+    def update_nested_config_value(self, parent_key, child_key, value):
+        """Update a nested configuration value and trigger auto-save"""
+        if parent_key not in self.config:
+            self.config[parent_key] = {}
+        self.config[parent_key][child_key] = value
+        self.schedule_auto_save()
 
 def main():
     """Main function to run the modern GUI"""

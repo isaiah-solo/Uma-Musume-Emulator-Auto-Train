@@ -82,6 +82,12 @@ class ConfigPanel(ctk.CTkFrame):
         # This would update all displayed values when config changes
         # Individual tabs handle their own refresh logic
         print("Configuration refresh requested")
+        
+        # Refresh training score values if training tab exists
+        if hasattr(self, '_tabs') and 'training' in self._tabs:
+            training_tab = self._tabs['training']
+            if hasattr(training_tab, 'refresh_training_score_values'):
+                training_tab.refresh_training_score_values()
     
     def save_config(self):
         """Save the current configuration"""

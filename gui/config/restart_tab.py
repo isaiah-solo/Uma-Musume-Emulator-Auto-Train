@@ -6,40 +6,26 @@ Contains restart conditions and career management settings.
 
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import messagebox
 
 try:
-    from ..font_manager import get_font
+    from .base_tab import BaseTab
 except ImportError:
-    from font_manager import get_font
+    from base_tab import BaseTab
 
-class RestartTab:
+class RestartTab(BaseTab):
     """Restart configuration tab containing restart career settings"""
     
     def __init__(self, tabview, config_panel, colors):
-        """Initialize the Restart tab
-        
-        Args:
-            tabview: The parent CTkTabview widget
-            config_panel: Reference to the main ConfigPanel instance
-            colors: Color scheme dictionary
-        """
-        self.tabview = tabview
-        self.config_panel = config_panel
-        self.colors = colors
-        self.main_window = config_panel.main_window
-        
-        # Create the tab
-        self.create_tab()
+        """Initialize the Restart tab"""
+        super().__init__(tabview, config_panel, colors, "Restart")
     
     def create_tab(self):
         """Create the Restart tab with restart career settings"""
         # Add tab to tabview
         restart_tab = self.tabview.add("Restart")
         
-        # Create scrollable frame inside the restart tab
-        restart_scroll = ctk.CTkScrollableFrame(restart_tab, fg_color="transparent", corner_radius=0)
-        restart_scroll.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Create scrollable content
+        restart_scroll = self.create_scrollable_content(restart_tab)
         
         config = self.main_window.get_config()
         
@@ -52,12 +38,8 @@ class RestartTab:
         # Support Settings Section
         self._create_support_settings_section(restart_scroll, config)
         
-        # Save button
-        restart_save_btn = ctk.CTkButton(restart_tab, text="Save Restart Settings", 
-                                       command=self.save_restart_settings,
-                                       fg_color=self.colors['accent_green'], corner_radius=8, height=35,
-                                       font=get_font('button'))
-        restart_save_btn.pack(side=tk.BOTTOM, pady=20)
+        # Auto-save info label
+        self.create_autosave_info_label(restart_tab, {'side': tk.BOTTOM, 'pady': 20})
     
     def _create_restart_settings_section(self, parent, config):
         """Create the restart career settings section"""
@@ -69,6 +51,7 @@ class RestartTab:
         
         # Restart Career Run checkbox
         self.restart_enabled_var = tk.BooleanVar(value=config.get('restart_career', {}).get('restart_enabled', False))
+        self.restart_enabled_var.trace('w', self.on_restart_setting_change)
         restart_checkbox = ctk.CTkCheckBox(restart_frame, text="Restart Career run", variable=self.restart_enabled_var, 
                                          text_color=self.colors['text_light'], font=get_font('checkbox'),
                                          command=self.toggle_restart_settings)
@@ -81,6 +64,7 @@ class RestartTab:
         
         # Restart criteria radio buttons
         self.restart_criteria_var = tk.StringVar(value="times")
+        self.restart_criteria_var.trace('w', self.on_restart_setting_change)
         if config.get('restart_career', {}).get('total_fans_requirement', 0) > 0:
             self.restart_criteria_var.set("fans")
         else:
@@ -97,6 +81,7 @@ class RestartTab:
                                        command=self.on_criteria_change)
         times_radio.pack(side=tk.LEFT)
         self.restart_times_var = tk.IntVar(value=config.get('restart_career', {}).get('restart_times', 5))
+        self.restart_times_var.trace('w', self.on_restart_setting_change)
         times_entry = ctk.CTkEntry(times_frame, textvariable=self.restart_times_var, width=80, corner_radius=8)
         times_entry.pack(side=tk.LEFT, padx=(10, 0))
         times_label = ctk.CTkLabel(times_frame, text="times", text_color=self.colors['text_light'])
@@ -110,6 +95,7 @@ class RestartTab:
                                       command=self.on_criteria_change)
         fans_radio.pack(side=tk.LEFT)
         self.total_fans_requirement_var = tk.IntVar(value=config.get('restart_career', {}).get('total_fans_requirement', 0))
+        self.total_fans_requirement_var.trace('w', self.on_restart_setting_change)
         fans_entry = ctk.CTkEntry(fans_frame, textvariable=self.total_fans_requirement_var, width=80, corner_radius=8)
         fans_entry.pack(side=tk.LEFT, padx=(10, 0))
         fans_label = ctk.CTkLabel(fans_frame, text="fans", text_color=self.colors['text_light'])
@@ -126,6 +112,7 @@ class RestartTab:
         
         # Include Legacy from Guests checkbox
         self.include_guests_legacy_var = tk.BooleanVar(value=config.get('auto_start_career', {}).get('include_guests_legacy', False))
+        self.include_guests_legacy_var.trace('w', self.on_restart_setting_change)
         legacy_checkbox = ctk.CTkCheckBox(self.legacy_frame, text="Include Legacy from Guests", variable=self.include_guests_legacy_var, 
                                         text_color=self.colors['text_light'], font=get_font('checkbox'))
         legacy_checkbox.pack(anchor=tk.W, pady=(0, 15))
@@ -145,6 +132,7 @@ class RestartTab:
         speciality_frame.pack(fill=tk.X, padx=15, pady=5)
         ctk.CTkLabel(speciality_frame, text="Support Speciality:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.support_speciality_var = tk.StringVar(value=config.get('auto_start_career', {}).get('support_speciality', 'STA'))
+        self.support_speciality_var.trace('w', self.on_restart_setting_change)
         speciality_combo = ctk.CTkOptionMenu(speciality_frame, values=['SPD', 'STA', 'PWR', 'GUTS', 'WIT', 'PAL'], 
                                            variable=self.support_speciality_var, fg_color=self.colors['accent_blue'], 
                                            corner_radius=8, button_color=self.colors['accent_blue'],
@@ -156,6 +144,7 @@ class RestartTab:
         rarity_frame.pack(fill=tk.X, padx=15, pady=5)
         ctk.CTkLabel(rarity_frame, text="Support Rarity:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.support_rarity_var = tk.StringVar(value=config.get('auto_start_career', {}).get('support_rarity', 'SSR'))
+        self.support_rarity_var.trace('w', self.on_restart_setting_change)
         rarity_combo = ctk.CTkOptionMenu(rarity_frame, values=['R', 'SR', 'SSR'], 
                                        variable=self.support_rarity_var, fg_color=self.colors['accent_blue'], 
                                        corner_radius=8, button_color=self.colors['accent_blue'],
@@ -172,6 +161,7 @@ class RestartTab:
             self.restart_criteria_frame.pack_forget()
             self.legacy_frame.pack_forget()
             self.support_frame.pack_forget()
+        # Auto-save is already triggered by the variable trace
     
     def on_criteria_change(self):
         """Handle changes in restart criteria selection"""
@@ -216,3 +206,24 @@ class RestartTab:
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save restart settings: {e}")
+    
+    def update_config(self, config):
+        """Update the config dictionary with current values"""
+        # Update restart career settings
+        config['restart_career'] = {
+            'restart_enabled': self.restart_enabled_var.get(),
+            'restart_criteria': self.restart_criteria_var.get(),
+            'restart_times': self.restart_times_var.get(),
+            'total_fans_requirement': self.total_fans_requirement_var.get()
+        }
+        
+        # Update auto start career settings
+        config['auto_start_career'] = {
+            'include_guests_legacy': self.include_guests_legacy_var.get(),
+            'support_speciality': self.support_speciality_var.get(),
+            'support_rarity': self.support_rarity_var.get()
+        }
+    
+    def on_restart_setting_change(self, *args):
+        """Called when any restart setting variable changes - auto-save"""
+        self.on_setting_change(*args)

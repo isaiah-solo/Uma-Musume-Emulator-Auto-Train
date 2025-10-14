@@ -12,33 +12,21 @@ import json
 import os
 
 try:
-    from ..font_manager import get_font
+    from .base_tab import BaseTab
 except ImportError:
-    from font_manager import get_font
+    from base_tab import BaseTab
 
-class RacingTab:
+class RacingTab(BaseTab):
     """Racing configuration tab containing all racing-related settings"""
     
     def __init__(self, tabview, config_panel, colors):
-        """Initialize the Racing tab
-        
-        Args:
-            tabview: The parent CTkTabview widget
-            config_panel: Reference to the main ConfigPanel instance
-            colors: Color scheme dictionary
-        """
-        self.tabview = tabview
-        self.config_panel = config_panel
-        self.colors = colors
-        self.main_window = config_panel.main_window
-        
+        """Initialize the Racing tab"""
         # Initialize variables
         self.allowed_grades_vars = {}
         self.allowed_tracks_vars = {}
         self.allowed_distances_vars = {}
         
-        # Create the tab
-        self.create_tab()
+        super().__init__(tabview, config_panel, colors, "Racing")
     
     def create_tab(self):
         """Create the Racing tab"""
@@ -57,12 +45,8 @@ class RacingTab:
         # Custom Race Settings
         self._create_custom_race_section(racing_scroll, config)
         
-        # Save button
-        save_btn = ctk.CTkButton(racing_scroll, text="Save Racing Settings", 
-                               command=self.save_racing_settings,
-                               fg_color=self.colors['accent_green'], corner_radius=8, height=35,
-                               font=get_font('button'))
-        save_btn.pack(pady=20)
+        # Auto-save info label
+        self.create_autosave_info_label(racing_scroll)
     
     def _create_racing_settings_section(self, parent, config):
         """Create the main racing settings section"""
@@ -82,6 +66,7 @@ class RacingTab:
         grades_checks.pack(fill=tk.X)
         for i, grade in enumerate(grades_options):
             var = tk.BooleanVar(value=grade in existing_grades)
+            var.trace('w', self.on_racing_setting_change)
             self.allowed_grades_vars[grade] = var
             ctk.CTkCheckBox(grades_checks, text=grade, variable=var, text_color=self.colors['text_light'], font=get_font('checkbox'), width=50).pack(side=tk.LEFT, padx=(0, 15))
 
@@ -95,6 +80,7 @@ class RacingTab:
         tracks_checks.pack(fill=tk.X)
         for track in tracks_options:
             var = tk.BooleanVar(value=track in existing_tracks)
+            var.trace('w', self.on_racing_setting_change)
             self.allowed_tracks_vars[track] = var
             ctk.CTkCheckBox(tracks_checks, text=track, variable=var, text_color=self.colors['text_light'], font=get_font('checkbox'), width=50).pack(side=tk.LEFT, padx=(0, 15), pady=2)
 
@@ -108,6 +94,7 @@ class RacingTab:
         distances_checks.pack(fill=tk.X)
         for i, dist in enumerate(distances_options):
             var = tk.BooleanVar(value=dist in existing_distances)
+            var.trace('w', self.on_racing_setting_change)
             self.allowed_distances_vars[dist] = var
             ctk.CTkCheckBox(distances_checks, text=dist, variable=var, text_color=self.colors['text_light'], font=get_font('checkbox'), width=50).pack(side=tk.LEFT, padx=(0,15))
         
@@ -116,6 +103,7 @@ class RacingTab:
         strategy_frame.pack(fill=tk.X, padx=15, pady=10)
         ctk.CTkLabel(strategy_frame, text="Strategy:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.strategy_var = tk.StringVar(value=config.get('strategy', 'PACE'))
+        self.strategy_var.trace('w', self.on_racing_setting_change)
         strategy_combo = ctk.CTkOptionMenu(strategy_frame, values=['FRONT', 'PACE', 'LATE', 'END'], 
                                           variable=self.strategy_var, fg_color=self.colors['accent_blue'], 
                                           corner_radius=8, button_color=self.colors['accent_blue'],
@@ -127,6 +115,7 @@ class RacingTab:
         retry_frame = ctk.CTkFrame(racing_frame, fg_color="transparent")
         retry_frame.pack(fill=tk.X, padx=15, pady=(5, 15))
         self.retry_race_var = tk.BooleanVar(value=config.get('retry_race', True))
+        self.retry_race_var.trace('w', self.on_racing_setting_change)
         retry_checkbox = ctk.CTkCheckBox(retry_frame, text="Race Retry using Clock", 
                                        variable=self.retry_race_var, text_color=self.colors['text_light'],
                                        font=get_font('checkbox'))
@@ -140,6 +129,7 @@ class RacingTab:
         inner_toggle = ctk.CTkFrame(custom_toggle_frame, fg_color="transparent")
         inner_toggle.pack(fill=tk.X, padx=15, pady=5)
         self.do_custom_race_var = tk.BooleanVar(value=config.get('do_custom_race', False))
+        self.do_custom_race_var.trace('w', self.on_racing_setting_change)
         ctk.CTkCheckBox(inner_toggle, text="Do Custom Races", variable=self.do_custom_race_var, 
                        text_color=self.colors['text_light'], font=get_font('checkbox'), 
                        command=self.toggle_custom_race_settings).pack(anchor=tk.W)
@@ -154,6 +144,7 @@ class RacingTab:
         file_row.pack(fill=tk.X, pady=(0,5))
         ctk.CTkLabel(file_row, text="Custom Race File:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.custom_race_file_var = tk.StringVar(value=config.get('custom_race_file', 'custom_races.json'))
+        self.custom_race_file_var.trace('w', self.on_racing_setting_change)
         file_controls = ctk.CTkFrame(file_row, fg_color="transparent")
         file_controls.pack(side=tk.RIGHT)
         ctk.CTkEntry(file_controls, textvariable=self.custom_race_file_var, width=220, corner_radius=8, font=get_font('input')).pack(side=tk.LEFT, padx=(0, 5))
@@ -188,6 +179,23 @@ class RacingTab:
             self.custom_race_settings_frame.pack(fill=tk.X, padx=15, pady=(5, 10))
         else:
             self.custom_race_settings_frame.pack_forget()
+        # Auto-save is already triggered by the variable trace
+    
+    def update_config(self, config):
+        """Update the config dictionary with current values"""
+        config['strategy'] = self.strategy_var.get()
+        config['retry_race'] = self.retry_race_var.get()
+        # Allowed multi-selects
+        config['allowed_grades'] = [g for g, v in self.allowed_grades_vars.items() if v.get()]
+        config['allowed_tracks'] = [t for t, v in self.allowed_tracks_vars.items() if v.get()]
+        config['allowed_distances'] = [d for d, v in self.allowed_distances_vars.items() if v.get()]
+        # Custom races
+        config['do_custom_race'] = self.do_custom_race_var.get()
+        config['custom_race_file'] = self.custom_race_file_var.get()
+    
+    def on_racing_setting_change(self, *args):
+        """Called when any racing setting variable changes - auto-save"""
+        self.on_setting_change(*args)
 
     def open_custom_race_file(self):
         """Open file dialog to choose custom race file"""

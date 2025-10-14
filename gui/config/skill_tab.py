@@ -11,30 +11,18 @@ import json
 import os
 
 try:
-    from ..font_manager import get_font
+    from .base_tab import BaseTab
     from .skill_list_helper import open_skill_list_window
 except ImportError:
-    from font_manager import get_font
+    from base_tab import BaseTab
     from skill_list_helper import open_skill_list_window
 
-class SkillTab:
+class SkillTab(BaseTab):
     """Skill configuration tab containing skill management settings"""
     
     def __init__(self, tabview, config_panel, colors):
-        """Initialize the Skill tab
-        
-        Args:
-            tabview: The parent CTkTabview widget
-            config_panel: Reference to the main ConfigPanel instance
-            colors: Color scheme dictionary
-        """
-        self.tabview = tabview
-        self.config_panel = config_panel
-        self.colors = colors
-        self.main_window = config_panel.main_window
-        
-        # Create the tab
-        self.create_tab()
+        """Initialize the Skill tab"""
+        super().__init__(tabview, config_panel, colors, "Skill")
     
     def create_tab(self):
         """Create the Skill tab with skill management settings"""
@@ -44,23 +32,21 @@ class SkillTab:
         config = self.main_window.get_config()
         
         # Fixed header section (always visible)
-        header_frame = ctk.CTkFrame(skill_tab, fg_color=self.colors['bg_light'], corner_radius=10)
-        header_frame.pack(fill=tk.X, pady=(10, 5), padx=10)
-        
-        skill_title = ctk.CTkLabel(header_frame, text="Skill Management", font=get_font('section_title'), text_color=self.colors['text_light'])
-        skill_title.pack(pady=(15, 10))
+        header_frame, _ = self.create_section_frame(skill_tab, "Skill Management", 
+                                                   {'fill': tk.X, 'pady': (10, 5), 'padx': 10})
         
         # Enable Skill Point Check
         enable_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         enable_frame.pack(fill=tk.X, padx=15, pady=5)
         self.enable_skill_check_var = tk.BooleanVar(value=config.get('enable_skill_point_check', True))
+        self.enable_skill_check_var.trace('w', self.on_skill_setting_change)
         enable_checkbox = ctk.CTkCheckBox(enable_frame, text="Enable Skill Point check and Skill Purchase", 
                                         variable=self.enable_skill_check_var, text_color=self.colors['text_light'],
                                         font=get_font('checkbox'), command=self.toggle_skill_settings)
         enable_checkbox.pack(anchor=tk.W)
         
         self._create_skill_settings(header_frame, config)
-        self._create_save_button(skill_tab)
+        self.create_autosave_info_label(skill_tab, {'side': tk.BOTTOM, 'pady': 20})
     
     def _create_skill_settings(self, parent, config):
         """Create skill settings section"""
@@ -70,26 +56,18 @@ class SkillTab:
             self.skill_settings_container.pack(fill=tk.X, pady=5)
         
         # Skill Point Cap
-        cap_frame = ctk.CTkFrame(self.skill_settings_container, fg_color="transparent")
-        cap_frame.pack(fill=tk.X, padx=15, pady=5)
-        ctk.CTkLabel(cap_frame, text="Skill Point Cap:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.skill_point_cap_var = tk.IntVar(value=config.get('skill_point_cap', 400))
-        ctk.CTkEntry(cap_frame, textvariable=self.skill_point_cap_var, width=100, corner_radius=8).pack(side=tk.RIGHT)
+        self.add_variable_with_autosave('skill_point_cap', self.skill_point_cap_var)
+        _, cap_entry = self.create_setting_row(self.skill_settings_container, "Skill Point Cap:", 'entry', 
+                                              textvariable=self.skill_point_cap_var, width=100)
         
         # Skill Purchase Mode
-        mode_frame = ctk.CTkFrame(self.skill_settings_container, fg_color=self.colors['bg_light'], corner_radius=10)
-        mode_frame.pack(fill=tk.X, pady=5)
-        
-        mode_label = ctk.CTkLabel(mode_frame, text="Skill Purchase Mode:", text_color=self.colors['text_light'])
-        mode_label.pack(side=tk.LEFT, padx=15, pady=15)
-        
         self.skill_purchase_var = tk.StringVar(value=config.get('skill_purchase', 'auto'))
-        mode_combo = ctk.CTkOptionMenu(mode_frame, values=['auto', 'manual'], 
-                                      variable=self.skill_purchase_var, fg_color=self.colors['accent_blue'], 
-                                      corner_radius=8, button_color=self.colors['accent_blue'],
-                                      button_hover_color=self.colors['accent_green'],
-                                      command=self.toggle_skill_purchase_settings)
-        mode_combo.pack(side=tk.RIGHT, padx=15, pady=15)
+        self.add_variable_with_autosave('skill_purchase', self.skill_purchase_var)
+        _, mode_combo = self.create_setting_row(self.skill_settings_container, "Skill Purchase Mode:", 'optionmenu', 
+                                               values=['auto', 'manual'], 
+                                               variable=self.skill_purchase_var,
+                                               command=self.toggle_skill_purchase_settings)
         
         # Auto-specific settings (initially visible if mode is auto and skill check is enabled)
         self.auto_settings_frame = ctk.CTkFrame(self.skill_settings_container, fg_color="transparent")
@@ -108,6 +86,7 @@ class SkillTab:
         file_container.pack(side=tk.RIGHT)
         
         self.skill_file_var = tk.StringVar(value=config.get('skill_file', 'skills_example.json'))
+        self.skill_file_var.trace('w', self.on_skill_setting_change)
         ctk.CTkEntry(file_container, textvariable=self.skill_file_var, width=150, corner_radius=8).pack(side=tk.LEFT, padx=(0, 5))
         
         open_file_btn = ctk.CTkButton(file_container, text="Open File", 
@@ -121,11 +100,10 @@ class SkillTab:
         edit_list_btn.pack(side=tk.LEFT)
     
     def _create_save_button(self, parent):
-        """Create save button"""
-        self.skill_save_btn = ctk.CTkButton(parent, text="Save Skill Settings", 
-                                          command=self.save_skill_settings,
-                                          fg_color=self.colors['accent_green'], corner_radius=8, height=35)
-        self.skill_save_btn.pack(side=tk.BOTTOM, pady=20)
+        """Create auto-save info label"""
+        info_label = ctk.CTkLabel(parent, text="✓ All changes are automatically saved", 
+                                 text_color=self.colors['accent_green'], font=get_font('body_medium'))
+        info_label.pack(side=tk.BOTTOM, pady=20)
     
     def toggle_skill_settings(self):
         """Toggle visibility of skill-related settings"""
@@ -138,6 +116,7 @@ class SkillTab:
             # Hide all skill settings including auto settings
             self.skill_settings_container.pack_forget()
             self.auto_settings_frame.pack_forget()
+        # Auto-save is already triggered by the variable trace
     
     def toggle_skill_purchase_settings(self, value=None):
         """Toggle visibility of auto-specific skill settings"""
@@ -161,6 +140,17 @@ class SkillTab:
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save skill settings: {e}")
+    
+    def update_config(self, config):
+        """Update the config dictionary with current values"""
+        config['enable_skill_point_check'] = self.enable_skill_check_var.get()
+        config['skill_point_cap'] = self.skill_point_cap_var.get()
+        config['skill_purchase'] = self.skill_purchase_var.get()
+        config['skill_file'] = self.skill_file_var.get()
+    
+    def on_skill_setting_change(self, *args):
+        """Called when any skill setting variable changes - auto-save"""
+        self.on_setting_change(*args)
     
     def open_skill_file(self):
         """Open file dialog to select skill file"""

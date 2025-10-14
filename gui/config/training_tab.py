@@ -9,28 +9,18 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 import json
+import os
 
 try:
-    from ..font_manager import get_font
+    from .base_tab import BaseTab
 except ImportError:
-    from font_manager import get_font
+    from base_tab import BaseTab
 
-class TrainingTab:
+class TrainingTab(BaseTab):
     """Training configuration tab containing all training-related settings"""
     
     def __init__(self, tabview, config_panel, colors):
-        """Initialize the Training tab
-        
-        Args:
-            tabview: The parent CTkTabview widget
-            config_panel: Reference to the main ConfigPanel instance
-            colors: Color scheme dictionary
-        """
-        self.tabview = tabview
-        self.config_panel = config_panel
-        self.colors = colors
-        self.main_window = config_panel.main_window
-        
+        """Initialize the Training tab"""
         # Initialize variables
         self.priority_vars = []
         self.stat_boxes = []
@@ -42,17 +32,24 @@ class TrainingTab:
         self.high_bond_support_var = tk.DoubleVar(value=0.0)
         self.hint_var = tk.DoubleVar(value=0.3)
         
-        # Create the tab
-        self.create_tab()
+        # Load training score configuration
+        self.load_training_score_config()
+        
+        super().__init__(tabview, config_panel, colors, "Training")
+        
+        # Set up auto-save callbacks for training score variables after base init
+        self.add_variable_with_autosave('rainbow_support', self.rainbow_support_var, 'on_training_score_change')
+        self.add_variable_with_autosave('low_bond_support', self.low_bond_support_var, 'on_training_score_change')
+        self.add_variable_with_autosave('high_bond_support', self.high_bond_support_var, 'on_training_score_change')
+        self.add_variable_with_autosave('hint', self.hint_var, 'on_training_score_change')
     
     def create_tab(self):
         """Create the Training tab with all training-related settings"""
         # Add tab to tabview
         training_tab = self.tabview.add("Training")
         
-        # Create scrollable frame inside the training tab
-        training_scroll = ctk.CTkScrollableFrame(training_tab, fg_color="transparent", corner_radius=0)
-        training_scroll.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Create scrollable content
+        training_scroll = self.create_scrollable_content(training_tab)
         
         config = self.main_window.get_config()
         
@@ -68,12 +65,8 @@ class TrainingTab:
         # Training Score Section (collapsible)
         self._create_training_score_section(training_scroll)
         
-        # Save button
-        save_btn = ctk.CTkButton(training_scroll, text="Save Training Settings", 
-                                command=self.save_training_settings,
-                                fg_color=self.colors['accent_green'], corner_radius=8, height=35,
-                                font=get_font('button'))
-        save_btn.pack(pady=20)
+        # Auto-save info label
+        self.create_autosave_info_label(training_scroll)
     
     def _create_priority_section(self, parent, config):
         """Create the stats priority section"""
@@ -116,6 +109,7 @@ class TrainingTab:
         mood_frame.pack(fill=tk.X, padx=15, pady=5)
         ctk.CTkLabel(mood_frame, text="Minimum Mood:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.minimum_mood_var = tk.StringVar(value=config.get('minimum_mood', 'GREAT'))
+        self.minimum_mood_var.trace('w', self.on_training_setting_change)
         mood_combo = ctk.CTkOptionMenu(mood_frame, values=['GREAT', 'GOOD', 'NORMAL', 'BAD', 'AWFUL'], 
                                        variable=self.minimum_mood_var, fg_color=self.colors['accent_blue'], 
                                        corner_radius=8, button_color=self.colors['accent_blue'],
@@ -128,6 +122,7 @@ class TrainingTab:
         fail_frame.pack(fill=tk.X, padx=15, pady=5)
         ctk.CTkLabel(fail_frame, text="Maximum Failure Rate:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.maximum_failure_var = tk.IntVar(value=config.get('maximum_failure', 15))
+        self.maximum_failure_var.trace('w', self.on_training_setting_change)
         ctk.CTkEntry(fail_frame, textvariable=self.maximum_failure_var, width=100, corner_radius=8).pack(side=tk.RIGHT)
         
         # Minimum Energy for Training
@@ -135,12 +130,14 @@ class TrainingTab:
         energy_frame.pack(fill=tk.X, padx=15, pady=5)
         ctk.CTkLabel(energy_frame, text="Minimum Energy for Training:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.min_energy_var = tk.IntVar(value=config.get('min_energy', 30))
+        self.min_energy_var.trace('w', self.on_training_setting_change)
         ctk.CTkEntry(energy_frame, textvariable=self.min_energy_var, width=100, corner_radius=8).pack(side=tk.RIGHT)
         
         # Do Race if no good training found
         race_frame = ctk.CTkFrame(settings_frame, fg_color="transparent")
         race_frame.pack(fill=tk.X, padx=15, pady=5)
         self.do_race_var = tk.BooleanVar(value=config.get('do_race_when_bad_training', True))
+        self.do_race_var.trace('w', self.on_training_setting_change)
         race_checkbox = ctk.CTkCheckBox(race_frame, text="Do Race if no good training found", 
                                       variable=self.do_race_var, text_color=self.colors['text_light'],
                                       font=get_font('checkbox'), command=self.toggle_race_settings)
@@ -156,6 +153,7 @@ class TrainingTab:
         score_frame.pack(fill=tk.X, pady=5)
         ctk.CTkLabel(score_frame, text="Minimum Training Score:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.min_score_var = tk.DoubleVar(value=config.get('min_score', 1.0))
+        self.min_score_var.trace('w', self.on_training_setting_change)
         ctk.CTkEntry(score_frame, textvariable=self.min_score_var, width=100, corner_radius=8).pack(side=tk.RIGHT)
         
         # Minimum WIT Training Score
@@ -163,6 +161,7 @@ class TrainingTab:
         wit_score_frame.pack(fill=tk.X, pady=5)
         ctk.CTkLabel(wit_score_frame, text="Minimum WIT Training Score:", text_color=self.colors['text_light'], font=get_font('label')).pack(side=tk.LEFT)
         self.min_wit_score_var = tk.DoubleVar(value=config.get('min_wit_score', 1.0))
+        self.min_wit_score_var.trace('w', self.on_training_setting_change)
         ctk.CTkEntry(wit_score_frame, textvariable=self.min_wit_score_var, width=100, corner_radius=8).pack(side=tk.RIGHT)
     
     def _create_stat_caps_section(self, parent, config):
@@ -190,6 +189,7 @@ class TrainingTab:
             
             # Stat cap input
             var = tk.IntVar(value=stat_caps.get(stat, 600))
+            var.trace('w', self.on_training_setting_change)
             self.stat_cap_vars[stat] = var
             ctk.CTkEntry(stat_frame, textvariable=var, width=80, corner_radius=8).pack()
     
@@ -330,6 +330,9 @@ class TrainingTab:
         
         for box_data in self.stat_boxes:
             box_data['container'].pack(side=tk.LEFT, padx=(0, 8))
+        
+        # Trigger auto-save after swapping
+        self.on_training_setting_change()
     
     def toggle_race_settings(self):
         """Toggle visibility of race-related settings"""
@@ -337,6 +340,7 @@ class TrainingTab:
             self.race_settings_frame.pack(fill=tk.X, pady=5)
         else:
             self.race_settings_frame.pack_forget()
+        # Auto-save is already triggered by the variable trace
     
     def toggle_training_score(self, event):
         """Toggle training score section visibility"""
@@ -438,3 +442,70 @@ class TrainingTab:
                 
         except Exception as e:
             print(f"Error saving training score config: {e}")
+    
+    def load_training_score_config(self):
+        """Load training score configuration from file"""
+        try:
+            if os.path.exists('training_score.json'):
+                with open('training_score.json', 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # Update the variables with loaded values
+                scoring_rules = config.get('scoring_rules', {})
+                
+                # Rainbow support
+                rainbow_config = scoring_rules.get('rainbow_support', {})
+                self.rainbow_support_var.set(rainbow_config.get('points', 1.0))
+                
+                # Low bond support
+                low_bond_config = scoring_rules.get('not_rainbow_support_low', {})
+                self.low_bond_support_var.set(low_bond_config.get('points', 0.7))
+                
+                # High bond different type support
+                high_bond_config = scoring_rules.get('not_rainbow_support_high', {})
+                self.high_bond_support_var.set(high_bond_config.get('points', 0.0))
+                
+                # Hint
+                hint_config = scoring_rules.get('hint', {})
+                self.hint_var.set(hint_config.get('points', 0.3))
+                
+        except Exception as e:
+            print(f"Error loading training score config: {e}")
+            # Keep default values if loading fails
+    
+    def refresh_training_score_values(self):
+        """Refresh training score values from the loaded configuration"""
+        # This method can be called when the config is refreshed
+        self.load_training_score_config()
+    
+    def on_training_score_change(self, *args):
+        """Called when any training score variable changes - auto-save"""
+        try:
+            # Auto-save training score config
+            self.save_training_score_config()
+        except Exception as e:
+            print(f"Error auto-saving training score config: {e}")
+    
+    def update_config(self, config):
+        """Update the config dictionary with current values"""
+        # Update priority stats (in current order)
+        config['priority_stat'] = [box_data['stat'] for box_data in self.stat_boxes]
+        
+        # Update training settings
+        config['minimum_mood'] = self.minimum_mood_var.get()
+        config['maximum_failure'] = self.maximum_failure_var.get()
+        config['min_energy'] = self.min_energy_var.get()
+        config['do_race_when_bad_training'] = self.do_race_var.get()
+        
+        # Update race-related settings
+        if self.do_race_var.get():
+            config['min_score'] = self.min_score_var.get()
+            config['min_wit_score'] = self.min_wit_score_var.get()
+        
+        # Update stat caps
+        for stat, var in self.stat_cap_vars.items():
+            config['stat_caps'][stat] = var.get()
+    
+    def on_training_setting_change(self, *args):
+        """Called when any training setting variable changes - auto-save"""
+        self.on_setting_change(*args)
