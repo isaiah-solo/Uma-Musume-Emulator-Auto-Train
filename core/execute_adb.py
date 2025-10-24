@@ -12,7 +12,7 @@ from utils.constants_phone import (
 )
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_skills_are_available, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
 
 # Import event handling functions
 from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
@@ -173,6 +173,17 @@ def is_racing_available(year):
     if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
         return False
     return True
+    
+def is_g1_racing_available(year):
+    # Check skill points cap before race day (if enabled)
+    import json
+    
+    # Load config to check if skill point check is enabled
+    with open("config.json", "r", encoding="utf-8") as file:
+        config = json.load(file)
+    
+    g1_race_days = {g1_race_day: True for g1_race_day in config.get("g1_race_days", [])}
+    return year in g1_race_days or not g1_race_days
 
 def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
     """Click on image with retry logic"""
@@ -201,18 +212,44 @@ def check_training():
     """Check training results using fixed coordinates, collecting support counts,
     bond levels and hint presence in one hover pass before computing failure rates."""
     debug_print("[DEBUG] Checking training options...")
+
+    # Check skill points cap before race day (if enabled)
+    import json
+    
+    # Load config to check if skill point check is enabled
+    with open("config.json", "r", encoding="utf-8") as file:
+        config = json.load(file)
     
     # Fixed coordinates for each training type
-    training_coords = {
+    training_coords_base = {
         "spd": (165, 1557),
         "sta": (357, 1563),
         "pwr": (546, 1557),
         "guts": (735, 1566),
         "wit": (936, 1572)
     }
+
+    training_coords = {}
+    for training in config.get('priority_stat'):
+        training_coords[training] = training_coords_base[training]
+
     results = {}
+    high_score_found = False
 
     for key, coords in training_coords.items():
+        if high_score_found:
+            results[key] = {
+                "support": 0,
+                "support_detail": {},
+                "hint": False,
+                "total_support": 0,
+                "failure": 100,
+                "confidence": 0.0,
+                "score": 0
+            }
+            print(f"[INFO] Skipping {key.upper()} because high training score found")
+            continue
+            
         debug_print(f"[DEBUG] Checking {key.upper()} training at coordinates {coords}...")
         
         # Proper hover simulation: move to position, hold, check, move away, release
@@ -284,6 +321,9 @@ def check_training():
             "confidence": confidence,
             "score": score
         }
+
+        if score >= 2.0:
+            high_score_found = True
         
         # Use clean format matching training_score_test.py exactly
         print(f"\n[{key.upper()}]")
@@ -411,14 +451,14 @@ def do_recreation():
     else:
         debug_print("[DEBUG] No recreation button found")
 
-def do_race(prioritize_g1=False):
+def do_race(year, prioritize_g1=False):
     """Perform race action"""
     debug_print(f"[DEBUG] Performing race action (G1 priority: {prioritize_g1})...")
     click("assets/buttons/races_btn.png", minSearch=10)
     time.sleep(1.2)
     click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=1)
 
-    found = race_select(prioritize_g1=prioritize_g1)
+    found = race_select(year, prioritize_g1=prioritize_g1)
     if found:
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
@@ -432,7 +472,7 @@ def do_race(prioritize_g1=False):
         click("assets/buttons/back_btn.png", minSearch=0.7)
         return False
 
-def race_day():
+def race_day(bought_skills):
     """Handle race day"""
     # Check skill points cap before race day (if enabled)
     import json
@@ -443,9 +483,9 @@ def race_day():
     
     enable_skill_check = config.get("enable_skill_point_check", True)
     
-    if enable_skill_check:
+    if enable_skill_check and check_skills_are_available(bought_skills):
         print("[INFO] Race Day - Checking skill points cap...")
-        check_skill_points_cap()
+        check_skill_points_cap(bought_skills)
     
     debug_print("[DEBUG] Clicking race day button...")
     if click("assets/buttons/race_day_btn.png", minSearch=10):
@@ -489,7 +529,7 @@ def race_day():
         return True
     return False
 
-def race_select(prioritize_g1=False):
+def race_select(year, prioritize_g1=False):
     """Select race"""
     debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
     
@@ -553,6 +593,9 @@ def race_select(prioritize_g1=False):
                     else:
                         debug_print("[DEBUG] Race button not found")
                 return True
+
+        if prioritize_g1 and not is_g1_racing_available(year):
+            return False
         
         # If not found on initial screen, try scrolling up to 4 times
         for scroll in range(4):
@@ -865,6 +908,9 @@ def career_lobby():
         MINIMUM_MOOD = "GREAT"
         PRIORITIZE_G1_RACE = False
 
+    # Global state
+    bought_skills = {}
+
     # Program start
     while True:
         debug_print("\n[DEBUG] ===== Starting new loop iteration =====")
@@ -1024,7 +1070,7 @@ def career_lobby():
         if goal_analysis["should_prioritize_racing"]:
             if goal_analysis["should_prioritize_g1_races"]:
                 print(f"Decision: Criteria not met - Prioritizing G1 races to meet goals")
-                race_found = do_race(prioritize_g1=True)
+                race_found = do_race(year, prioritize_g1=True)
                 if race_found:
                     print("Race Result: Found G1 Race")
                     continue
@@ -1035,7 +1081,7 @@ def career_lobby():
                     time.sleep(0.5)
             else:
                 print(f"Decision: Criteria not met - Prioritizing normal races to meet goals")
-                race_found = do_race()
+                race_found = do_race(year)
                 if race_found:
                     print("Race Result: Found Race")
                     continue
@@ -1060,7 +1106,7 @@ def career_lobby():
             
             if enable_skill_check:
                 print("[INFO] URA Finale Race Day - Checking skill points cap...")
-                check_skill_points_cap()
+                check_skill_points_cap(bought_skills)
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
@@ -1087,7 +1133,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for race day...")
         if turn == "Race Day" and year != "Finale Season":
             print("[INFO] Race Day.")
-            race_day()
+            race_day(bought_skills)
             continue
         else:
             debug_print("[DEBUG] Not race day")
@@ -1111,7 +1157,7 @@ def career_lobby():
         debug_print(f"[DEBUG] Checking G1 race priority: {PRIORITIZE_G1_RACE}")
         if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year):
             print("G1 Race Check: Looking for G1 race...")
-            g1_race_found = do_race(PRIORITIZE_G1_RACE)
+            g1_race_found = do_race(year, PRIORITIZE_G1_RACE)
             if g1_race_found:
                 print("G1 Race Result: Found G1 Race")
                 continue
@@ -1186,7 +1232,7 @@ def career_lobby():
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
-                        race_found = do_race()
+                        race_found = do_race(year)
                         if race_found:
                             print("Training Race Result: Found Race")
                             continue

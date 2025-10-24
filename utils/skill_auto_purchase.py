@@ -266,7 +266,7 @@ def fast_swipe_to_top():
     debug_print("[DEBUG] Waiting for UI to settle")
     time.sleep(1.5)  # Reduced wait time
 
-def execute_skill_purchases(purchase_plan, max_scrolls=20):
+def execute_skill_purchases(purchase_plan, bought_skills, max_scrolls=20):
     """
     Execute the automated skill purchase plan.
     
@@ -429,6 +429,7 @@ def execute_skill_purchases(purchase_plan, max_scrolls=20):
         if purchased_skills:
             print(f"\n[INFO] Purchased skills:")
             for skill in purchased_skills:
+                bought_skills[skill] = True
                 print(f"   • {skill['name']} - {skill['price']} points")
         
         if failed_skills:
@@ -465,6 +466,8 @@ def test_skill_auto_purchase():
     print("[WARNING] This will actually purchase skills!")
     print("   Make sure you're on the skill purchase screen.")
     print()
+
+    bought_skills = {}
     
     # Mock purchase plan for testing
     test_purchase_plan = [
@@ -483,7 +486,7 @@ def test_skill_auto_purchase():
         return
     
     # Execute the purchase
-    result = execute_skill_purchases(test_purchase_plan)
+    result = execute_skill_purchases(test_purchase_plan, bought_skills)
     
     print(f"\n[INFO] Test Results:")
     print(f"   Success: {result['success']}")

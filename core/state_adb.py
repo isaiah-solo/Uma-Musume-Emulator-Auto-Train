@@ -534,7 +534,21 @@ def check_skill_points():
     
     return result
 
-def check_skill_points_cap():
+def check_skills_are_available(bought_skills):
+    # Load config
+    skill_file = config.get("skill_file", "skills.json")
+    print(f"[INFO] Loading skills from: {skill_file}")
+    cfg = load_skill_config(skill_file)
+    skill_priority = cfg.get("skill_priority", [])
+
+    for skill in skill_priority:
+        if skill not in bought_skills:
+            return True
+    
+    print("[INFO] All skills are bought, skipping buying skills")
+    return False
+
+def check_skill_points_cap(bought_skills):
     """Check skill points and handle cap logic (same as PC version)"""
     import json
     import tkinter as tk
@@ -612,7 +626,7 @@ def check_skill_points_cap():
                     return True
 
                 # Execute automated purchases
-                exec_result = execute_skill_purchases(final_plan)
+                exec_result = execute_skill_purchases(final_plan, bought_skills)
                 if not exec_result.get('success'):
                     print(f"[WARNING] Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
 
