@@ -3,6 +3,7 @@ import os
 import random
 from PIL import ImageStat
 
+from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
 from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, match_template, max_match_confidence
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
@@ -128,33 +129,6 @@ def is_infirmary_active_adb(screenshot, button_location):
     except Exception as e:
         print(f"[ERROR] Failed to check infirmary button brightness: {e}")
         return False
-
-
-def claw_machine(screenshot):
-    """Handle claw machine interaction"""
-    print("[INFO] Claw machine detected, starting interaction...")
-    
-    # Wait 2 seconds before interacting
-    time.sleep(2)
-    
-    # Find the claw button location
-    claw_location = locate_on_screen(screenshot, "assets/buttons/claw.png", confidence=0.8)
-    if not claw_location:
-        print("[WARNING] Claw button not found for interaction")
-        return False
-    
-    # Get center coordinates (locate_on_screen returns center coordinates)
-    center_x, center_y = claw_location
-    
-    # Generate random hold duration between 3-4 seconds (in milliseconds)
-    hold_duration = random.randint(1000, 3000)
-    print(f"[INFO] Holding claw button for {hold_duration}ms...")
-    
-    # Use ADB long press to hold the claw button
-    long_press(center_x, center_y, hold_duration)
-    
-    print("[INFO] Claw machine interaction completed")
-    return True
 
 
 # Event handling functions moved to core/event_handling.py
@@ -890,9 +864,8 @@ def career_lobby():
         
         # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
-        claw_matches = match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
-        if claw_matches:
-            claw_machine(screenshot)
+        if is_on_claw_machine_screen(screenshot):
+            do_claw_machine(screenshot)
             continue
         
         # Check OK button
