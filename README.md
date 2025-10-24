@@ -3,7 +3,7 @@
 
 <a href="https://www.buymeacoffee.com/kisegami" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
  
- ## THE GUIDE MIGHT BE OUTDATED, DOCUMENT IS WIP
+ 
 
 An automated training bot for Umamusume that works with **Android emulators** using ADB (Android Debug Bridge).
 
@@ -28,7 +28,7 @@ This project is inspired by [samsulpanjul/umamusume-auto-train](https://github.c
 - Keeps racing until fan count meets the goal, and always picks races with matching aptitude
 - Checks mood and handles debuffs automatically
 - Rest and recreation management
-
+- Prioritizes G1 races if available for fan farming
 - **Auto Skill Purchase**: Automatically purchases skills when skill points exceed cap
 - Stat caps to prevent overtraining specific stats
 - **Intelligent Event Choice Selection**: Automatically analyzes event options and selects the best choice based on configured priorities
@@ -157,7 +157,7 @@ You can edit your configuration in `config.json`
   "maximum_failure": 15,
   
   "strategy": "PACE",
-
+  "prioritize_g1_race": false,
   "retry_race": true,
 
   "skill_point_cap": 400,
@@ -205,9 +205,10 @@ You can edit your configuration in `config.json`
 - Sets the maximum acceptable failure chance (in percent) before skipping a training option.
 - Example: 10 means the bot will avoid training with more than 10% failure risk.
 
-
+`prioritize_g1_race` (boolean)
+- If `true`, the bot will prioritize G1 races except during July and August (summer).
 - Useful for fan farming.
-
+- **Warning**: It will do G1 race no matter what
 
 `retry_race` (boolean)
 - Controls whether the bot automatically retries failed races,. **MAKE SURE YOUR HAVE MORE THAN 3 CLOCKS**
@@ -334,23 +335,6 @@ Training Score = Support Card Score + Hint Bonus
 5. **Tie-Breaking**: Use priority order from `priority_stat` configuration
 6. **Final Selection**: Choose training with highest score
 
-#### **Updated Training Logic (v2.0)**
-The bot now implements smarter training decision making:
-
-**When `do_race_when_bad_training` is FALSE:**
-- **No score filtering**: All training options that pass failure rate checks are considered
-- **Best training selection**: Chooses the training with the highest score among failure-eligible options
-- **Optimal for rest scenarios**: When you want the bot to always choose the best available training
-
-**When `do_race_when_bad_training` is TRUE:**
-- **Score filtering enabled**: Applies `min_score` and `min_wit_score` thresholds
-- **Special WIT handling**: WIT training always checks `min_wit_score` since it has much lower failure rates
-- **Race prioritization**: If no training meets score requirements, the bot will prioritize racing instead of resting
-
-**Key Benefits:**
-- **Flexible training**: Choose between always training optimally or being selective about training quality
-- **WIT optimization**: Special handling for WIT training's naturally lower failure rates
-- **Better resource management**: Avoid unnecessary rest when good training options exist
 
 ### **Skill Configuration**
 
@@ -485,7 +469,7 @@ The bot automatically selects the best event choice based on your configured pri
 ### Start
 #### 1. Start the Bot (Make sure you done the config)
 ```bash
-python main.py
+python main_adb.py
 ```
 
 #### 2. Stop the Bot

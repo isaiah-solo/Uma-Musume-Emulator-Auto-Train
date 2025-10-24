@@ -1,5 +1,6 @@
 {
     "skill_priority": [
+        "Restless",
         "Professor of Curvature",
         "Swinging Maestro",
         "Gourmand",
@@ -10,6 +11,7 @@
         "Beeline Burst"
     ],
     "gold_skill_upgrades": {
+        "Restless": "Moxie",
         "Professor of Curvature": "Corner Adept",
         "Swinging Maestro": "Corner Recovery",
         "Gourmand":"Hydrate",
