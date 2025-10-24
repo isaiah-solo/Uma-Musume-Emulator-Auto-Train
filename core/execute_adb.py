@@ -1,6 +1,6 @@
 import time
 
-from core.screens.career_adb import do_recreation, do_rest, is_infirmary_active_adb
+from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
 from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
 from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
 from core.screens.training_adb import check_training, do_train, go_to_training
@@ -132,23 +132,9 @@ def career_lobby():
 
         # Check if there is debuff status
         debug_print("[DEBUG] Checking for debuff status...")
-        # Use match_template to get full bounding box for brightness check
-        infirmary_matches = match_template(screenshot, "assets/buttons/infirmary_btn2.png", confidence=0.9)
-        
-        if infirmary_matches:
-            debuffed_box = infirmary_matches[0]  # Get first match (x, y, w, h)
-            x, y, w, h = debuffed_box
-            center_x, center_y = x + w//2, y + h//2
-            
-            # Check if the button is actually active (bright) or just disabled (dark)
-            if is_infirmary_active_adb(screenshot, debuffed_box):
-                tap(center_x, center_y)
-                print("[INFO] Character has debuff, go to infirmary instead.")
-                continue
-            else:
-                debug_print("[DEBUG] Infirmary button found but is disabled (dark)")
-        else:
-            debug_print("[DEBUG] No infirmary button detected")
+        if needs_infirmary(screenshot):
+            do_infirmary(screenshot)
+            continue
 
         # Get current state
         debug_print("[DEBUG] Getting current game state...")

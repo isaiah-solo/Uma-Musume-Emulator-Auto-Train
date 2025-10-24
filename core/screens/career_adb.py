@@ -5,7 +5,7 @@ from PIL import ImageStat
 from core.config import Config
 from core.event_handling import debug_print
 from utils.adb_recognizer import locate_on_screen, match_template
-from utils.adb_input import long_press, tap
+from utils.adb_input import tap
 from utils.adb_screenshot import take_screenshot
 
 # Load config and check debug mode
@@ -13,7 +13,33 @@ config = Config.load()
 DEBUG_MODE = Config.get("debug_mode", False)
 RETRY_RACE = Config.get("retry_race", True)
 
-def is_infirmary_active_adb(screenshot, button_location):
+def needs_infirmary(screenshot):
+    # Use match_template to get full bounding box for brightness check
+    infirmary_matches = match_template(screenshot, "assets/buttons/infirmary_btn2.png", confidence=0.9)
+
+    if infirmary_matches:
+        debuffed_box = infirmary_matches[0]  # Get first match (x, y, w, h)
+
+        # Check if the button is actually active (bright) or just disabled (dark)
+        if _is_infirmary_active(screenshot, debuffed_box):
+            print("[INFO] Character has debuff, go to infirmary instead.")
+            return True
+        else:
+            debug_print("[DEBUG] Infirmary button found but is disabled (dark)")
+    else:
+            debug_print("[DEBUG] No infirmary button detected")
+    
+    return False
+
+def do_infirmary(screenshot):
+    # Use match_template to get full bounding box for brightness check
+    infirmary_matches = match_template(screenshot, "assets/buttons/infirmary_btn2.png", confidence=0.9)
+
+    x, y, w, h = infirmary_matches[0]
+    center_x, center_y = x + w//2, y + h//2
+    tap(center_x, center_y)
+
+def _is_infirmary_active(screenshot, button_location):
     """
     Check if the infirmary button is active (bright) or disabled (dark).
     Args:
