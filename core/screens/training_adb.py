@@ -1,11 +1,10 @@
 import time
-import random
 
 from core.config import Config
 from core.event_handling import click, debug_print
 from core.state_adb import check_failure, check_hint, check_support_card
-from utils.adb_recognizer import locate_on_screen, match_template
-from utils.adb_input import long_press, triple_click
+from utils.adb_recognizer import match_template
+from utils.adb_input import triple_click
 from utils.adb_screenshot import take_screenshot
 from utils.constants_phone import SUPPORT_CARD_ICON_REGION
 
