@@ -17,6 +17,8 @@ from utils.constants_phone import (
     SKILL_PTS_REGION, FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
 )
 
+from core.config import Config
+
 # Load config and check debug mode
 config = Config.load()
 DEBUG_MODE = config.get("debug_mode", False)

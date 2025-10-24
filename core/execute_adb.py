@@ -3,7 +3,7 @@ import os
 import random
 from PIL import ImageStat
 
-from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, is_image_on_screen, match_template, max_match_confidence
+from utils.adb_recognizer import locate_on_screen, locate_all_on_screen, wait_for_image, match_template, max_match_confidence
 from utils.adb_input import tap, click_at_coordinates, triple_click, move_to_and_click, mouse_down, mouse_up, scroll_down, scroll_up, long_press
 from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_region
 from utils.constants_phone import (
@@ -101,7 +101,7 @@ def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_t
         debug_print(f"[DEBUG] match_track locate error: {e}")
         return None
 
-def is_infirmary_active_adb(button_location):
+def is_infirmary_active_adb(screenshot, button_location):
     """
     Check if the infirmary button is active (bright) or disabled (dark).
     Args:
@@ -113,7 +113,6 @@ def is_infirmary_active_adb(button_location):
         x, y, w, h = button_location
         
         # Take screenshot and crop the button region
-        screenshot = take_screenshot()
         button_region = screenshot.crop((x, y, x + w, y + h))
         
         # Convert to grayscale and calculate average brightness
@@ -131,7 +130,7 @@ def is_infirmary_active_adb(button_location):
         return False
 
 
-def claw_machine():
+def claw_machine(screenshot):
     """Handle claw machine interaction"""
     print("[INFO] Claw machine detected, starting interaction...")
     
@@ -139,7 +138,7 @@ def claw_machine():
     time.sleep(2)
     
     # Find the claw button location
-    claw_location = locate_on_screen("assets/buttons/claw.png", confidence=0.8)
+    claw_location = locate_on_screen(screenshot, "assets/buttons/claw.png", confidence=0.8)
     if not claw_location:
         print("[WARNING] Claw button not found for interaction")
         return False
@@ -184,7 +183,8 @@ def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
     """Click on image with retry logic"""
     debug_print(f"[DEBUG] Looking for: {img}")
     for attempt in range(int(minSearch)):
-        btn = locate_on_screen(img, confidence=confidence, region=region)
+        screenshot = take_screenshot()
+        btn = locate_on_screen(screenshot, img, confidence=confidence, region=region)
         if btn:
             if text:
                 print(text)
@@ -337,11 +337,6 @@ def check_training():
         print(f"hint={hint_found}")
         print(f"Fail: {failure_chance}% - Confident: {confidence:.2f}")
         print(f"Score: {score}")
-        
-
-    
-    debug_print("[DEBUG] Going back from training screen...")
-    click("assets/buttons/back_btn.png")
     
     # Print overall summary
     print("\n=== Overall ===")
@@ -355,14 +350,6 @@ def check_training():
 def do_train(train):
     """Perform training of specified type"""
     debug_print(f"[DEBUG] Performing {train.upper()} training...")
-    
-    # First, go to training screen
-    if not go_to_training():
-        debug_print(f"[DEBUG] Failed to go to training screen, cannot perform {train.upper()} training")
-        return
-    
-    # Wait for screen to load and verify we're on training screen
-    time.sleep(1.0)
     
     # Fixed coordinates for each training type
     training_coords = {
@@ -384,25 +371,26 @@ def do_train(train):
     triple_click(train_coords[0], train_coords[1], interval=0.1)
     debug_print(f"[DEBUG] Triple clicked {train.upper()} training button")
 
-def do_rest():
+def do_rest(main_screenshot):
     """Perform rest action"""
     debug_print("[DEBUG] Performing rest action...")
     print("[INFO] Performing rest action...")
     
     # Rest button is in the lobby, not on training screen
     # If we're on training screen, go back to lobby first
-    from utils.adb_recognizer import locate_on_screen
-    back_btn = locate_on_screen("assets/buttons/back_btn.png", confidence=0.8)
+    back_btn = locate_on_screen(main_screenshot, "assets/buttons/back_btn.png", confidence=0.8)
     if back_btn:
         debug_print("[DEBUG] Going back to lobby to find rest button...")
         print("[INFO] Going back to lobby to find rest button...")
         from utils.adb_input import tap
         tap(back_btn[0], back_btn[1])
         time.sleep(1.0)  # Wait for lobby to load
+
+    screenshot = take_screenshot()
     
     # Now look for rest buttons in the lobby
-    rest_btn = locate_on_screen("assets/buttons/rest_btn.png", confidence=0.5)
-    rest_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.5)
+    rest_btn = locate_on_screen(screenshot, "assets/buttons/rest_btn.png", confidence=0.5)
+    rest_summer_btn = locate_on_screen(screenshot, "assets/buttons/rest_summer_btn.png", confidence=0.5)
     
     debug_print(f"[DEBUG] Rest button found: {rest_btn}")
     debug_print(f"[DEBUG] Summer rest button found: {rest_summer_btn}")
@@ -425,11 +413,11 @@ def do_rest():
         debug_print("[DEBUG] No rest button found in lobby")
         print("[WARNING] No rest button found in lobby")
 
-def do_recreation():
+def do_recreation(screenshot):
     """Perform recreation action"""
     debug_print("[DEBUG] Performing recreation action...")
-    recreation_btn = locate_on_screen("assets/buttons/recreation_btn.png", confidence=0.8)
-    recreation_summer_btn = locate_on_screen("assets/buttons/rest_summer_btn.png", confidence=0.8)
+    recreation_btn = locate_on_screen(screenshot, "assets/buttons/recreation_btn.png", confidence=0.8)
+    recreation_summer_btn = locate_on_screen(screenshot, "assets/buttons/rest_summer_btn.png", confidence=0.8)
     
     if recreation_btn:
         debug_print(f"[DEBUG] Found recreation button at {recreation_btn}")
@@ -454,8 +442,9 @@ def do_race(year, prioritize_g1=False):
         debug_print("[DEBUG] Race found and selected, proceeding to race preparation")
         race_prep()
         time.sleep(1)
+        screenshot = take_screenshot()
         # If race failed screen appears, handle retry before proceeding
-        handle_race_retry_if_failed()
+        handle_race_retry_if_failed(screenshot)
         after_race()
         return True
     else:
@@ -510,8 +499,9 @@ def race_day(bought_skills):
         debug_print("[DEBUG] Starting race preparation...")
         race_prep()
         time.sleep(1)
+        screenshot = take_screenshot()
         # If race failed screen appears, handle retry before proceeding
-        handle_race_retry_if_failed()
+        handle_race_retry_if_failed(screenshot)
         after_race()
         return True
     return False
@@ -552,7 +542,8 @@ def race_select(year, prioritize_g1=False):
                         
                         # Click race button twice like PC version
                         for j in range(2):
-                            race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.6)
+                            race_button_screenshot = take_screenshot()
+                            race_btn = locate_on_screen(race_button_screenshot, "assets/buttons/race_btn.png", confidence=0.6)
                             if race_btn:
                                 debug_print(f"[DEBUG] Found race button at {race_btn}")
                                 tap(race_btn[0], race_btn[1])
@@ -564,6 +555,7 @@ def race_select(year, prioritize_g1=False):
                 debug_print("[DEBUG] No G1 race cards found on initial screen, will try swiping...")
         else:
             debug_print("[DEBUG] Looking for race.")
+            screenshot = take_screenshot()
             match_aptitude = locate_match_track_with_brightness(confidence=0.6, brightness_threshold=180.0)
             if match_aptitude:
                 debug_print(f"[DEBUG] Race found at {match_aptitude}")
@@ -572,7 +564,8 @@ def race_select(year, prioritize_g1=False):
                 
                 # Click race button twice like PC version
                 for j in range(2):
-                    race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
+                    race_button_screenshot = take_screenshot()
+                    race_btn = locate_on_screen(race_button_screenshot, "assets/buttons/race_btn.png", confidence=0.8)
                     if race_btn:
                         debug_print(f"[DEBUG] Found race button at {race_btn}")
                         tap(race_btn[0], race_btn[1])
@@ -591,10 +584,10 @@ def race_select(year, prioritize_g1=False):
             debug_print(f"[DEBUG] Swiping from (378,1425) to (378,1106) (attempt {scroll+1}/4)")
             swipe(378, 1425, 378, 1106, duration_ms=500)
             time.sleep(0.2)
+            screenshot = take_screenshot()
             
             # Check for race again after each swipe
             if prioritize_g1:
-                screenshot = take_screenshot()
                 race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
                 
                 if race_cards:
@@ -616,7 +609,7 @@ def race_select(year, prioritize_g1=False):
                             
                             # Click race button twice like PC version
                             for j in range(2):
-                                race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
+                                race_btn = locate_on_screen(screenshot, "assets/buttons/race_btn.png", confidence=0.8)
                                 if race_btn:
                                     debug_print(f"[DEBUG] Found race button at {race_btn}")
                                     tap(race_btn[0], race_btn[1])
@@ -636,7 +629,7 @@ def race_select(year, prioritize_g1=False):
                     
                     # Click race button twice like PC version
                     for j in range(2):
-                        race_btn = locate_on_screen("assets/buttons/race_btn.png", confidence=0.8)
+                        race_btn = locate_on_screen(screenshot, "assets/buttons/race_btn.png", confidence=0.8)
                         if race_btn:
                             debug_print(f"[DEBUG] Found race button at {race_btn}")
                             tap(race_btn[0], race_btn[1])
@@ -812,7 +805,7 @@ def race_prep():
     else:
         debug_print("[DEBUG] View results button not found")
 
-def handle_race_retry_if_failed():
+def handle_race_retry_if_failed(screenshot):
     """Detect race failure on race day and retry based on config.
 
     Recognizes failure by detecting `assets/icons/clock.png` on screen.
@@ -821,7 +814,7 @@ def handle_race_retry_if_failed():
     """
     try:
         # Check for failure indicator (clock icon)
-        clock = locate_on_screen("assets/icons/clock.png", confidence=0.8)
+        clock = locate_on_screen(screenshot, "assets/icons/clock.png", confidence=0.8)
         if not clock:
             return False
 
@@ -832,7 +825,7 @@ def handle_race_retry_if_failed():
             raise SystemExit(0)
 
         # Try to click Try Again button
-        try_again = locate_on_screen("assets/buttons/try_again.png", confidence=0.8)
+        try_again = locate_on_screen(screenshot, "assets/buttons/try_again.png", confidence=0.8)
         if try_again:
             print("[INFO] Clicking Try Again button.")
             tap(try_again[0], try_again[1])
@@ -899,7 +892,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for claw machine...")
         claw_matches = match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
         if claw_matches:
-            claw_machine()
+            claw_machine(screenshot)
             continue
         
         # Check OK button
@@ -982,19 +975,17 @@ def career_lobby():
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
-        tazuna_hint = locate_on_screen("assets/ui/tazuna_hint.png", confidence=0.8)
+        tazuna_hint = locate_on_screen(screenshot, "assets/ui/tazuna_hint.png", confidence=0.8)
 
         if tazuna_hint is None:
             print("[INFO] Should be in career lobby.")
             continue
 
         debug_print("[DEBUG] Confirmed in career lobby")
-        time.sleep(0.5)
 
         # Check if there is debuff status
         debug_print("[DEBUG] Checking for debuff status...")
         # Use match_template to get full bounding box for brightness check
-        screenshot = take_screenshot()
         infirmary_matches = match_template(screenshot, "assets/buttons/infirmary_btn2.png", confidence=0.9)
         
         if infirmary_matches:
@@ -1003,7 +994,7 @@ def career_lobby():
             center_x, center_y = x + w//2, y + h//2
             
             # Check if the button is actually active (bright) or just disabled (dark)
-            if is_infirmary_active_adb(debuffed_box):
+            if is_infirmary_active_adb(screenshot, debuffed_box):
                 tap(center_x, center_y)
                 print("[INFO] Character has debuff, go to infirmary instead.")
                 continue
@@ -1098,8 +1089,9 @@ def career_lobby():
             
             race_prep()
             time.sleep(1)
+            race_screenshot = take_screenshot()
             # If race failed screen appears, handle retry before proceeding
-            handle_race_retry_if_failed()
+            handle_race_retry_if_failed(race_screenshot)
             after_race()
             continue
         else:
@@ -1124,14 +1116,14 @@ def career_lobby():
             else:
                 debug_print(f"[DEBUG] Mood too low ({mood_index} < {minimum_mood}), doing recreation")
                 print("[INFO] Mood is low, trying recreation to increase mood")
-                do_recreation()
+                do_recreation(screenshot)
                 continue
         else:
             debug_print(f"[DEBUG] Mood is good ({mood_index} >= {minimum_mood})")
 
         # If Prioritize G1 Race is true, check G1 race every turn
         debug_print(f"[DEBUG] Checking G1 race priority: {PRIORITIZE_G1_RACE}")
-        if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year):
+        if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year) and is_g1_racing_available(year):
             print("G1 Race Check: Looking for G1 race...")
             g1_race_found = do_race(year, PRIORITIZE_G1_RACE)
             if g1_race_found:
@@ -1151,7 +1143,7 @@ def career_lobby():
         # Check energy before proceeding with training
         if energy_percentage < min_energy:
             print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
-            do_rest()
+            do_rest(screenshot)
             continue
             
         if not go_to_training():
@@ -1162,6 +1154,12 @@ def career_lobby():
         debug_print("[DEBUG] Analyzing training options...")
         time.sleep(0.5)
         results_training = check_training()
+
+        has_high_score = all(value["score"] < 2.0 for value in results_training.values())
+        
+        if not has_high_score:
+            debug_print("[DEBUG] Going back from training screen...")
+            click("assets/buttons/back_btn.png")
         
         debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
         
@@ -1175,10 +1173,24 @@ def career_lobby():
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
             print(f"[INFO] Selected {best_training.upper()} training based on scoring algorithm")
+    
+            if not has_high_score:
+                # First, go to training screen
+                if not go_to_training():
+                    debug_print(f"[DEBUG] Failed to go to training screen, cannot perform {train.upper()} training")
+                    return
+            
+            # Wait for screen to load and verify we're on training screen
+            time.sleep(1.0)
+
             do_train(best_training)
         else:
             debug_print("[DEBUG] No suitable training found based on scoring criteria")
             print("[INFO] No suitable training found based on scoring criteria.")
+        
+            if has_high_score:
+                debug_print("[DEBUG] Going back from training screen...")
+                click("assets/buttons/back_btn.png")
             
             # Check if we should prioritize racing when no good training is available
             do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
@@ -1193,13 +1205,13 @@ def career_lobby():
                 if all_training_unsafe(results_training, max_failure):
                     debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
                     print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
-                    do_rest()
+                    do_rest(screenshot)
                 else:
                     # Check if racing is available (no races in July/August)
                     if not is_racing_available(year):
                         debug_print("[DEBUG] Racing not available (summer break)")
                         print("[INFO] July/August detected. No races available during summer break. Choosing to rest.")
-                        do_rest()
+                        do_rest(screenshot)
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
@@ -1212,10 +1224,10 @@ def career_lobby():
                             # If no race found, go back and rest
                             click("assets/buttons/back_btn.png", text="[INFO] Race not found. Proceeding to rest.")
                             time.sleep(0.5)
-                            do_rest()
+                            do_rest(screenshot)
             else:
                 print("[INFO] Race prioritization disabled. Choosing to rest.")
-                do_rest()
+                do_rest(screenshot)
         
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(1)

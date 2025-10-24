@@ -36,7 +36,8 @@ def count_event_choices():
         debug_print(f"[DEBUG] Searching for event choices using: {template_path}")
         # Search for all instances of the template in the event choice region
         event_choice_region = (6, 450, 126, 1776)
-        locations = locate_all_on_screen(template_path, confidence=0.45, region=event_choice_region)
+        screenshot = take_screenshot()
+        locations = locate_all_on_screen(screenshot, template_path, confidence=0.45, region=event_choice_region)
         debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
         if not locations:
             debug_print("[DEBUG] No event choice locations found")
@@ -682,7 +683,8 @@ def click_event_choice(choice_number, choice_locations=None):
         if choice_locations is None:
             debug_print("[DEBUG] No pre-found locations, searching for event choices...")
             event_choice_region = (6, 450, 126, 1776)
-            choice_locations = locate_all_on_screen("assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
+            screenshot = take_screenshot()
+            choice_locations = locate_all_on_screen(screenshot, "assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
             
             if not choice_locations:
                 print("No event choice icons found")

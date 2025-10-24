@@ -94,7 +94,7 @@ def max_match_confidence(screenshot, template_path, region=None):
         print(f"Error computing max template confidence: {e}")
         return None
 
-def locate_on_screen(template_path, confidence=0.8, region=None):
+def locate_on_screen(screenshot, template_path, confidence=0.8, region=None):
     """
     Locate template on screen and return center coordinates
     
@@ -106,7 +106,6 @@ def locate_on_screen(template_path, confidence=0.8, region=None):
     Returns:
         (x, y) center coordinates or None if not found
     """
-    screenshot = take_screenshot()
     matches = match_template(screenshot, template_path, confidence, region)
     
     if matches:
@@ -116,7 +115,7 @@ def locate_on_screen(template_path, confidence=0.8, region=None):
     
     return None
 
-def locate_all_on_screen(template_path, confidence=0.8, region=None):
+def locate_all_on_screen(screenshot, template_path, confidence=0.8, region=None):
     """
     Locate all instances of template on screen
     
@@ -128,18 +127,17 @@ def locate_all_on_screen(template_path, confidence=0.8, region=None):
     Returns:
         List of (x, y, width, height) matches or empty list if not found
     """
-    screenshot = take_screenshot()
     matches = match_template(screenshot, template_path, confidence, region)
     
     return matches if matches else []
 
-def locate_center_on_screen(template_path, confidence=0.8, region=None):
+def locate_center_on_screen(screenshot, template_path, confidence=0.8, region=None):
     """
     Locate template on screen and return center coordinates (alias for locate_on_screen)
     """
-    return locate_on_screen(template_path, confidence, region)
+    return locate_on_screen(screenshot, template_path, confidence, region)
 
-def is_image_on_screen(template_path, confidence=0.8, region=None):
+def is_image_on_screen(screenshot, template_path, confidence=0.8, region=None):
     """
     Check if template image is present on screen
     
@@ -151,7 +149,7 @@ def is_image_on_screen(template_path, confidence=0.8, region=None):
     Returns:
         True if found, False otherwise
     """
-    return locate_on_screen(template_path, confidence, region) is not None
+    return locate_on_screen(screenshot, template_path, confidence, region) is not None
 
 def wait_for_image(template_path, timeout=10, confidence=0.8, region=None):
     """
@@ -170,7 +168,8 @@ def wait_for_image(template_path, timeout=10, confidence=0.8, region=None):
     start_time = time.time()
     
     while time.time() - start_time < timeout:
-        result = locate_on_screen(template_path, confidence, region)
+        screenshot = take_screenshot()
+        result = locate_on_screen(screenshot, template_path, confidence, region)
         if result:
             return result
         time.sleep(0.1)
