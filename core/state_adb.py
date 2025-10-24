@@ -18,9 +18,8 @@ from utils.constants_phone import (
 )
 
 # Load config and check debug mode
-with open("config.json", "r", encoding="utf-8") as config_file:
-    config = json.load(config_file)
-    DEBUG_MODE = config.get("debug_mode", False)
+config = Config.load()
+DEBUG_MODE = config.get("debug_mode", False)
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
@@ -550,17 +549,11 @@ def check_skills_are_available(bought_skills):
 
 def check_skill_points_cap(bought_skills):
     """Check skill points and handle cap logic (same as PC version)"""
-    import json
     import tkinter as tk
     from tkinter import messagebox
     
     # Load config
-    try:
-        with open("config.json", "r", encoding="utf-8") as file:
-            config = json.load(file)
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        return True
+    config = Config.load()
     
     skill_point_cap = config.get("skill_point_cap", 9999)
     current_skill_points = check_skill_points()

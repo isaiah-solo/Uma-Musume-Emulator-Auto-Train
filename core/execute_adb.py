@@ -1,5 +1,4 @@
 import time
-import json
 import os
 import random
 from PIL import ImageStat
@@ -10,6 +9,7 @@ from utils.adb_screenshot import take_screenshot, enhanced_screenshot, capture_r
 from utils.constants_phone import (
     MOOD_LIST, EVENT_REGION, RACE_CARD_REGION, SUPPORT_CARD_ICON_REGION
 )
+from core.config import Config
 
 # Import ADB state and logic modules
 from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_skills_are_available, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
@@ -18,10 +18,9 @@ from core.state_adb import check_support_card, check_failure, check_turn, check_
 from core.event_handling import count_event_choices, load_event_priorities, analyze_event_options, generate_event_variations, search_events, handle_event_choice, click_event_choice
 
 # Load config and check debug mode
-with open("config.json", "r", encoding="utf-8") as config_file:
-    config = json.load(config_file)
-    DEBUG_MODE = config.get("debug_mode", False)
-    RETRY_RACE = config.get("retry_race", True)
+config = Config.load()
+DEBUG_MODE = Config.get("debug_mode", False)
+RETRY_RACE = Config.get("retry_race", True)
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
@@ -176,11 +175,7 @@ def is_racing_available(year):
     
 def is_g1_racing_available(year):
     # Check skill points cap before race day (if enabled)
-    import json
-    
-    # Load config to check if skill point check is enabled
-    with open("config.json", "r", encoding="utf-8") as file:
-        config = json.load(file)
+    config = Config.load()
     
     g1_race_days = {g1_race_day: True for g1_race_day in config.get("g1_race_days", [])}
     return year in g1_race_days or not g1_race_days
@@ -214,11 +209,7 @@ def check_training():
     debug_print("[DEBUG] Checking training options...")
 
     # Check skill points cap before race day (if enabled)
-    import json
-    
-    # Load config to check if skill point check is enabled
-    with open("config.json", "r", encoding="utf-8") as file:
-        config = json.load(file)
+    config = Config.load()
     
     # Fixed coordinates for each training type
     training_coords_base = {
@@ -475,11 +466,7 @@ def do_race(year, prioritize_g1=False):
 def race_day(bought_skills):
     """Handle race day"""
     # Check skill points cap before race day (if enabled)
-    import json
-    
-    # Load config to check if skill point check is enabled
-    with open("config.json", "r", encoding="utf-8") as file:
-        config = json.load(file)
+    config = Config.load()
     
     enable_skill_check = config.get("enable_skill_point_check", True)
     
@@ -714,13 +701,8 @@ def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
         current_strategy = strategy_name.upper()
         
         # Load expected strategy from config
-        try:
-            with open("config.json", "r", encoding="utf-8") as f:
-                config = json.load(f)
-            expected_strategy = config.get("strategy", "").upper()
-        except Exception:
-            debug_print("[DEBUG] Cannot read config.json")
-            return False
+        config = Config.load()
+        expected_strategy = config.get("strategy", "").upper()
         
         matches = current_strategy == expected_strategy
         debug_print(f"[DEBUG] Current: {current_strategy}, Expected: {expected_strategy}, Match: {matches}")
@@ -898,15 +880,9 @@ def after_race():
 def career_lobby():
     """Main career lobby loop"""
     # Load configuration
-    try:
-        with open("config.json", "r", encoding="utf-8") as file:
-            config = json.load(file)
-        MINIMUM_MOOD = config["minimum_mood"]
-        PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        MINIMUM_MOOD = "GREAT"
-        PRIORITIZE_G1_RACE = False
+    config = Config.load()
+    MINIMUM_MOOD = config["minimum_mood"]
+    PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
 
     # Global state
     bought_skills = {}
@@ -1190,12 +1166,7 @@ def career_lobby():
         debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
         
         # Load config for scoring thresholds
-        try:
-            with open("config.json", "r", encoding="utf-8") as file:
-                training_config = json.load(file)
-        except Exception as e:
-            print(f"Error loading config: {e}")
-            training_config = {"maximum_failure": 15, "min_score": 1.0, "min_wit_score": 1.0, "priority_stat": ["spd", "sta", "wit", "pwr", "guts"]}
+        training_config = Config.load()
         
         # Use new scoring algorithm to choose best training
         from core.state_adb import choose_best_training
