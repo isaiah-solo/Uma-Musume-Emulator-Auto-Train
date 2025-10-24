@@ -1,10 +1,8 @@
 {
     "skill_priority": [
-        "Restless",
-        "Professor of Curvature"
+        "Restless"
     ],
     "gold_skill_upgrades": {
-        "Restless": "Moxie",
-        "Professor of Curvature": "Corner Adept"
+        "Restless": "Moxie"
     }
 }
