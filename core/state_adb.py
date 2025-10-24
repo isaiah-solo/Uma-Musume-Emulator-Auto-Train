@@ -403,6 +403,10 @@ def check_turn():
         debug_print(f"[DEBUG] Turn detection failed with error: {e}")
         return 1
 
+def is_pre_debut_year(year):
+    return ("Pre-Debut" in year or "PreDebut" in year or 
+            "PreeDebut" in year or "Pre" in year)
+
 def check_current_year():
     """Fast year detection using regular screenshot"""
     year_img = enhanced_screenshot(YEAR_REGION)

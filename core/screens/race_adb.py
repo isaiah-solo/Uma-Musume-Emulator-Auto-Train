@@ -2,7 +2,7 @@ import time
 
 from core.config import Config
 from core.event_handling import click, debug_print
-from core.state_adb import check_skill_points_cap, check_skills_are_available
+from core.state_adb import check_skill_points_cap, check_skills_are_available, is_pre_debut_year
 from utils.adb_recognizer import locate_on_screen, match_template, max_match_confidence, wait_for_image
 from utils.adb_input import tap, triple_click
 from utils.adb_screenshot import take_screenshot
@@ -452,6 +452,22 @@ def after_race():
         click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
     
     debug_print("[DEBUG] Post-race actions complete")
+
+
+# Event handling functions moved to core/event_handling.py
+def is_racing_available(year):
+    """Check if racing is available based on the current year/month"""
+    # No races in Pre-Debut
+    if is_pre_debut_year(year):
+        return False
+    # No races in Finale Season (final training period before URA)
+    if "Finale Season" in year:
+        return False
+    year_parts = year.split(" ")
+    # No races in July and August (summer break)
+    if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
+        return False
+    return True
     
 def is_g1_racing_available(year):
     # Check skill points cap before race day (if enabled)

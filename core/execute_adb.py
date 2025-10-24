@@ -2,7 +2,7 @@ import time
 from PIL import ImageStat
 
 from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
-from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, race_day, race_prep
+from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
 from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import tap, triple_click
 from utils.adb_screenshot import take_screenshot
@@ -12,7 +12,7 @@ from utils.constants_phone import (
 from core.config import Config
 
 # Import ADB state and logic modules
-from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_skills_are_available, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar
+from core.state_adb import check_support_card, check_failure, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_skills_are_available, check_goal_name, check_goal_name_with_g1_requirement, check_hint, calculate_training_score, choose_best_training, check_current_stats, check_energy_bar, is_pre_debut_year
 
 # Import event handling functions
 from core.event_handling import click, handle_event_choice, click_event_choice
@@ -101,22 +101,6 @@ def is_infirmary_active_adb(screenshot, button_location):
     except Exception as e:
         print(f"[ERROR] Failed to check infirmary button brightness: {e}")
         return False
-
-
-# Event handling functions moved to core/event_handling.py
-def is_racing_available(year):
-    """Check if racing is available based on the current year/month"""
-    # No races in Pre-Debut
-    if is_pre_debut_year(year):
-        return False
-    # No races in Finale Season (final training period before URA)
-    if "Finale Season" in year:
-        return False
-    year_parts = year.split(" ")
-    # No races in July and August (summer break)
-    if len(year_parts) > 3 and year_parts[3] in ["Jul", "Aug"]:
-        return False
-    return True
 
 def go_to_training():
     """Go to training screen"""
@@ -694,10 +678,6 @@ def career_lobby():
         
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(1)
-
-def is_pre_debut_year(year):
-    return ("Pre-Debut" in year or "PreDebut" in year or 
-            "PreeDebut" in year or "Pre" in year)
 
 def check_goal_criteria(criteria_data, year, turn):
     """
