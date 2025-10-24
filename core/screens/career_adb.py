@@ -68,20 +68,22 @@ def _is_infirmary_active(screenshot, button_location):
         return False
 
 def do_rest(main_screenshot):
+    screenshot = take_screenshot()
+
     """Perform rest action"""
     debug_print("[DEBUG] Performing rest action...")
     print("[INFO] Performing rest action...")
     
     # Rest button is in the lobby, not on training screen
     # If we're on training screen, go back to lobby first
-    back_btn = locate_on_screen(main_screenshot, "assets/buttons/back_btn.png", confidence=0.8)
+    back_btn = locate_on_screen(screenshot, "assets/buttons/back_btn.png", confidence=0.8)
     if back_btn:
         debug_print("[DEBUG] Going back to lobby to find rest button...")
         print("[INFO] Going back to lobby to find rest button...")
         from utils.adb_input import tap
         tap(back_btn[0], back_btn[1])
-        time.sleep(1.0)  # Wait for lobby to load
-
+        
+    time.sleep(1.0)  # Wait for lobby to load
     screenshot = take_screenshot()
     
     # Now look for rest buttons in the lobby
