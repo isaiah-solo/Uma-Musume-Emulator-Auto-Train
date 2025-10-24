@@ -4,7 +4,8 @@ import re
 import time
 from PIL import ImageStat
 
-from utils.adb_recognizer import locate_all_on_screen, match_template
+from utils.adb_input import tap
+from utils.adb_recognizer import locate_all_on_screen, locate_on_screen, match_template
 from utils.adb_screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
 
@@ -730,3 +731,21 @@ def click_event_choice(choice_number, choice_locations=None):
     except Exception as e:
         print(f"Error clicking event choice: {e}")
         return False
+
+def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
+    """Click on image with retry logic"""
+    debug_print(f"[DEBUG] Looking for: {img}")
+    for attempt in range(int(minSearch)):
+        screenshot = take_screenshot()
+        btn = locate_on_screen(screenshot, img, confidence=confidence, region=region)
+        if btn:
+            if text:
+                print(text)
+            debug_print(f"[DEBUG] Clicking {img} at position {btn}")
+            tap(btn[0], btn[1])
+            return True
+        if attempt < int(minSearch) - 1:  # Don't sleep on last attempt
+            debug_print(f"[DEBUG] Attempt {attempt + 1}: {img} not found")
+            time.sleep(0.05)  # Reduced from 0.1 to 0.05
+    debug_print(f"[DEBUG] Failed to find {img} after {minSearch} attempts")
+    return False

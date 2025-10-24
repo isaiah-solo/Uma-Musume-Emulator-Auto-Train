@@ -4,26 +4,6 @@ import random
 from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import long_press
 
-# Support icon templates for detailed detection
-SUPPORT_ICON_PATHS = {
-    "spd": "assets/icons/support_card_type_spd.png",
-    "sta": "assets/icons/support_card_type_sta.png",
-    "pwr": "assets/icons/support_card_type_pwr.png",
-    "guts": "assets/icons/support_card_type_guts.png",
-    "wit": "assets/icons/support_card_type_wit.png",
-    "friend": "assets/icons/support_card_type_friend.png",
-}
-
-# Bond color classification helpers
-BOND_SAMPLE_OFFSET = (-2, 116)
-BOND_LEVEL_COLORS = {
-    5: (255, 235, 120),
-    4: (255, 173, 30),
-    3: (162, 230, 30),
-    2: (42, 192, 255),
-    1: (109, 108, 117),
-}
-
 def is_on_claw_machine_screen(screenshot):
     return match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
 
