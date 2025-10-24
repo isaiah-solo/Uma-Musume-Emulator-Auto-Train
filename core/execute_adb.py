@@ -1154,18 +1154,11 @@ def career_lobby():
         debug_print("[DEBUG] Analyzing training options...")
         time.sleep(0.5)
         results_training = check_training()
-
-        has_high_score = all(value["score"] < 2.0 for value in results_training.values())
-        
-        if not has_high_score:
-            debug_print("[DEBUG] Going back from training screen...")
-            click("assets/buttons/back_btn.png")
-        
-        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
         
         # Load config for scoring thresholds
         training_config = Config.load()
         
+        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
         # Use new scoring algorithm to choose best training
         from core.state_adb import choose_best_training
         best_training = choose_best_training(results_training, training_config)
@@ -1173,24 +1166,14 @@ def career_lobby():
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
             print(f"[INFO] Selected {best_training.upper()} training based on scoring algorithm")
-    
-            if not has_high_score:
-                # First, go to training screen
-                if not go_to_training():
-                    debug_print(f"[DEBUG] Failed to go to training screen, cannot perform {train.upper()} training")
-                    return
-            
-            # Wait for screen to load and verify we're on training screen
-            time.sleep(1.0)
 
             do_train(best_training)
         else:
             debug_print("[DEBUG] No suitable training found based on scoring criteria")
             print("[INFO] No suitable training found based on scoring criteria.")
-        
-            if has_high_score:
-                debug_print("[DEBUG] Going back from training screen...")
-                click("assets/buttons/back_btn.png")
+
+            debug_print("[DEBUG] Going back from training screen...")
+            click("assets/buttons/back_btn.png")
             
             # Check if we should prioritize racing when no good training is available
             do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
@@ -1201,7 +1184,7 @@ def career_lobby():
                 max_failure = training_config.get('maximum_failure', 15)
                 debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
                 debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
-                
+
                 if all_training_unsafe(results_training, max_failure):
                     debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
                     print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
