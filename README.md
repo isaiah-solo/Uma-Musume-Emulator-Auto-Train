@@ -3,7 +3,7 @@
 
 <a href="https://www.buymeacoffee.com/kisegami" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
  
- 
+ ## THE GUIDE MIGHT BE OUTDATED, DOCUMENT IS WIP
 
 An automated training bot for Umamusume that works with **Android emulators** using ADB (Android Debug Bridge).
 
