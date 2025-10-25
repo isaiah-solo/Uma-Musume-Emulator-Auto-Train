@@ -51,7 +51,7 @@ This ADB version provides the same intelligent training logic as the PC version 
 #### 1. Clone Repository
 
 ```bash
-git clone https://github.com/Kisegami/Uma-Musume-Emulator-Auto-Train
+git clone https://github.com/isaiah-solo/Uma-Musume-Emulator-Auto-Train.git
 cd Uma-Musume-Emulator-Auto-Train
 ```
 
