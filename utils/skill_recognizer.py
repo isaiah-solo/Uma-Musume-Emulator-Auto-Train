@@ -1,3 +1,4 @@
+from core.templates_adb import SKILL_UP_BUTTON_TEMPLATE
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -337,35 +338,14 @@ def recognize_skill_up_locations(confidence=0.9, debug_output=True, overlap_thre
         # Take screenshot
         screenshot = take_screenshot()
         
-        # Load skill_up template
-        template_path = "assets/buttons/skill_up.png"
-        if not os.path.exists(template_path):
-            debug_print(f"[DEBUG] Template not found: {template_path}")
-            return {
-                'count': 0,
-                'locations': [],
-                'debug_image_path': None,
-                'error': f"Template not found: {template_path}"
-            }
-        
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-        if template is None:
-            debug_print(f"[DEBUG] Failed to load template: {template_path}")
-            return {
-                'count': 0,
-                'locations': [],
-                'debug_image_path': None,
-                'error': f"Failed to load template: {template_path}"
-            }
-        
         # Convert screenshot to OpenCV format
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         
         # Get template dimensions
-        template_height, template_width = template.shape[:2]
+        template_height, template_width = SKILL_UP_BUTTON_TEMPLATE.shape[:2]
         
         # Perform template matching
-        result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
+        result = cv2.matchTemplate(screenshot_cv, SKILL_UP_BUTTON_TEMPLATE, cv2.TM_CCOEFF_NORMED)
         
         # Find locations where the matching exceeds the threshold
         locations = np.where(result >= confidence)

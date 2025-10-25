@@ -1,4 +1,6 @@
 import time
+from core.templates_adb import TRAINING_BUTTON_TEMPLATE
+import cv2
 
 from core.config import Config
 from core.event_handling import click, debug_print
@@ -41,6 +43,11 @@ SUPPORT_ICON_PATHS = {
     "friend": "assets/icons/support_card_type_friend.png",
 }
 
+SUPPORT_ICON_TMPLS = {
+    key: cv2.imread(path, cv2.IMREAD_COLOR)
+    for key, path in SUPPORT_ICON_PATHS.items()
+}
+
 def _classify_bond_level(rgb_tuple):
     r, g, b = rgb_tuple
     best_level, best_dist = 1, float('inf')
@@ -72,7 +79,7 @@ def go_to_training():
     """Go to training screen"""
     debug_print("[DEBUG] Going to training screen...")
     time.sleep(1)
-    return click("assets/buttons/training_btn.png", minSearch=10)
+    return click(TRAINING_BUTTON_TEMPLATE, minSearch=10)
 
 def check_training():
     """Check training results using fixed coordinates, collecting support counts,
@@ -140,7 +147,7 @@ def check_training():
         rgb_img = screenshot.convert("RGB")
         width, height = rgb_img.size
         dx, dy = BOND_SAMPLE_OFFSET
-        for t_key, tpl in SUPPORT_ICON_PATHS.items():
+        for t_key, tpl in SUPPORT_ICON_TMPLS.items():
             matches = _filtered_template_matches(screenshot, tpl, region_cv, confidence=0.8)
             if not matches:
                 continue

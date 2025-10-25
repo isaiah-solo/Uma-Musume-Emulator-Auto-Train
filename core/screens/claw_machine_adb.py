@@ -1,11 +1,12 @@
 import time
 import random
 
+from core.templates_adb import CLAW_BUTTON_TEMPLATE
 from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import long_press
 
 def is_on_claw_machine_screen(screenshot):
-    return match_template(screenshot, "assets/buttons/claw.png", confidence=0.8)
+    return match_template(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)
 
 
 def do_claw_machine(screenshot):
@@ -16,7 +17,7 @@ def do_claw_machine(screenshot):
     time.sleep(2)
     
     # Find the claw button location
-    claw_location = locate_on_screen(screenshot, "assets/buttons/claw.png", confidence=0.8)
+    claw_location = locate_on_screen(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)
     if not claw_location:
         print("[WARNING] Claw button not found for interaction")
         return False

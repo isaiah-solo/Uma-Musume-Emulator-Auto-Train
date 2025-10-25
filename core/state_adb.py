@@ -2,8 +2,10 @@ import re
 import time
 import json
 import os
+import cv2
 
 from PIL import Image, ImageEnhance
+from core.templates_adb import BACK_BUTTON_TEMPLATE, HINT_TEMPLATE, SKILLS_BUTTON_TEMPLATE
 from utils.adb_screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
 from core.ocr import extract_text, extract_number, extract_turn_number, extract_mood_text, extract_failure_text, extract_failure_text_with_confidence
 from utils.adb_recognizer import match_template
@@ -12,9 +14,9 @@ from utils.skill_recognizer import scan_all_skills_with_scroll
 from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
 
 from utils.constants_phone import (
-    SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, FAILURE_REGION, YEAR_REGION, 
+    SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, YEAR_REGION, 
     MOOD_LIST, CRITERIA_REGION, SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION,
-    SKILL_PTS_REGION, FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
+    SKILL_PTS_REGION
 )
 
 from core.config import Config
@@ -27,6 +29,20 @@ def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
+
+SUPPORT_ICON_PATHS = {
+    "spd": "assets/icons/support_card_type_spd.png",
+    "sta": "assets/icons/support_card_type_sta.png",
+    "pwr": "assets/icons/support_card_type_pwr.png",
+    "guts": "assets/icons/support_card_type_guts.png",
+    "wit": "assets/icons/support_card_type_wit.png",
+    "friend": "assets/icons/support_card_type_friend.png"
+}
+
+SUPPORT_ICON_TMPLS = {
+    key: cv2.imread(path, cv2.IMREAD_COLOR)
+    for key, path in SUPPORT_ICON_PATHS.items()
+}
 
 # Get Stat
 def stat_state():
@@ -48,15 +64,6 @@ def stat_state():
 
 # Check support card in each training
 def check_support_card(threshold=0.85):
-    SUPPORT_ICONS = {
-        "spd": "assets/icons/support_card_type_spd.png",
-        "sta": "assets/icons/support_card_type_sta.png",
-        "pwr": "assets/icons/support_card_type_pwr.png",
-        "guts": "assets/icons/support_card_type_guts.png",
-        "wit": "assets/icons/support_card_type_wit.png",
-        "friend": "assets/icons/support_card_type_friend.png"
-    }
-
     count_result = {}
 
     # Take a screenshot for template matching
@@ -78,7 +85,7 @@ def check_support_card(threshold=0.85):
         search_region.save("debug_support_cards_search_region.png")
         debug_print(f"[DEBUG] Saved search region to debug_support_cards_search_region.png")
 
-    for key, icon_path in SUPPORT_ICONS.items():
+    for key, icon_path in SUPPORT_ICON_TMPLS.items():
         debug_print(f"\n[DEBUG] Testing {key.upper()} support card detection...")
         
         # Use single threshold for faster detection
@@ -124,7 +131,7 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
-def check_hint(template_path: str = "assets/icons/hint.png", confidence: float = 0.6) -> bool:
+def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:
@@ -140,7 +147,7 @@ def check_hint(template_path: str = "assets/icons/hint.png", confidence: float =
         # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
         region_cv = (left, top, right - left, bottom - top)
-        debug_print(f"[DEBUG] Checking hint in region: {region_cv} using template: {template_path}")
+        debug_print(f"[DEBUG] Checking hint in region: {region_cv}")
 
         if DEBUG_MODE:
             try:
@@ -149,7 +156,7 @@ def check_hint(template_path: str = "assets/icons/hint.png", confidence: float =
             except Exception:
                 pass
 
-        matches = match_template(screenshot, template_path, confidence, region_cv)
+        matches = match_template(screenshot, template, confidence, region_cv)
 
         found = bool(matches and len(matches) > 0)
         debug_print(f"[DEBUG] Hint icon found: {found}")
@@ -575,7 +582,7 @@ def check_skill_points_cap(bought_skills):
             print("[INFO] Auto skill purchase enabled - starting automation")
             try:
                 # 1) Enter skill screen
-                entered = click_image_button("assets/buttons/skills_btn.png", "skills button", max_attempts=5)
+                entered = click_image_button(SKILLS_BUTTON_TEMPLATE, "skills button", max_attempts=5)
                 if not entered:
                     print("[ERROR] Could not find/open skills screen")
                     return True
@@ -586,13 +593,13 @@ def check_skill_points_cap(bought_skills):
                 if 'error' in scan_result:
                     print(f"[ERROR] Skill scanning failed: {scan_result['error']}")
                     # Attempt to go back anyway
-                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    click_image_button(BACK_BUTTON_TEMPLATE, "back button", max_attempts=5)
                     time.sleep(1.5)
                     return True
                 all_skills = scan_result.get('all_skills', [])
                 if not all_skills:
                     print("[WARNING] No skills detected on skill screen")
-                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    click_image_button(BACK_BUTTON_TEMPLATE, "back button", max_attempts=5)
                     time.sleep(1.5)
                     return True
 
@@ -607,7 +614,7 @@ def check_skill_points_cap(bought_skills):
                 purchase_plan = create_purchase_plan(all_skills, cfg)
                 if not purchase_plan:
                     print("[INFO] No skills from priority list are currently available")
-                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    click_image_button(BACK_BUTTON_TEMPLATE, "back button", max_attempts=5)
                     time.sleep(1.5)
                     return True
 
@@ -620,7 +627,7 @@ def check_skill_points_cap(bought_skills):
 
                 if not final_plan:
                     print("[INFO] Nothing affordable to purchase at the moment")
-                    click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                    click_image_button(BACK_BUTTON_TEMPLATE, "back button", max_attempts=5)
                     time.sleep(1.5)
                     return True
 
@@ -630,7 +637,7 @@ def check_skill_points_cap(bought_skills):
                     print(f"[WARNING] Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
 
                 # 3) Return to lobby
-                back = click_image_button("assets/buttons/back_btn.png", "back button", max_attempts=5)
+                back = click_image_button(BACK_BUTTON_TEMPLATE, "back button", max_attempts=5)
                 if not back:
                     print("[WARNING] Could not find back button after purchases; ensure you return to lobby manually")
                 time.sleep(1.5)

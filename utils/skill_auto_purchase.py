@@ -1,6 +1,7 @@
 import time
 import os
 import json
+from core.templates_adb import CLOSE_BUTTON_TEMPLATE, CONFIRM_BUTTON_TEMPLATE, LEARN_BUTTON_TEMPLATE
 from utils.skill_recognizer import take_screenshot, perform_swipe, recognize_skill_up_locations
 from utils.skill_purchase_optimizer import fuzzy_match_skill_name
 from utils.adb_screenshot import run_adb_command
@@ -176,7 +177,7 @@ def click_skill_up_button(x, y):
         print(f"[ERROR] Error clicking button: {e}")
         return False
 
-def click_image_button(image_path, description="button", max_attempts=10, wait_between_attempts=0.5):
+def click_image_button(template, description="button", max_attempts=10, wait_between_attempts=0.5):
     """
     Find and click a button by image template matching with retry attempts.
     
@@ -192,17 +193,7 @@ def click_image_button(image_path, description="button", max_attempts=10, wait_b
     try:
         import cv2
         import numpy as np
-        
-        if not os.path.exists(image_path):
-            print(f"[ERROR] {description} template not found: {image_path}")
-            return False
-        
-        # Load template once
-        template = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        if template is None:
-            print(f"[ERROR] Failed to load {description} template: {image_path}")
-            return False
-        
+
         debug_print(f"[DEBUG] Looking for {description} (max {max_attempts} attempts)")
         
         for attempt in range(max_attempts):
@@ -391,14 +382,14 @@ def execute_skill_purchases(purchase_plan, bought_skills, max_scrolls=20):
         if purchased_skills:
             print(f"\n[INFO] Purchased {len(purchased_skills)} skills, looking for confirm button")
             
-            confirm_success = click_image_button("assets/buttons/confirm.png", "confirm button", max_attempts=10)
+            confirm_success = click_image_button(CONFIRM_BUTTON_TEMPLATE, "confirm button", max_attempts=10)
             if confirm_success:
                 debug_print("[DEBUG] Waiting for confirmation")
                 time.sleep(1)  # Reduced wait time
                 
                 # Step 4: Click learn button
                 debug_print("[DEBUG] Looking for learn button")
-                learn_success = click_image_button("assets/buttons/learn.png", "learn button", max_attempts=10)
+                learn_success = click_image_button(LEARN_BUTTON_TEMPLATE, "learn button", max_attempts=10)
                 if learn_success:
                     debug_print("[DEBUG] Waiting for learning to complete")
                     time.sleep(1)  # Reduced wait time
@@ -406,7 +397,7 @@ def execute_skill_purchases(purchase_plan, bought_skills, max_scrolls=20):
                     # Step 5: Click close button (wait before it appears)
                     debug_print("[DEBUG] Waiting for close button to appear")
                     time.sleep(0.5)  # Reduced wait time
-                    close_success = click_image_button("assets/buttons/close.png", "close button", max_attempts=10)
+                    close_success = click_image_button(CLOSE_BUTTON_TEMPLATE, "close button", max_attempts=10)
                     if close_success:
                         print("[INFO] Skill purchase sequence completed successfully")
                     else:

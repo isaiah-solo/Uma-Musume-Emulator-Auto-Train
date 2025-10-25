@@ -4,8 +4,9 @@ import re
 import time
 from PIL import ImageStat
 
+from core.templates_adb import EVENT_CHOICE_1_TEMPLATE
 from utils.adb_input import tap
-from utils.adb_recognizer import locate_all_on_screen, locate_on_screen, match_template
+from utils.adb_recognizer import locate_all_on_screen, locate_on_screen
 from utils.adb_screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
 
@@ -27,18 +28,12 @@ def count_event_choices():
     Returns:
         tuple: (count, locations) - number of unique bright choices found and their locations
     """
-    template_path = "assets/icons/event_choice_1.png"
-    
-    if not os.path.exists(template_path):
-        debug_print(f"[DEBUG] Template not found: {template_path}")
-        return 0, []
-    
     try:
-        debug_print(f"[DEBUG] Searching for event choices using: {template_path}")
+        debug_print(f"[DEBUG] Searching for event choices using: EVENT_CHOICE_1_TEMPLATE")
         # Search for all instances of the template in the event choice region
         event_choice_region = (6, 450, 126, 1776)
         screenshot = take_screenshot()
-        locations = locate_all_on_screen(screenshot, template_path, confidence=0.45, region=event_choice_region)
+        locations = locate_all_on_screen(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
         debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
         if not locations:
             debug_print("[DEBUG] No event choice locations found")
@@ -685,7 +680,7 @@ def click_event_choice(choice_number, choice_locations=None):
             debug_print("[DEBUG] No pre-found locations, searching for event choices...")
             event_choice_region = (6, 450, 126, 1776)
             screenshot = take_screenshot()
-            choice_locations = locate_all_on_screen(screenshot, "assets/icons/event_choice_1.png", confidence=0.45, region=event_choice_region)
+            choice_locations = locate_all_on_screen(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
             
             if not choice_locations:
                 print("No event choice icons found")
@@ -732,20 +727,20 @@ def click_event_choice(choice_number, choice_locations=None):
         print(f"Error clicking event choice: {e}")
         return False
 
-def click(img, confidence=0.8, minSearch=1, click=1, text="", region=None):
+def click(template, confidence=0.8, minSearch=1, click=1, text="", region=None):
     """Click on image with retry logic"""
-    debug_print(f"[DEBUG] Looking for: {img}")
+    debug_print(f"[DEBUG] Looking for: {template}")
     for attempt in range(int(minSearch)):
         screenshot = take_screenshot()
-        btn = locate_on_screen(screenshot, img, confidence=confidence, region=region)
+        btn = locate_on_screen(screenshot, template, confidence=confidence, region=region)
         if btn:
             if text:
                 print(text)
-            debug_print(f"[DEBUG] Clicking {img} at position {btn}")
+            debug_print(f"[DEBUG] Clicking {template} at position {btn}")
             tap(btn[0], btn[1])
             return True
         if attempt < int(minSearch) - 1:  # Don't sleep on last attempt
-            debug_print(f"[DEBUG] Attempt {attempt + 1}: {img} not found")
+            debug_print(f"[DEBUG] Attempt {attempt + 1}: {template} not found")
             time.sleep(0.05)  # Reduced from 0.1 to 0.05
-    debug_print(f"[DEBUG] Failed to find {img} after {minSearch} attempts")
+    debug_print(f"[DEBUG] Failed to find {template} after {minSearch} attempts")
     return False

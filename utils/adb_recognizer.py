@@ -4,7 +4,7 @@ from PIL import Image
 import os
 from utils.adb_screenshot import take_screenshot
 
-def match_template(screenshot, template_path, confidence=0.8, region=None):
+def match_template(screenshot, template, confidence=0.8, region=None):
     """
     Match template image on screenshot using OpenCV
     
@@ -18,16 +18,6 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
         List of (x, y, width, height) matches or None if not found
     """
     try:
-        # Load template
-        if not os.path.exists(template_path):
-            print(f"Template not found: {template_path}")
-            return None
-        
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-        if template is None:
-            print(f"Failed to load template: {template_path}")
-            return None
-        
         # Convert screenshot to OpenCV format
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         
@@ -59,28 +49,19 @@ def match_template(screenshot, template_path, confidence=0.8, region=None):
         print(f"Error in template matching: {e}")
         return None
 
-def max_match_confidence(screenshot, template_path, region=None):
+def max_match_confidence(screenshot, template, region=None):
     """
     Compute the maximum template match score for a template against a screenshot.
 
     Args:
         screenshot: PIL Image of the screen
-        template_path: Path to template image
+        template: Path to template image
         region: Optional region to search (x, y, w, h)
 
     Returns:
         float: max normalized correlation score in [0,1], or None on error
     """
     try:
-        if not os.path.exists(template_path):
-            print(f"Template not found: {template_path}")
-            return None
-
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-        if template is None:
-            print(f"Failed to load template: {template_path}")
-            return None
-
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         if region:
@@ -94,19 +75,19 @@ def max_match_confidence(screenshot, template_path, region=None):
         print(f"Error computing max template confidence: {e}")
         return None
 
-def locate_on_screen(screenshot, template_path, confidence=0.8, region=None):
+def locate_on_screen(screenshot, template, confidence=0.8, region=None):
     """
     Locate template on screen and return center coordinates
     
     Args:
-        template_path: Path to template image
+        template: Path to template image
         confidence: Minimum confidence threshold
         region: Region to search in (x, y, width, height)
     
     Returns:
         (x, y) center coordinates or None if not found
     """
-    matches = match_template(screenshot, template_path, confidence, region)
+    matches = match_template(screenshot, template, confidence, region)
     
     if matches:
         # Return center of first match
@@ -115,48 +96,48 @@ def locate_on_screen(screenshot, template_path, confidence=0.8, region=None):
     
     return None
 
-def locate_all_on_screen(screenshot, template_path, confidence=0.8, region=None):
+def locate_all_on_screen(screenshot, template, confidence=0.8, region=None):
     """
     Locate all instances of template on screen
     
     Args:
-        template_path: Path to template image
+        template: Path to template image
         confidence: Minimum confidence threshold
         region: Region to search in (x, y, width, height)
     
     Returns:
         List of (x, y, width, height) matches or empty list if not found
     """
-    matches = match_template(screenshot, template_path, confidence, region)
+    matches = match_template(screenshot, template, confidence, region)
     
     return matches if matches else []
 
-def locate_center_on_screen(screenshot, template_path, confidence=0.8, region=None):
+def locate_center_on_screen(screenshot, template, confidence=0.8, region=None):
     """
     Locate template on screen and return center coordinates (alias for locate_on_screen)
     """
-    return locate_on_screen(screenshot, template_path, confidence, region)
+    return locate_on_screen(screenshot, template, confidence, region)
 
-def is_image_on_screen(screenshot, template_path, confidence=0.8, region=None):
+def is_image_on_screen(screenshot, template, confidence=0.8, region=None):
     """
     Check if template image is present on screen
     
     Args:
-        template_path: Path to template image
+        template: Path to template image
         confidence: Minimum confidence threshold
         region: Region to search in (x, y, width, height)
     
     Returns:
         True if found, False otherwise
     """
-    return locate_on_screen(screenshot, template_path, confidence, region) is not None
+    return locate_on_screen(screenshot, template, confidence, region) is not None
 
-def wait_for_image(template_path, timeout=10, confidence=0.8, region=None):
+def wait_for_image(template, timeout=10, confidence=0.8, region=None):
     """
     Wait for image to appear on screen
     
     Args:
-        template_path: Path to template image
+        template: Path to template image
         timeout: Maximum time to wait in seconds
         confidence: Minimum confidence threshold
         region: Region to search in (x, y, width, height)
@@ -169,7 +150,7 @@ def wait_for_image(template_path, timeout=10, confidence=0.8, region=None):
     
     while time.time() - start_time < timeout:
         screenshot = take_screenshot()
-        result = locate_on_screen(screenshot, template_path, confidence, region)
+        result = locate_on_screen(screenshot, template, confidence, region)
         if result:
             return result
         time.sleep(0.1)
