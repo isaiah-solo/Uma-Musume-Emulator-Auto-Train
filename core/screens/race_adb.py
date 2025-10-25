@@ -1,5 +1,7 @@
 import time
 from PIL import ImageStat
+from core.templates_adb import BACK_BUTTON_TEMPLATE, CLOCK_TEMPLATE, CONFIRM_BUTTON_TEMPLATE, G1_RACE_TEMPLATE, MATCH_TRACK_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_DAY_BUTTON_TEMPLATE, RACES_BUTTON_TEMPLATE, STRATEGY_BUTTON_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
+import cv2
 
 from core.config import Config
 from core.event_handling import click, debug_print
@@ -17,9 +19,9 @@ RETRY_RACE = Config.get("retry_race", True)
 def do_race(year, prioritize_g1=False):
     """Perform race action"""
     debug_print(f"[DEBUG] Performing race action (G1 priority: {prioritize_g1})...")
-    click("assets/buttons/races_btn.png", minSearch=10)
+    click(RACES_BUTTON_TEMPLATE, minSearch=10)
     time.sleep(1.2)
-    click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=1)
+    click(OK_BUTTON_TEMPLATE, confidence=0.5, minSearch=1)
 
     found = race_select(year, prioritize_g1=prioritize_g1)
     if found:
@@ -33,7 +35,7 @@ def do_race(year, prioritize_g1=False):
         return True
     else:
         debug_print("[DEBUG] No race found, going back")
-        click("assets/buttons/back_btn.png", minSearch=0.7)
+        click(BACK_BUTTON_TEMPLATE, minSearch=0.7)
         return False
 
 def race_day(bought_skills):
@@ -48,22 +50,22 @@ def race_day(bought_skills):
         check_skill_points_cap(bought_skills)
     
     debug_print("[DEBUG] Clicking race day button...")
-    if click("assets/buttons/race_day_btn.png", minSearch=10):
+    if click(RACE_DAY_BUTTON_TEMPLATE, minSearch=10):
         debug_print("[DEBUG] Race day button clicked, clicking OK button...")
         time.sleep(1.3)
-        click("assets/buttons/ok_btn.png", confidence=0.5, minSearch=2)
+        click(OK_BUTTON_TEMPLATE, confidence=0.5, minSearch=2)
         time.sleep(1.0)  # Increased wait time
         
         # Try to find and click race button with better error handling
         race_clicked = False
         for attempt in range(3):  # Try up to 3 times
-            if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
+            if click(RACE_BUTTON_TEMPLATE, confidence=0.7, minSearch=1):
                 debug_print(f"[DEBUG] Race button clicked successfully, attempt {attempt + 1}")
                 time.sleep(0.5)  # Wait between clicks
                 
                 # Click race button twice like in race_select
                 for j in range(2):
-                    if click("assets/buttons/race_btn.png", confidence=0.7, minSearch=1):
+                    if click(RACE_BUTTON_TEMPLATE, confidence=0.7, minSearch=1):
                         debug_print(f"[DEBUG] Race button clicked {j+1} time(s)")
                         time.sleep(0.5)
                     else:
@@ -105,7 +107,7 @@ def race_select(year, prioritize_g1=False):
         if prioritize_g1:
             debug_print("[DEBUG] Looking for G1 race.")
             screenshot = take_screenshot()
-            race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
+            race_cards = match_template(screenshot, G1_RACE_TEMPLATE, confidence=0.9)
             debug_print(f"[DEBUG] Initial G1 detection result: {race_cards}")
             
             if race_cards:
@@ -127,7 +129,7 @@ def race_select(year, prioritize_g1=False):
                         # Click race button twice like PC version
                         for j in range(2):
                             race_button_screenshot = take_screenshot()
-                            race_btn = locate_on_screen(race_button_screenshot, "assets/buttons/race_btn.png", confidence=0.6)
+                            race_btn = locate_on_screen(race_button_screenshot, RACE_BUTTON_TEMPLATE, confidence=0.6)
                             if race_btn:
                                 debug_print(f"[DEBUG] Found race button at {race_btn}")
                                 tap(race_btn[0], race_btn[1])
@@ -149,7 +151,7 @@ def race_select(year, prioritize_g1=False):
                 # Click race button twice like PC version
                 for j in range(2):
                     race_button_screenshot = take_screenshot()
-                    race_btn = locate_on_screen(race_button_screenshot, "assets/buttons/race_btn.png", confidence=0.8)
+                    race_btn = locate_on_screen(race_button_screenshot, RACE_BUTTON_TEMPLATE, confidence=0.8)
                     if race_btn:
                         debug_print(f"[DEBUG] Found race button at {race_btn}")
                         tap(race_btn[0], race_btn[1])
@@ -172,7 +174,7 @@ def race_select(year, prioritize_g1=False):
             
             # Check for race again after each swipe
             if prioritize_g1:
-                race_cards = match_template(screenshot, "assets/ui/g1_race.png", confidence=0.9)
+                race_cards = match_template(screenshot, G1_RACE_TEMPLATE, confidence=0.9)
                 
                 if race_cards:
                     debug_print(f"[DEBUG] Found {len(race_cards)} G1 race card(s) after swipe {scroll+1}")
@@ -193,7 +195,7 @@ def race_select(year, prioritize_g1=False):
                             
                             # Click race button twice like PC version
                             for j in range(2):
-                                race_btn = locate_on_screen(screenshot, "assets/buttons/race_btn.png", confidence=0.8)
+                                race_btn = locate_on_screen(screenshot, RACE_BUTTON_TEMPLATE, confidence=0.8)
                                 if race_btn:
                                     debug_print(f"[DEBUG] Found race button at {race_btn}")
                                     tap(race_btn[0], race_btn[1])
@@ -213,7 +215,7 @@ def race_select(year, prioritize_g1=False):
                     
                     # Click race button twice like PC version
                     for j in range(2):
-                        race_btn = locate_on_screen(screenshot, "assets/buttons/race_btn.png", confidence=0.8)
+                        race_btn = locate_on_screen(screenshot, RACE_BUTTON_TEMPLATE, confidence=0.8)
                         if race_btn:
                             debug_print(f"[DEBUG] Found race button at {race_btn}")
                             tap(race_btn[0], race_btn[1])
@@ -240,23 +242,23 @@ def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
         screenshot = take_screenshot()
         
         templates = {
-            "front": "assets/icons/front.png",
-            "late": "assets/icons/late.png", 
-            "pace": "assets/icons/pace.png",
-            "end": "assets/icons/end.png",
+            "front": cv2.imread("assets/icons/front.png", cv2.IMREAD_COLOR),
+            "late": cv2.imread("assets/icons/late.png", cv2.IMREAD_COLOR),
+            "pace": cv2.imread("assets/icons/pace.png", cv2.IMREAD_COLOR),
+            "end": cv2.imread("assets/icons/end.png", cv2.IMREAD_COLOR),
         }
         
         # Find brightest strategy using existing project functions
         best_match = None
         best_brightness = 0
         
-        for name, path in templates.items():
+        for name, template in templates.items():
             try:
                 # Use existing match_template function
-                matches = match_template(screenshot, path, confidence=0.5, region=region)
+                matches = match_template(screenshot, template, confidence=0.5, region=region)
                 if matches:
                     # Get confidence for best match
-                    confidence = max_match_confidence(screenshot, path, region)
+                    confidence = max_match_confidence(screenshot, template, region)
                     if confidence:
                         # Check brightness of the matched region
                         x, y, w, h = matches[0]
@@ -328,7 +330,7 @@ def change_strategy_before_race(expected_strategy: str) -> bool:
     try:
         # Step 1: Find and tap strategy_change.png
         debug_print("[DEBUG] Looking for strategy change button...")
-        change_btn = wait_for_image("assets/buttons/strategy_change.png", timeout=10, confidence=0.8)
+        change_btn = wait_for_image(STRATEGY_BUTTON_TEMPLATE, timeout=10, confidence=0.8)
         if not change_btn:
             debug_print("[DEBUG] Strategy change button not found")
             return False
@@ -339,7 +341,7 @@ def change_strategy_before_race(expected_strategy: str) -> bool:
         
         # Step 2: Wait for confirm.png to appear
         debug_print("[DEBUG] Waiting for confirm button to appear...")
-        confirm_btn = wait_for_image("assets/buttons/confirm.png", timeout=10, confidence=0.8)
+        confirm_btn = wait_for_image(CONFIRM_BUTTON_TEMPLATE, timeout=10, confidence=0.8)
         if not confirm_btn:
             debug_print("[DEBUG] Confirm button not found after strategy change")
             return False
@@ -372,7 +374,7 @@ def race_prep():
     """Prepare for race"""
     debug_print("[DEBUG] Preparing for race...")
     
-    view_result_btn = wait_for_image("assets/buttons/view_results.png", timeout=20)
+    view_result_btn = wait_for_image(VIEW_RESULTS_BUTTON_TEMPLATE, timeout=20)
         
     # Check and ensure strategy matches config before race
     if not check_strategy_before_race():
@@ -398,7 +400,7 @@ def handle_race_retry_if_failed(screenshot):
     """
     try:
         # Check for failure indicator (clock icon)
-        clock = locate_on_screen(screenshot, "assets/icons/clock.png", confidence=0.8)
+        clock = locate_on_screen(screenshot, CLOCK_TEMPLATE, confidence=0.8)
         if not clock:
             return False
 
@@ -409,14 +411,14 @@ def handle_race_retry_if_failed(screenshot):
             raise SystemExit(0)
 
         # Try to click Try Again button
-        try_again = locate_on_screen(screenshot, "assets/buttons/try_again.png", confidence=0.8)
+        try_again = locate_on_screen(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.8)
         if try_again:
             print("[INFO] Clicking Try Again button.")
             tap(try_again[0], try_again[1])
         else:
             print("[INFO] Try Again button not found. Attempting helper click...")
             # Fallback: attempt generic click using click helper
-            click("assets/buttons/try_again.png", confidence=0.8, minSearch=10)
+            click(TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.8, minSearch=10)
 
         # Wait before re-prepping the race
         print("[INFO] Waiting 5 seconds before retrying the race...")
@@ -435,22 +437,22 @@ def after_race():
     debug_print("[DEBUG] Handling post-race actions...")
     
     # Try to click first next button with fallback mechanism
-    if not click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10):
+    if not click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
         debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
         tap(540, 960)  # Click middle of screen (1080x1920 resolution)
         time.sleep(1)
         debug_print("[DEBUG] Retrying next button search after screen tap...")
-        click("assets/buttons/next_btn.png", confidence=0.7, minSearch=10)
+        click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
     
     time.sleep(4)
     
     # Try to click second next button with fallback mechanism
-    if not click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10):
+    if not click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
         debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
         tap(540, 960)  # Click middle of screen (1080x1920 resolution)
         time.sleep(1)
         debug_print("[DEBUG] Retrying next2 button search after screen tap...")
-        click("assets/buttons/next2_btn.png", confidence=0.7, minSearch=10)
+        click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
     
     debug_print("[DEBUG] Post-race actions complete")
 
@@ -481,7 +483,7 @@ def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_t
     """
     try:
         screenshot = take_screenshot()
-        matches = match_template(screenshot, "assets/ui/match_track.png", confidence=confidence, region=region)
+        matches = match_template(screenshot, MATCH_TRACK_TEMPLATE, confidence=confidence, region=region)
         if not matches:
             debug_print(f"[DEBUG] no matches in match track for region: {region}")
             return None
