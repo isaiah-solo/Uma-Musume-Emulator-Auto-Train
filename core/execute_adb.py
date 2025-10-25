@@ -256,7 +256,7 @@ def career_lobby():
 
         # If Prioritize G1 Race is true, check G1 race every turn
         debug_print(f"[DEBUG] Checking G1 race priority: {PRIORITIZE_G1_RACE}")
-        if PRIORITIZE_G1_RACE and not is_pre_debut_year(year) and is_racing_available(year) and is_g1_racing_available(year):
+        if PRIORITIZE_G1_RACE and is_racing_available(year) and is_g1_racing_available(year):
             print("G1 Race Check: Looking for G1 race...")
             g1_race_found = do_race(year, PRIORITIZE_G1_RACE)
             if g1_race_found:
@@ -269,6 +269,8 @@ def career_lobby():
                 time.sleep(0.5)
         else:
             debug_print("[DEBUG] G1 race priority disabled or conditions not met")
+            debug_print(f"[DEBUG] Is racing available: {is_racing_available(year)}")
+            debug_print(f"[DEBUG] Is G1 racing available: {is_g1_racing_available(year)}")
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
@@ -331,7 +333,7 @@ def career_lobby():
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
-                        race_found = do_race(year)
+                        race_found = do_race(year, PRIORITIZE_G1_RACE)
                         if race_found:
                             print("Training Race Result: Found Race")
                             continue

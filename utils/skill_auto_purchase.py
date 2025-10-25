@@ -429,7 +429,7 @@ def execute_skill_purchases(purchase_plan, bought_skills, max_scrolls=20):
         if purchased_skills:
             print(f"\n[INFO] Purchased skills:")
             for skill in purchased_skills:
-                bought_skills[skill] = True
+                bought_skills[skill['name']] = True
                 print(f"   • {skill['name']} - {skill['price']} points")
         
         if failed_skills:

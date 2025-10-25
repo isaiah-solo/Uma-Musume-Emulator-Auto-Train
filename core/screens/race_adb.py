@@ -1,4 +1,5 @@
 import time
+from PIL import ImageStat
 
 from core.config import Config
 from core.event_handling import click, debug_print
@@ -470,9 +471,6 @@ def is_racing_available(year):
     return True
     
 def is_g1_racing_available(year):
-    # Check skill points cap before race day (if enabled)
-    config = Config.load()
-    
     g1_race_days = {g1_race_day: True for g1_race_day in config.get("g1_race_days", [])}
     return year in g1_race_days or not g1_race_days
 
@@ -485,6 +483,7 @@ def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_t
         screenshot = take_screenshot()
         matches = match_template(screenshot, "assets/ui/match_track.png", confidence=confidence, region=region)
         if not matches:
+            debug_print(f"[DEBUG] no matches in match track for region: {region}")
             return None
 
         grayscale = screenshot.convert("L")
@@ -496,7 +495,8 @@ def locate_match_track_with_brightness(confidence=0.6, region=None, brightness_t
                 if avg_brightness > brightness_threshold:
                     center = (x + w//2, y + h//2)
                     return center
-            except Exception:
+            except Exception as e:
+                debug_print(f"[DEBUG] match_track locate error: {e}")
                 continue
         return None
     except Exception as e:
