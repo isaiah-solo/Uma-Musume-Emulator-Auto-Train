@@ -1,7 +1,5 @@
-# Umamusume Auto Training Bot (Revamped
+# Umamusume Auto Training Bot (Revamped)
 
- 
- 
 
 An automated training bot for Umamusume that works with **Android emulators** using ADB (Android Debug Bridge).
 
