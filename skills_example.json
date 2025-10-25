@@ -1,24 +1,10 @@
 {
     "skill_priority": [
         "Restless",
-        "Professor of Curvature",
-        "Swinging Maestro",
-        "Gourmand",
-        "Determined Descent",
-        "Rushing Gale!",
-        "Unrestrained",
-        "Killer Tunes",
-        "Beeline Burst"
+        "Professor of Curvature"
     ],
     "gold_skill_upgrades": {
         "Restless": "Moxie",
-        "Professor of Curvature": "Corner Adept",
-        "Swinging Maestro": "Corner Recovery",
-        "Gourmand":"Hydrate",
-        "Rushing Gale!": "Straightaway Acceleration",
-        "Unrestrained": "Final Push",
-        "Killer Tunes": "Up-Tempo",
-        "Beeline Burst": "Straightaway Adept",
-        "Determined Descent": "Straight Descent"
+        "Professor of Curvature": "Corner Adept"
     }
 }

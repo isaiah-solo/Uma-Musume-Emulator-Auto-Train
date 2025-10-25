@@ -17,10 +17,11 @@ from utils.constants_phone import (
     SKILL_PTS_REGION, FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
 )
 
+from core.config import Config
+
 # Load config and check debug mode
-with open("config.json", "r", encoding="utf-8") as config_file:
-    config = json.load(config_file)
-    DEBUG_MODE = config.get("debug_mode", False)
+config = Config.load()
+DEBUG_MODE = config.get("debug_mode", False)
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
@@ -402,6 +403,10 @@ def check_turn():
         debug_print(f"[DEBUG] Turn detection failed with error: {e}")
         return 1
 
+def is_pre_debut_year(year):
+    return ("Pre-Debut" in year or "PreDebut" in year or 
+            "PreeDebut" in year or "Pre" in year)
+
 def check_current_year():
     """Fast year detection using regular screenshot"""
     year_img = enhanced_screenshot(YEAR_REGION)
@@ -534,19 +539,27 @@ def check_skill_points():
     
     return result
 
-def check_skill_points_cap():
+def check_skills_are_available(bought_skills):
+    # Load config
+    skill_file = config.get("skill_file", "skills.json")
+    print(f"[INFO] Loading skills from: {skill_file}")
+    cfg = load_skill_config(skill_file)
+    skill_priority = cfg.get("skill_priority", [])
+
+    for skill in skill_priority:
+        if skill not in bought_skills:
+            return True
+    
+    print("[INFO] All skills are bought, skipping buying skills")
+    return False
+
+def check_skill_points_cap(bought_skills):
     """Check skill points and handle cap logic (same as PC version)"""
-    import json
     import tkinter as tk
     from tkinter import messagebox
     
     # Load config
-    try:
-        with open("config.json", "r", encoding="utf-8") as file:
-            config = json.load(file)
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        return True
+    config = Config.load()
     
     skill_point_cap = config.get("skill_point_cap", 9999)
     current_skill_points = check_skill_points()
@@ -612,7 +625,7 @@ def check_skill_points_cap():
                     return True
 
                 # Execute automated purchases
-                exec_result = execute_skill_purchases(final_plan)
+                exec_result = execute_skill_purchases(final_plan, bought_skills)
                 if not exec_result.get('success'):
                     print(f"[WARNING] Automated purchase completed with issues: {exec_result.get('error', 'unknown error')}")
 

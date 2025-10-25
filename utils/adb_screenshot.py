@@ -1,6 +1,4 @@
 import subprocess
-import tempfile
-import os
 import json
 from PIL import Image, ImageEnhance
 import numpy as np
@@ -42,7 +40,7 @@ def run_adb_command(command, binary=False):
         print(f"Error running ADB command: {e}")
         return None
 
-def take_screenshot():
+def take_screenshot() -> Image:
     """Take a screenshot using ADB and return PIL Image"""
     try:
         result = run_adb_command(['shell', 'screencap'], binary=True)

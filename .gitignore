@@ -46,3 +46,4 @@ temp_*.png
 temp_*.jpg
 annotated_*.png
 processed_*.png
+event_ocr_simple_*.png
