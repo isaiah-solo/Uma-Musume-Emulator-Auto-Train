@@ -61,7 +61,7 @@ def career_lobby():
             
             if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
-                choice_number, success, choice_locations = handle_event_choice()
+                choice_number, success, choice_locations = handle_event_choice(screenshot)
                 if success:
                     click_success = click_event_choice(choice_number, choice_locations)
                     if click_success:
@@ -139,13 +139,13 @@ def career_lobby():
 
         # Get current state
         debug_print("[DEBUG] Getting current game state...")
-        mood = check_mood()
+        mood = check_mood(screenshot)
         mood_index = MOOD_LIST.index(mood)
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
-        turn = check_turn()
-        year = check_current_year()
-        goal_data = check_goal_name_with_g1_requirement()
-        criteria_text = check_criteria()
+        turn = check_turn(screenshot)
+        year = check_current_year(screenshot)
+        goal_data = check_goal_name_with_g1_requirement(screenshot)
+        criteria_text = check_criteria(screenshot)
         
         print("\n=======================================================================================\n")
         print(f"Year: {year}")
@@ -158,7 +158,7 @@ def career_lobby():
         
         # Check energy bar before proceeding with training decisions
         debug_print("[DEBUG] Checking energy bar...")
-        energy_percentage = check_energy_bar()
+        energy_percentage = check_energy_bar(screenshot)
         min_energy = config.get("min_energy", 30)
         
         print(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)")
@@ -207,7 +207,7 @@ def career_lobby():
             
             if enable_skill_check:
                 print("[INFO] URA Finale Race Day - Checking skill points cap...")
-                check_skill_points_cap(bought_skills)
+                check_skill_points_cap(screenshot, bought_skills)
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
@@ -235,7 +235,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for race day...")
         if turn == "Race Day" and year != "Finale Season":
             print("[INFO] Race Day.")
-            race_day(bought_skills)
+            race_day(screenshot, bought_skills)
             continue
         else:
             debug_print("[DEBUG] Not race day")

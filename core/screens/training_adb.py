@@ -179,7 +179,7 @@ def check_training():
         debug_print(f"[DEBUG] Support counts: {support_counts} | hint_found={hint_found} | score={score}")
 
         debug_print(f"[DEBUG] Checking failure rate for {key.upper()} training...")
-        failure_chance, confidence = check_failure(key)
+        failure_chance, confidence = check_failure(screenshot, key)
         
         results[key] = {
             "support": support_counts,

@@ -20,7 +20,7 @@ def debug_print(message):
     if DEBUG_MODE:
         print(message)
 
-def count_event_choices():
+def count_event_choices(screenshot):
     """
     Count how many event choice icons are found on screen.
     Uses event_choice_1.png as template to find all U-shaped icons.
@@ -32,7 +32,6 @@ def count_event_choices():
         debug_print(f"[DEBUG] Searching for event choices using: EVENT_CHOICE_1_TEMPLATE")
         # Search for all instances of the template in the event choice region
         event_choice_region = (6, 450, 126, 1776)
-        screenshot = take_screenshot()
         locations = locate_all_on_screen(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
         debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
         if not locations:
@@ -485,7 +484,7 @@ def search_events(event_variations):
     
     return found_events
 
-def handle_event_choice():
+def handle_event_choice(screenshot):
     """
     Main function to handle event detection and choice selection.
     This function should be called when an event is detected.
@@ -504,7 +503,7 @@ def handle_event_choice():
         time.sleep(1.5)
 
         # Re-validate that this is a choices event before OCR (avoid scanning non-choice dialogs)
-        recheck_count, recheck_locations = count_event_choices()
+        recheck_count, recheck_locations = count_event_choices(screenshot)
         debug_print(f"[DEBUG] Recheck choices after delay: {recheck_count}")
         if recheck_count == 0:
             print("[INFO] Event choices not visible after delay, skipping analysis")
@@ -568,7 +567,7 @@ def handle_event_choice():
             found_events = search_events(event_variations)
         
         # Count event choices on screen
-        choices_found, choice_locations = count_event_choices()
+        choices_found, choice_locations = count_event_choices(screenshot)
         
         # Load event priorities
         priorities = load_event_priorities()
@@ -656,7 +655,7 @@ def handle_event_choice():
         print(f"Error during event handling: {e}")
         # If choices are visible, return their locations to allow fallback top-choice click
         try:
-            _, fallback_locations = count_event_choices()
+            _, fallback_locations = count_event_choices(screenshot)
         except Exception:
             fallback_locations = []
         return 1, False, fallback_locations  # Default to first choice on error

@@ -38,7 +38,7 @@ def do_race(year, prioritize_g1=False):
         click(BACK_BUTTON_TEMPLATE, minSearch=0.7)
         return False
 
-def race_day(bought_skills):
+def race_day(screenshot, bought_skills):
     """Handle race day"""
     # Check skill points cap before race day (if enabled)
     config = Config.load()
@@ -47,7 +47,7 @@ def race_day(bought_skills):
     
     if enable_skill_check and check_skills_are_available(bought_skills):
         print("[INFO] Race Day - Checking skill points cap...")
-        check_skill_points_cap(bought_skills)
+        check_skill_points_cap(screenshot, bought_skills)
     
     debug_print("[DEBUG] Clicking race day button...")
     if click(RACE_DAY_BUTTON_TEMPLATE, minSearch=10):
