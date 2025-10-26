@@ -69,12 +69,9 @@ def stat_state(screenshot):
     return result
 
 # Check support card in each training
-def check_support_card(threshold=0.85):
+def check_support_card(screenshot, threshold=0.85):
     count_result = {}
 
-    # Take a screenshot for template matching
-    screenshot = take_screenshot()
-    
     # Save full screenshot for debugging only in debug mode
     if DEBUG_MODE:
         screenshot.save("debug_support_cards_screenshot.png")
@@ -137,7 +134,7 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
-def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
+def check_hint(screenshot, template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:
@@ -148,8 +145,6 @@ def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
         True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
     """
     try:
-        screenshot = take_screenshot()
-
         # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
         region_cv = (left, top, right - left, bottom - top)
@@ -722,22 +717,7 @@ def calculate_training_score(support_detail, hint_found, training_type):
         float: Calculated score for the training
     """
     # Load scoring rules from training_score.json
-    scoring_rules = {}
-    try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'training_score.json')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            scoring_rules = config.get('scoring_rules', {})
-    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"Warning: Could not load training_score.json: {e}")
-        # Fallback to default values if config file is not available
-        scoring_rules = {
-            "rainbow_support": {"points": 1.0},
-            "not_rainbow_support_low": {"points": 0.7},
-            "not_rainbow_support_high": {"points": 0.0},
-            "hint": {"points": 0.3}
-        }
-    
+    scoring_rules = config.get('scoring_rules', {})
     score = 0.0
     
     # Score support cards based on bond levels

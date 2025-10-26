@@ -87,8 +87,6 @@ def check_training():
     debug_print("[DEBUG] Checking training options...")
 
     # Check skill points cap before race day (if enabled)
-    config = Config.load()
-    
     # Fixed coordinates for each training type
     training_coords_base = {
         "spd": (165, 1557),
@@ -139,7 +137,7 @@ def check_training():
         region_cv = (left, top, right - left, bottom - top)
 
         # Support counts
-        support_counts = check_support_card()
+        support_counts = check_support_card(screenshot)
         total_support = sum(support_counts.values())
 
         # Bond levels per type
@@ -170,7 +168,7 @@ def check_training():
                 detailed_support[t_key] = entries
 
         # Hint
-        hint_found = check_hint()
+        hint_found = check_hint(screenshot)
 
         # Calculate score for this training type
         from core.state_adb import calculate_training_score
