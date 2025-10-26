@@ -31,7 +31,6 @@ def do_race(year, prioritize_g1=False):
         screenshot = take_screenshot()
         # If race failed screen appears, handle retry before proceeding
         handle_race_retry_if_failed(screenshot)
-        after_race()
         return True
     else:
         debug_print("[DEBUG] No race found, going back")
@@ -41,8 +40,6 @@ def do_race(year, prioritize_g1=False):
 def race_day(screenshot, bought_skills):
     """Handle race day"""
     # Check skill points cap before race day (if enabled)
-    config = Config.load()
-    
     enable_skill_check = config.get("enable_skill_point_check", True)
     
     if enable_skill_check and check_skills_are_available(bought_skills):
@@ -88,7 +85,6 @@ def race_day(screenshot, bought_skills):
         screenshot = take_screenshot()
         # If race failed screen appears, handle retry before proceeding
         handle_race_retry_if_failed(screenshot)
-        after_race()
         return True
     return False
 
@@ -279,7 +275,6 @@ def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
         current_strategy = strategy_name.upper()
         
         # Load expected strategy from config
-        config = Config.load()
         expected_strategy = config.get("strategy", "").upper()
         
         matches = current_strategy == expected_strategy
@@ -435,25 +430,25 @@ def after_race():
     """Handle post-race actions"""
     debug_print("[DEBUG] Handling post-race actions...")
     
-    # Try to click first next button with fallback mechanism
-    if not click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
-        debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
-        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
-        time.sleep(1)
-        debug_print("[DEBUG] Retrying next button search after screen tap...")
-        click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
+    # # Try to click first next button with fallback mechanism
+    # if not click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
+    #     debug_print("[DEBUG] First next button not found after 10 attempts, clicking middle of screen as fallback...")
+    #     tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+    #     time.sleep(1)
+    #     debug_print("[DEBUG] Retrying next button search after screen tap...")
+    #     click(NEXT_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
     
-    time.sleep(4)
+    # time.sleep(4)
     
-    # Try to click second next button with fallback mechanism
-    if not click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
-        debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
-        tap(540, 960)  # Click middle of screen (1080x1920 resolution)
-        time.sleep(1)
-        debug_print("[DEBUG] Retrying next2 button search after screen tap...")
-        click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
+    # # Try to click second next button with fallback mechanism
+    # if not click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10):
+    #     debug_print("[DEBUG] Second next button not found after 10 attempts, clicking middle of screen as fallback...")
+    #     tap(540, 960)  # Click middle of screen (1080x1920 resolution)
+    #     time.sleep(1)
+    #     debug_print("[DEBUG] Retrying next2 button search after screen tap...")
+    #     click(NEXT_2_BUTTON_TEMPLATE, confidence=0.7, minSearch=10)
     
-    debug_print("[DEBUG] Post-race actions complete")
+    # debug_print("[DEBUG] Post-race actions complete")
 
 
 # Event handling functions moved to core/event_handling.py

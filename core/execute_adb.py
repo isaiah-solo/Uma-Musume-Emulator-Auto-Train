@@ -12,7 +12,7 @@ from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
+from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
 
 # Import ADB state and logic modules
 from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
@@ -95,33 +95,27 @@ def career_lobby():
 
         # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        inspiration_matches = match_template(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)
-        if inspiration_matches:
-            x, y, w, h = inspiration_matches[0]
-            center = (x + w//2, y + h//2)
+        if (match := img_matches(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.6)):
             print("[INFO] Inspiration found.")
-            tap(center[0], center[1])
-            continue
+            tap_button(match)
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        next_matches = match_template(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)
-        if next_matches:
-            x, y, w, h = next_matches[0]
-            center = (x + w//2, y + h//2)
-            debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)):
+            print("[INFO] Selecting next.")
+            tap_button(match)
+
+        # Check next button 2
+        debug_print("[DEBUG] Checking for next button 2...")
+        if (match := img_matches(screenshot, NEXT_2_BUTTON_TEMPLATE, confidence=0.6)):
+            print("[INFO] Selecting next.")
+            tap_button(match)
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = match_template(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)
-        if cancel_matches:
-            x, y, w, h = cancel_matches[0]
-            center = (x + w//2, y + h//2)
-            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)):
+            print("[INFO] Selecting cancel.")
+            tap_button(match)
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
@@ -171,9 +165,9 @@ def career_lobby():
         goal_analysis = check_goal_criteria({"text": criteria_text, "requires_g1_races": goal_data['requires_g1_races']}, year, turn)
         
         if goal_analysis["should_prioritize_racing"]:
+            race_found = do_race(year, prioritize_g1=goal_analysis["should_prioritize_g1_races"])
             if goal_analysis["should_prioritize_g1_races"]:
                 print(f"Decision: Criteria not met - Prioritizing G1 races to meet goals")
-                race_found = do_race(year, prioritize_g1=True)
                 if race_found:
                     print("Race Result: Found G1 Race")
                     continue
@@ -184,7 +178,6 @@ def career_lobby():
                     time.sleep(0.5)
             else:
                 print(f"Decision: Criteria not met - Prioritizing normal races to meet goals")
-                race_found = do_race(year)
                 if race_found:
                     print("Race Result: Found Race")
                     continue
@@ -228,7 +221,6 @@ def career_lobby():
             race_screenshot = take_screenshot()
             # If race failed screen appears, handle retry before proceeding
             handle_race_retry_if_failed(race_screenshot)
-            after_race()
             continue
         else:
             debug_print("[DEBUG] Not URA scenario")
@@ -346,6 +338,16 @@ def career_lobby():
         
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(0.1)
+        
+def img_matches(screenshot, template, confidence):
+    matches = match_template(screenshot, template, confidence=confidence)
+    return matches[0] if matches else None
+        
+def tap_button(match):
+    x, y, w, h = match
+    center = (x + w//2, y + h//2)
+    debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
+    tap(center[0], center[1])
 
 def check_goal_criteria(criteria_data, year, turn):
     """
