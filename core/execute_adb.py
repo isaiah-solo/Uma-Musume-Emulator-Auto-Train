@@ -79,7 +79,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for events...")
         try:
             event_choice_region = (6, 450, 126, 1776)
-            event_matches = match_template(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.8, region=event_choice_region)
             
             if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
