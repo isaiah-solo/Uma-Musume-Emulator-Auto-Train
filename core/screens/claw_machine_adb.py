@@ -5,10 +5,6 @@ from core.templates_adb import CLAW_BUTTON_TEMPLATE
 from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import long_press
 
-def is_on_claw_machine_screen(screenshot):
-    return match_template(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)
-
-
 def do_claw_machine(screenshot):
     """Handle claw machine interaction"""
     print("[INFO] Claw machine detected, starting interaction...")

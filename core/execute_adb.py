@@ -12,7 +12,7 @@ from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
+from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
 
 # Import ADB state and logic modules
 from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
@@ -41,19 +41,15 @@ def career_lobby():
         
         # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
-        if is_on_claw_machine_screen(screenshot):
+        if (match := img_matches(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)):
             do_claw_machine(screenshot)
             continue
         
         # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        ok_matches = match_template(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)
-        if ok_matches:
-            x, y, w, h = ok_matches[0]
-            center = (x + w//2, y + h//2)
-            print("[INFO] OK button found, clicking it.")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)):
+            print("[INFO] Selecting OK.")
+            tap_button(match)
         
         # Check for events
         debug_print("[DEBUG] Checking for events...")
@@ -95,7 +91,7 @@ def career_lobby():
 
         # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        if (match := img_matches(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.6)):
+        if (match := img_matches(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)):
             print("[INFO] Inspiration found.")
             tap_button(match)
 
