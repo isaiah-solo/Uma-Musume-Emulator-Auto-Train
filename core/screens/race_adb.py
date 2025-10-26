@@ -263,7 +263,6 @@ def check_strategy_before_race(region=(660, 974, 378, 120)) -> bool:
                         # Check brightness of the matched region
                         x, y, w, h = matches[0]
                         roi = screenshot.convert("L").crop((x, y, x + w, y + h))
-                        from PIL import ImageStat
                         bright = float(ImageStat.Stat(roi).mean[0])
                         
                         if bright >= 160 and bright > best_brightness:

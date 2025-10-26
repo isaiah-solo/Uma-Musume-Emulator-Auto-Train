@@ -751,7 +751,7 @@ def click_event_choice(choice_number, choice_locations=None):
         print(f"Error clicking event choice: {e}")
         return False
 
-def click(template, confidence=0.8, minSearch=1, click=1, text="", region=None):
+def click(template, confidence=0.8, minSearch=1, text="", region=None):
     """Click on image with retry logic"""
     debug_print(f"[DEBUG] Looking for: {template}")
     for attempt in range(int(minSearch)):

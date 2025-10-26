@@ -1,10 +1,11 @@
 import time
 
+from core.logic import all_training_unsafe
 from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
 from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
 from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
 from core.screens.training_adb import check_training, do_train, go_to_training
-from utils.adb_recognizer import locate_on_screen
+from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import tap
 from utils.adb_screenshot import take_screenshot
 from utils.constants_phone import (
@@ -14,15 +15,16 @@ from core.config import Config
 from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
 
 # Import ADB state and logic modules
-from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, is_pre_debut_year
+from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
 
 # Import event handling functions
 from core.event_handling import click, debug_print, handle_event_choice, click_event_choice
 
+config = Config.load()
+
 def career_lobby():
     """Main career lobby loop"""
     # Load configuration
-    config = Config.load()
     MINIMUM_MOOD = config["minimum_mood"]
     PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
 
@@ -45,7 +47,7 @@ def career_lobby():
         
         # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        ok_matches = locate_on_screen(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)
+        ok_matches = match_template(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)
         if ok_matches:
             x, y, w, h = ok_matches[0]
             center = (x + w//2, y + h//2)
@@ -57,7 +59,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for events...")
         try:
             event_choice_region = (6, 450, 126, 1776)
-            event_matches = locate_on_screen(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
             
             if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
@@ -93,7 +95,7 @@ def career_lobby():
 
         # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        inspiration_matches = locate_on_screen(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)
+        inspiration_matches = match_template(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)
         if inspiration_matches:
             x, y, w, h = inspiration_matches[0]
             center = (x + w//2, y + h//2)
@@ -103,7 +105,7 @@ def career_lobby():
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        next_matches = locate_on_screen(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)
+        next_matches = match_template(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)
         if next_matches:
             x, y, w, h = next_matches[0]
             center = (x + w//2, y + h//2)
@@ -113,7 +115,7 @@ def career_lobby():
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = locate_on_screen(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)
+        cancel_matches = match_template(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)
         if cancel_matches:
             x, y, w, h = cancel_matches[0]
             center = (x + w//2, y + h//2)
@@ -123,7 +125,7 @@ def career_lobby():
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
-        tazuna_hint = locate_on_screen(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8)
+        tazuna_hint = match_template(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8)
 
         if tazuna_hint is None:
             print("[INFO] Should be in career lobby.")
@@ -291,13 +293,8 @@ def career_lobby():
         time.sleep(0.5)
         results_training = check_training()
         
-        # Load config for scoring thresholds
-        training_config = Config.load()
-        
         debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
-        # Use new scoring algorithm to choose best training
-        from core.state_adb import choose_best_training
-        best_training = choose_best_training(results_training, training_config)
+        best_training = choose_best_training(results_training, config)
         
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
@@ -312,12 +309,11 @@ def career_lobby():
             click(BACK_BUTTON_TEMPLATE)
             
             # Check if we should prioritize racing when no good training is available
-            do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
+            do_race_when_bad_training = config.get("do_race_when_bad_training", True)
             
             if do_race_when_bad_training:
                 # Check if all training options have failure rates above maximum
-                from core.logic import all_training_unsafe
-                max_failure = training_config.get('maximum_failure', 15)
+                max_failure = config.get('maximum_failure', 15)
                 debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
                 debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
 
@@ -349,7 +345,7 @@ def career_lobby():
                 do_rest(screenshot)
         
         debug_print("[DEBUG] Waiting before next iteration...")
-        time.sleep(1)
+        time.sleep(0.1)
 
 def check_goal_criteria(criteria_data, year, turn):
     """
