@@ -57,7 +57,7 @@ def career_lobby():
             # Check and ensure strategy matches config before race
             if not check_strategy_before_race():
                 debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
-            print("[INFO] Selecting try again.")
+            print("[INFO] Selecting view results.")
             tap_button(match)
             time.sleep(0.5)
             for i in range(3):
@@ -121,14 +121,14 @@ def career_lobby():
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)):
+        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.8)):
             print("[INFO] Selecting next.")
             tap_button(match)
 
         # Check next button 2
         debug_print("[DEBUG] Checking for next button 2...")
-        if (match := img_matches(screenshot, NEXT_2_BUTTON_TEMPLATE, confidence=0.6)):
-            print("[INFO] Selecting next.")
+        if (match := img_matches(screenshot, NEXT_2_BUTTON_TEMPLATE, confidence=0.9)):
+            print("[INFO] Selecting next 2.")
             tap_button(match)
 
         # Check cancel button
