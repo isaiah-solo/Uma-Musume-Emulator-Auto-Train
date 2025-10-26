@@ -3,16 +3,16 @@ import time
 from core.logic import all_training_unsafe
 from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
 from core.screens.claw_machine_adb import do_claw_machine
-from core.screens.race_adb import do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
+from core.screens.race_adb import RETRY_RACE, check_strategy_before_race, do_race, is_g1_racing_available, is_racing_available, race_day
 from core.screens.training_adb import check_training, do_train, go_to_training
-from utils.adb_recognizer import locate_on_screen, match_template
+from utils.adb_recognizer import match_template
 from utils.adb_input import tap
 from utils.adb_screenshot import take_screenshot
 from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
+from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
 
 # Import ADB state and logic modules
 from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
@@ -113,6 +113,30 @@ def career_lobby():
             print("[INFO] Selecting cancel.")
             tap_button(match)
 
+        # Check try again button
+        debug_print("[DEBUG] Checking for try again button...")
+        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.6)):
+            if not RETRY_RACE:
+                print("[INFO] retry_race is disabled. Stopping automation.")
+                raise SystemExit(0)
+            print("[INFO] Selecting try again.")
+            tap_button(match)
+
+        # Check view results button
+        debug_print("[DEBUG] Checking for view results button...")
+        if (match := img_matches(screenshot, VIEW_RESULTS_BUTTON_TEMPLATE, confidence=0.6)):
+            # Check and ensure strategy matches config before race
+            if not check_strategy_before_race():
+                debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
+            print("[INFO] Selecting try again.")
+            tap_button(match)
+            time.sleep(0.5)
+            for i in range(3):
+                debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
+                tap_button(match)
+                time.sleep(0.01)
+            debug_print("[DEBUG] Race preparation complete")
+
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
         if not img_matches(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8):
@@ -209,12 +233,6 @@ def career_lobby():
                         time.sleep(1)
                     else:
                         debug_print(f"[DEBUG] Race button not found on attempt {i+1}/2")
-            
-            race_prep()
-            time.sleep(1)
-            race_screenshot = take_screenshot()
-            # If race failed screen appears, handle retry before proceeding
-            handle_race_retry_if_failed(race_screenshot)
             continue
         else:
             debug_print("[DEBUG] Not URA scenario")
