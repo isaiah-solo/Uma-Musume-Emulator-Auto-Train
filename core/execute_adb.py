@@ -50,6 +50,30 @@ def career_lobby():
         if (match := img_matches(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)):
             print("[INFO] Selecting OK.")
             tap_button(match)
+
+        # Check view results button
+        debug_print("[DEBUG] Checking for view results button...")
+        if (match := img_matches(screenshot, VIEW_RESULTS_BUTTON_TEMPLATE, confidence=0.6)):
+            # Check and ensure strategy matches config before race
+            if not check_strategy_before_race():
+                debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
+            print("[INFO] Selecting try again.")
+            tap_button(match)
+            time.sleep(0.5)
+            for i in range(3):
+                debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
+                tap_button(match)
+                time.sleep(0.01)
+            debug_print("[DEBUG] Race preparation complete")
+
+        # Check try again button
+        debug_print("[DEBUG] Checking for try again button...")
+        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.6)):
+            if not RETRY_RACE:
+                print("[INFO] retry_race is disabled. Stopping automation.")
+                raise SystemExit(0)
+            print("[INFO] Selecting try again.")
+            tap_button(match)
         
         # Check for events
         debug_print("[DEBUG] Checking for events...")
@@ -112,30 +136,6 @@ def career_lobby():
         if (match := img_matches(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)):
             print("[INFO] Selecting cancel.")
             tap_button(match)
-
-        # Check try again button
-        debug_print("[DEBUG] Checking for try again button...")
-        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.6)):
-            if not RETRY_RACE:
-                print("[INFO] retry_race is disabled. Stopping automation.")
-                raise SystemExit(0)
-            print("[INFO] Selecting try again.")
-            tap_button(match)
-
-        # Check view results button
-        debug_print("[DEBUG] Checking for view results button...")
-        if (match := img_matches(screenshot, VIEW_RESULTS_BUTTON_TEMPLATE, confidence=0.6)):
-            # Check and ensure strategy matches config before race
-            if not check_strategy_before_race():
-                debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
-            print("[INFO] Selecting try again.")
-            tap_button(match)
-            time.sleep(0.5)
-            for i in range(3):
-                debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
-                tap_button(match)
-                time.sleep(0.01)
-            debug_print("[DEBUG] Race preparation complete")
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
