@@ -2,8 +2,8 @@ import time
 
 from core.logic import all_training_unsafe
 from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
-from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
-from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
+from core.screens.claw_machine_adb import do_claw_machine
+from core.screens.race_adb import do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
 from core.screens.training_adb import check_training, do_train, go_to_training
 from utils.adb_recognizer import locate_on_screen, match_template
 from utils.adb_input import tap
@@ -115,9 +115,7 @@ def career_lobby():
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
-        tazuna_hint = match_template(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8)
-
-        if tazuna_hint is None:
+        if not img_matches(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8):
             print("[INFO] Should be in career lobby.")
             continue
 
