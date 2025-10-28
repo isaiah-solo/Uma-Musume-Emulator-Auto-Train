@@ -130,7 +130,6 @@ py -m pip install fastapi uvicorn "pydantic<3" pillow numpy
 After its installed run the following command 
 
 ```cmd
-cd "C:\Users\WeiHe\Uma-Musume-Emulator-Auto-Train"
 py -m uvicorn web_config:app --host 127.0.0.1 --port 8000
 ```
 Then go to "http://127.0.0.1:8000" on your browser, you can make change real time with the inputs and confirm by clicking "Save"
