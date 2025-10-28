@@ -2,16 +2,20 @@ import subprocess
 import json
 from PIL import Image, ImageEnhance
 import numpy as np
+import os, threading, json
+
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config.json")
+_cache = {"data": None, "mtime": 0.0}
+_lock = threading.Lock()
 
 def load_config():
-    """Load ADB configuration from config.json"""
-    try:
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-            return config.get('adb_config', {})
-    except Exception as e:
-        print(f"Error loading config: {e}")
-        return {}
+    mtime = os.path.getmtime(CONFIG_PATH)
+    with _lock:
+        if _cache["data"] is None or mtime > _cache["mtime"]:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                _cache["data"] = json.load(f)
+                _cache["mtime"] = mtime
+        return _cache["data"]
 
 def run_adb_command(command, binary=False):
     """Run ADB command and return result"""
