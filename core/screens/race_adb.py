@@ -81,8 +81,7 @@ def race_day(screenshot, bought_skills):
 def race_select(year, prioritize_g1=False):
     """Select race"""
     debug_print(f"[DEBUG] Selecting race (G1 priority: {prioritize_g1})...")
-    
-    
+
     def find_and_select_race():
         """Helper function to find and select a race (G1 or normal)"""
         # Wait for race list to load before detection

@@ -23,6 +23,14 @@ def all_training_unsafe(results, maximum_failure=None):
       return False
   return True
 
+def is_at_stat_cap_limits(current_stats):
+  for stat, stat_value in current_stats.items():
+    stat_cap = STAT_CAPS.get(stat, 1200)
+    if stat_value < stat_cap:
+      return False
+  
+  return True
+
 def filter_by_stat_caps(results, current_stats):
   filtered = {}
   for stat, data in results.items():

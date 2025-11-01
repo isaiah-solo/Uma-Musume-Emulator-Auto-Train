@@ -547,9 +547,6 @@ def check_skills_are_available(bought_skills):
 
 def check_skill_points_cap(screenshot, bought_skills):
     """Check skill points and handle cap logic (same as PC version)"""
-    # Load config
-    config = Config.load()
-    
     skill_point_cap = config.get("skill_point_cap", 9999)
     current_skill_points = check_skill_points(screenshot)
     
@@ -653,7 +650,7 @@ def check_skill_points_cap(screenshot, bought_skills):
     
     return True
 
-def check_current_stats():
+def check_current_stats(screenshot):
     """
     Check current character stats using OCR on the stat regions.
     
@@ -672,7 +669,6 @@ def check_current_stats():
     for stat_name, region in stat_regions.items():
         try:
             # Take screenshot and crop to stat region
-            screenshot = take_screenshot()
             stat_img = screenshot.crop(region)
             
             # Enhance image for better OCR
@@ -836,7 +832,7 @@ def check_energy_bar(screenshot):
         debug_print(f"[DEBUG] Energy bar check failed: {e}")
         return 0.0
 
-def choose_best_training(training_results, config):
+def choose_best_training(screenshot, training_results, config):
     """
     Choose the best training based on scoring algorithm and stat caps.
     
@@ -853,7 +849,7 @@ def choose_best_training(training_results, config):
     priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
     
     # Get current stats for stat cap filtering
-    current_stats = check_current_stats()
+    current_stats = check_current_stats(screenshot)
     print(f"[INFO] Current stats: {current_stats}")
     debug_print(f"[DEBUG] Current stats for stat cap filtering: {current_stats}")
     

@@ -1,6 +1,6 @@
 import time
 
-from core.logic import all_training_unsafe
+from core.logic import all_training_unsafe, is_at_stat_cap_limits
 from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
 from core.screens.claw_machine_adb import do_claw_machine
 from core.screens.race_adb import RETRY_RACE, check_strategy_before_race, do_race, is_g1_racing_available, is_racing_available, race_day
@@ -15,7 +15,7 @@ from core.config import Config
 from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
 
 # Import ADB state and logic modules
-from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
+from core.state_adb import check_current_stats, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
 
 # Import event handling functions
 from core.event_handling import click, debug_print, handle_event_choice, click_event_choice
@@ -281,24 +281,27 @@ def career_lobby():
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
-        
         # Check energy before proceeding with training
         if energy_percentage < min_energy:
             print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
             do_rest(screenshot)
             continue
-            
-        if not go_to_training():
-            print("[INFO] Training button is not found.")
-            continue
-
-        # Last, do training
-        debug_print("[DEBUG] Analyzing training options...")
-        time.sleep(0.5)
-        results_training = check_training()
         
-        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
-        best_training = choose_best_training(results_training, config)
+        best_training = None
+        current_stats = check_current_stats(screenshot)
+        results_training = None
+        if not is_at_stat_cap_limits(current_stats):
+            if not go_to_training():
+                print("[INFO] Training button is not found.")
+                continue
+
+            # Last, do training
+            debug_print("[DEBUG] Analyzing training options...")
+            time.sleep(0.5)
+            results_training = check_training()
+            
+            debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
+            best_training = choose_best_training(screenshot, results_training, config)  
         
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
@@ -309,19 +312,21 @@ def career_lobby():
             debug_print("[DEBUG] No suitable training found based on scoring criteria")
             print("[INFO] No suitable training found based on scoring criteria.")
 
-            debug_print("[DEBUG] Going back from training screen...")
-            click(BACK_BUTTON_TEMPLATE)
+            if not is_at_stat_cap_limits(current_stats):
+                debug_print("[DEBUG] Going back from training screen...")
+                click(BACK_BUTTON_TEMPLATE)
             
             # Check if we should prioritize racing when no good training is available
             do_race_when_bad_training = config.get("do_race_when_bad_training", True)
             
             if do_race_when_bad_training:
                 # Check if all training options have failure rates above maximum
-                max_failure = config.get('maximum_failure', 15)
-                debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
-                debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
+                if results_training:
+                    max_failure = config.get('maximum_failure', 15)
+                    debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
+                    debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
 
-                if all_training_unsafe(results_training, max_failure):
+                if results_training and all_training_unsafe(results_training, max_failure):
                     debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
                     print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
                     do_rest(screenshot)
@@ -334,8 +339,12 @@ def career_lobby():
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
-                        race_found = do_race(year, PRIORITIZE_G1_RACE)
-                        if race_found:
+
+                        if not is_g1_racing_available(year):
+                            do_rest(screenshot)
+                            continue
+
+                        if do_race(year, PRIORITIZE_G1_RACE):
                             print("Training Race Result: Found Race")
                             continue
                         else:
@@ -344,6 +353,7 @@ def career_lobby():
                             click(BACK_BUTTON_TEMPLATE, text="[INFO] Race not found. Proceeding to rest.")
                             time.sleep(0.5)
                             do_rest(screenshot)
+                            continue
             else:
                 print("[INFO] Race prioritization disabled. Choosing to rest.")
                 do_rest(screenshot)
