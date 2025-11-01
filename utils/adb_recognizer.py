@@ -17,6 +17,8 @@ def match_template(screenshot, template, confidence=0.8, region=None):
     Returns:
         List of (x, y, width, height) matches or None if not found
     """
+    if template is None:
+        return None
     try:
         # Convert screenshot to OpenCV format
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)

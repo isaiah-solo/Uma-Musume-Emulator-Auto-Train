@@ -66,14 +66,13 @@ def take_screenshot() -> Image:
         print(f"Error taking screenshot: {e}")
         raise
 
-def enhanced_screenshot(region):
+def enhanced_screenshot(screenshot, region):
     """Take a screenshot of a specific region with enhancement (same as PC version)"""
     try:
-        screenshot = take_screenshot()
         cropped = screenshot.crop(region)
         
         # Resize for better OCR (same as PC version)
-        cropped = cropped.resize((cropped.width * 2, cropped.height * 2), Image.BICUBIC)
+        cropped = cropped.resize((cropped.width * 2, cropped.height * 2), Image.BILINEAR)
         
         # Convert to grayscale (same as PC version)
         cropped = cropped.convert("L")

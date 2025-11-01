@@ -1,28 +1,30 @@
 import time
 
+from core.logic import all_training_unsafe, is_at_stat_cap_limits
 from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
-from core.screens.claw_machine_adb import do_claw_machine, is_on_claw_machine_screen
-from core.screens.race_adb import after_race, do_race, handle_race_retry_if_failed, is_g1_racing_available, is_racing_available, race_day, race_prep
+from core.screens.claw_machine_adb import do_claw_machine
+from core.screens.race_adb import RETRY_RACE, check_strategy_before_race, do_race, is_g1_racing_available, is_racing_available, race_day
 from core.screens.training_adb import check_training, do_train, go_to_training
-from utils.adb_recognizer import locate_on_screen, match_template
+from utils.adb_recognizer import match_template
 from utils.adb_input import tap
 from utils.adb_screenshot import take_screenshot
 from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE
+from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
 
 # Import ADB state and logic modules
-from core.state_adb import check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, is_pre_debut_year
+from core.state_adb import check_current_stats, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
 
 # Import event handling functions
 from core.event_handling import click, debug_print, handle_event_choice, click_event_choice
 
+config = Config.load()
+
 def career_lobby():
     """Main career lobby loop"""
     # Load configuration
-    config = Config.load()
     MINIMUM_MOOD = config["minimum_mood"]
     PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
 
@@ -39,29 +41,49 @@ def career_lobby():
         
         # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
-        if is_on_claw_machine_screen(screenshot):
+        if (match := img_matches(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)):
             do_claw_machine(screenshot)
             continue
         
         # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        ok_matches = match_template(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)
-        if ok_matches:
-            x, y, w, h = ok_matches[0]
-            center = (x + w//2, y + h//2)
-            print("[INFO] OK button found, clicking it.")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)):
+            print("[INFO] Selecting OK.")
+            tap_button(match)
+
+        # Check view results button
+        debug_print("[DEBUG] Checking for view results button...")
+        if (match := img_matches(screenshot, VIEW_RESULTS_BUTTON_TEMPLATE, confidence=0.6)):
+            # Check and ensure strategy matches config before race
+            if not check_strategy_before_race():
+                debug_print("[DEBUG] Failed to ensure correct strategy, proceeding anyway...")
+            print("[INFO] Selecting view results.")
+            tap_button(match)
+            time.sleep(0.5)
+            for i in range(3):
+                debug_print(f"[DEBUG] Clicking view results {i + 1}/3")
+                tap_button(match)
+                time.sleep(0.01)
+            debug_print("[DEBUG] Race preparation complete")
+
+        # Check try again button
+        debug_print("[DEBUG] Checking for try again button...")
+        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.6)):
+            if not RETRY_RACE:
+                print("[INFO] retry_race is disabled. Stopping automation.")
+                raise SystemExit(0)
+            print("[INFO] Selecting try again.")
+            tap_button(match)
         
         # Check for events
         debug_print("[DEBUG] Checking for events...")
         try:
             event_choice_region = (6, 450, 126, 1776)
-            event_matches = match_template(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
+            event_matches = match_template(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.8, region=event_choice_region)
             
             if event_matches:
                 print("[INFO] Event detected, analyzing choices...")
-                choice_number, success, choice_locations = handle_event_choice()
+                choice_number, success, choice_locations = handle_event_choice(screenshot)
                 if success:
                     click_success = click_event_choice(choice_number, choice_locations)
                     if click_success:
@@ -93,39 +115,31 @@ def career_lobby():
 
         # Check inspiration button
         debug_print("[DEBUG] Checking for inspiration...")
-        inspiration_matches = match_template(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)
-        if inspiration_matches:
-            x, y, w, h = inspiration_matches[0]
-            center = (x + w//2, y + h//2)
+        if (match := img_matches(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)):
             print("[INFO] Inspiration found.")
-            tap(center[0], center[1])
-            continue
+            tap_button(match)
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        next_matches = match_template(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.6)
-        if next_matches:
-            x, y, w, h = next_matches[0]
-            center = (x + w//2, y + h//2)
-            debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.8)):
+            print("[INFO] Selecting next.")
+            tap_button(match)
+
+        # Check next button 2
+        debug_print("[DEBUG] Checking for next button 2...")
+        if (match := img_matches(screenshot, NEXT_2_BUTTON_TEMPLATE, confidence=0.9)):
+            print("[INFO] Selecting next 2.")
+            tap_button(match)
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        cancel_matches = match_template(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)
-        if cancel_matches:
-            x, y, w, h = cancel_matches[0]
-            center = (x + w//2, y + h//2)
-            debug_print(f"[DEBUG] Clicking cancel_btn.png at position {center}")
-            tap(center[0], center[1])
-            continue
+        if (match := img_matches(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)):
+            print("[INFO] Selecting cancel.")
+            tap_button(match)
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
-        tazuna_hint = locate_on_screen(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8)
-
-        if tazuna_hint is None:
+        if not img_matches(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8):
             print("[INFO] Should be in career lobby.")
             continue
 
@@ -139,13 +153,13 @@ def career_lobby():
 
         # Get current state
         debug_print("[DEBUG] Getting current game state...")
-        mood = check_mood()
+        mood = check_mood(screenshot)
         mood_index = MOOD_LIST.index(mood)
         minimum_mood = MOOD_LIST.index(MINIMUM_MOOD)
-        turn = check_turn()
-        year = check_current_year()
-        goal_data = check_goal_name_with_g1_requirement()
-        criteria_text = check_criteria()
+        turn = check_turn(screenshot)
+        year = check_current_year(screenshot)
+        goal_data = check_goal_name_with_g1_requirement(screenshot)
+        criteria_text = check_criteria(screenshot)
         
         print("\n=======================================================================================\n")
         print(f"Year: {year}")
@@ -158,7 +172,7 @@ def career_lobby():
         
         # Check energy bar before proceeding with training decisions
         debug_print("[DEBUG] Checking energy bar...")
-        energy_percentage = check_energy_bar()
+        energy_percentage = check_energy_bar(screenshot)
         min_energy = config.get("min_energy", 30)
         
         print(f"Energy: {energy_percentage:.1f}% (Minimum: {min_energy}%)")
@@ -169,9 +183,9 @@ def career_lobby():
         goal_analysis = check_goal_criteria({"text": criteria_text, "requires_g1_races": goal_data['requires_g1_races']}, year, turn)
         
         if goal_analysis["should_prioritize_racing"]:
+            race_found = do_race(year, prioritize_g1=goal_analysis["should_prioritize_g1_races"])
             if goal_analysis["should_prioritize_g1_races"]:
                 print(f"Decision: Criteria not met - Prioritizing G1 races to meet goals")
-                race_found = do_race(year, prioritize_g1=True)
                 if race_found:
                     print("Race Result: Found G1 Race")
                     continue
@@ -182,7 +196,6 @@ def career_lobby():
                     time.sleep(0.5)
             else:
                 print(f"Decision: Criteria not met - Prioritizing normal races to meet goals")
-                race_found = do_race(year)
                 if race_found:
                     print("Race Result: Found Race")
                     continue
@@ -207,7 +220,7 @@ def career_lobby():
             
             if enable_skill_check:
                 print("[INFO] URA Finale Race Day - Checking skill points cap...")
-                check_skill_points_cap(bought_skills)
+                check_skill_points_cap(screenshot, bought_skills)
             
             # URA race logic would go here
             debug_print("[DEBUG] Starting URA race...")
@@ -220,13 +233,6 @@ def career_lobby():
                         time.sleep(1)
                     else:
                         debug_print(f"[DEBUG] Race button not found on attempt {i+1}/2")
-            
-            race_prep()
-            time.sleep(1)
-            race_screenshot = take_screenshot()
-            # If race failed screen appears, handle retry before proceeding
-            handle_race_retry_if_failed(race_screenshot)
-            after_race()
             continue
         else:
             debug_print("[DEBUG] Not URA scenario")
@@ -235,7 +241,7 @@ def career_lobby():
         debug_print("[DEBUG] Checking for race day...")
         if turn == "Race Day" and year != "Finale Season":
             print("[INFO] Race Day.")
-            race_day(bought_skills)
+            race_day(screenshot, bought_skills)
             continue
         else:
             debug_print("[DEBUG] Not race day")
@@ -275,29 +281,27 @@ def career_lobby():
         
         # Check training button
         debug_print("[DEBUG] Going to training...")
-        
         # Check energy before proceeding with training
         if energy_percentage < min_energy:
             print(f"[INFO] Energy too low ({energy_percentage:.1f}% < {min_energy}%), skipping training and going to rest")
             do_rest(screenshot)
             continue
-            
-        if not go_to_training():
-            print("[INFO] Training button is not found.")
-            continue
+        
+        best_training = None
+        current_stats = check_current_stats(screenshot)
+        results_training = None
+        if not is_at_stat_cap_limits(current_stats):
+            if not go_to_training():
+                print("[INFO] Training button is not found.")
+                continue
 
-        # Last, do training
-        debug_print("[DEBUG] Analyzing training options...")
-        time.sleep(0.5)
-        results_training = check_training()
-        
-        # Load config for scoring thresholds
-        training_config = Config.load()
-        
-        debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
-        # Use new scoring algorithm to choose best training
-        from core.state_adb import choose_best_training
-        best_training = choose_best_training(results_training, training_config)
+            # Last, do training
+            debug_print("[DEBUG] Analyzing training options...")
+            time.sleep(0.5)
+            results_training = check_training()
+            
+            debug_print("[DEBUG] Deciding best training action using scoring algorithm...")
+            best_training = choose_best_training(screenshot, results_training, config)  
         
         if best_training:
             debug_print(f"[DEBUG] Scoring algorithm selected: {best_training.upper()} training")
@@ -308,20 +312,21 @@ def career_lobby():
             debug_print("[DEBUG] No suitable training found based on scoring criteria")
             print("[INFO] No suitable training found based on scoring criteria.")
 
-            debug_print("[DEBUG] Going back from training screen...")
-            click(BACK_BUTTON_TEMPLATE)
+            if not is_at_stat_cap_limits(current_stats):
+                debug_print("[DEBUG] Going back from training screen...")
+                click(BACK_BUTTON_TEMPLATE)
             
             # Check if we should prioritize racing when no good training is available
-            do_race_when_bad_training = training_config.get("do_race_when_bad_training", True)
+            do_race_when_bad_training = config.get("do_race_when_bad_training", True)
             
             if do_race_when_bad_training:
                 # Check if all training options have failure rates above maximum
-                from core.logic import all_training_unsafe
-                max_failure = training_config.get('maximum_failure', 15)
-                debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
-                debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
+                if results_training:
+                    max_failure = config.get('maximum_failure', 15)
+                    debug_print(f"[DEBUG] Checking if all training options have failure rate > {max_failure}%")
+                    debug_print(f"[DEBUG] Training results: {[(k, v['failure']) for k, v in results_training.items()]}")
 
-                if all_training_unsafe(results_training, max_failure):
+                if results_training and all_training_unsafe(results_training, max_failure):
                     debug_print(f"[DEBUG] All training options have failure rate > {max_failure}%")
                     print(f"[INFO] All training options have failure rate > {max_failure}%. Skipping race and choosing to rest.")
                     do_rest(screenshot)
@@ -334,8 +339,12 @@ def career_lobby():
                     else:
                         print("[INFO] Prioritizing race due to insufficient training scores.")
                         print("Training Race Check: Looking for race due to insufficient training scores...")
-                        race_found = do_race(year, PRIORITIZE_G1_RACE)
-                        if race_found:
+
+                        if not is_g1_racing_available(year):
+                            do_rest(screenshot)
+                            continue
+
+                        if do_race(year, PRIORITIZE_G1_RACE):
                             print("Training Race Result: Found Race")
                             continue
                         else:
@@ -344,12 +353,23 @@ def career_lobby():
                             click(BACK_BUTTON_TEMPLATE, text="[INFO] Race not found. Proceeding to rest.")
                             time.sleep(0.5)
                             do_rest(screenshot)
+                            continue
             else:
                 print("[INFO] Race prioritization disabled. Choosing to rest.")
                 do_rest(screenshot)
         
         debug_print("[DEBUG] Waiting before next iteration...")
-        time.sleep(1)
+        time.sleep(0.1)
+        
+def img_matches(screenshot, template, confidence):
+    matches = match_template(screenshot, template, confidence=confidence)
+    return matches[0] if matches else None
+        
+def tap_button(match):
+    x, y, w, h = match
+    center = (x + w//2, y + h//2)
+    debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
+    tap(center[0], center[1])
 
 def check_goal_criteria(criteria_data, year, turn):
     """

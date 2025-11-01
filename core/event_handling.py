@@ -2,8 +2,10 @@ import os
 import json
 import re
 import time
+from typing import Dict
 from PIL import ImageStat
 
+from core.config import Config
 from core.templates_adb import EVENT_CHOICE_1_TEMPLATE
 from utils.adb_input import tap
 from utils.adb_recognizer import locate_all_on_screen, locate_on_screen
@@ -11,16 +13,87 @@ from utils.adb_screenshot import take_screenshot, capture_region
 from core.ocr import extract_event_name_text
 
 # Load config and check debug mode
-with open("config.json", "r", encoding="utf-8") as config_file:
-    config = json.load(config_file)
-    DEBUG_MODE = config.get("debug_mode", False)
+config = Config.load()
+DEBUG_MODE = config.get("debug_mode", False)
+
+def _safe_load_json(path: str):
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8-sig") as f:
+        return json.load(f)
+
+_EVENT_JSON_FILES = [
+    ("Support Card", "assets/events/support_card.json"),
+    ("Uma Data", "assets/events/uma_data.json"),
+    ("Ura Finale", "assets/events/ura_finale.json"),
+]
+
+def _merge_source_label(existing: str, new_src: str) -> str:
+    """Merge human-readable source label without duplicates, e.g., 'Support Card + Uma Data'."""
+    if not existing:
+        return new_src
+    if existing == new_src:
+        return existing
+    parts = {p.strip() for p in existing.replace("+", ",").split(",")} | {new_src}
+    ordered = ["Support Card", "Uma Data", "Ura Finale"]
+    final = [p for p in ordered if p in parts] + [p for p in sorted(parts) if p not in ordered]
+    return "All Sources" if len(final) == 3 else " + ".join(final)
+
+def _build_event_db() -> Dict[str, Dict]:
+    """
+    Returns:
+      {
+        EventName: {
+          "source": "Support Card + Uma Data" | "All Sources" | ...,
+          "options": { "Top": "...", "Bottom": "...", ... }
+        },
+        ...
+      }
+    """
+    db: Dict[str, Dict] = {}
+    for src_name, path in _EVENT_JSON_FILES:
+        data = _safe_load_json(path)
+        if data is None:
+            continue
+
+        if src_name == "Uma Data":
+            # Structure: [ { "UmaEvents": [ {EventName, EventOptions}, ... ] }, ... ]
+            for char in data:
+                for ev in char.get("UmaEvents", []):
+                    name = ev.get("EventName")
+                    if not name:
+                        continue
+                    entry = db.setdefault(name, {"source": "", "options": {}})
+                    entry["source"] = _merge_source_label(entry["source"], src_name)
+                    entry["options"].update(ev.get("EventOptions", {}) or {})
+        else:
+            # support_card.json / ura_finale.json: list of events
+            for ev in data:
+                name = ev.get("EventName")
+                if not name:
+                    continue
+                entry = db.setdefault(name, {"source": "", "options": {}})
+                entry["source"] = _merge_source_label(entry["source"], src_name)
+                entry["options"].update(ev.get("EventOptions", {}) or {})
+
+    return db
+
+# 2) Build once at import (hot path uses memory only)
+EVENT_DB: Dict[str, Dict] = _build_event_db()
+
+def search_events_exact(name: str) -> Dict[str, Dict]:
+    """O(1) in-memory exact lookup; returns {} if not found."""
+    if not name:
+        return {}
+    entry = EVENT_DB.get(name)
+    return {name: entry} if entry else {}
 
 def debug_print(message):
     """Print debug message only if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
         print(message)
 
-def count_event_choices():
+def count_event_choices(screenshot):
     """
     Count how many event choice icons are found on screen.
     Uses event_choice_1.png as template to find all U-shaped icons.
@@ -32,7 +105,6 @@ def count_event_choices():
         debug_print(f"[DEBUG] Searching for event choices using: EVENT_CHOICE_1_TEMPLATE")
         # Search for all instances of the template in the event choice region
         event_choice_region = (6, 450, 126, 1776)
-        screenshot = take_screenshot()
         locations = locate_all_on_screen(screenshot, EVENT_CHOICE_1_TEMPLATE, confidence=0.45, region=event_choice_region)
         debug_print(f"[DEBUG] Raw locations found: {len(locations)}")
         if not locations:
@@ -348,144 +420,135 @@ def generate_event_variations(event_name):
     
     return variations
 
-def search_events(event_variations):
-    """Search for matching events in databases (same as original PC version)"""
-    found_events = {}
-    import re
+# Precompiled once
+_RE_KEEP_CHARS = re.compile(r"[^a-z0-9☆\s]")
+_RE_REMOVE_SPACES_PUNCT = re.compile(r"[^a-z0-9☆]")
 
-    def normalize_for_match(name: str) -> str:
-        # Lowercase, remove chain symbols and trim
-        n = (name or "").lower()
-        n = n.replace("(❯)", "").replace("(❯❯)", "").replace("(❯❯❯)", "").strip()
-        return n
+# Option name filter keywords (lowercased)
+_VALID_OPTION_KEYWORDS = (
+    "top option",
+    "bottom option",
+    "middle option",
+    "option1", "option2", "option3", "option4", "option5",
+    "option 1", "option 2", "option 3", "option 4", "option 5",
+)
 
-    def strip_punct_spaces(name: str) -> str:
-        # Keep letters, numbers, star, and spaces; drop the rest
-        return re.sub(r"[^a-z0-9☆\s]", "", name)
+def _normalize_for_match(name: str) -> str:
+    n = (name or "").lower()
+    # Remove the chain symbols you mentioned
+    for token in ("(❯❯❯)", "(❯❯)", "(❯)"):
+        n = n.replace(token, "")
+    return n.strip()
 
-    def nospace(name: str) -> str:
-        # Remove all spaces and punctuation entirely for permissive matching
-        return re.sub(r"[^a-z0-9☆]", "", name)
+def _strip_punct_spaces(name: str) -> str:
+    # Keep letters, numbers, star, and spaces; drop the rest
+    return _RE_KEEP_CHARS.sub("", name)
 
-    def is_match(db_name_raw: str, search_raw: str) -> bool:
-        dbn = normalize_for_match(db_name_raw)
-        srch = normalize_for_match(search_raw)
-        if not dbn or not srch:
-            return False
-        # Guard: ignore trivial variations like just a star or single short token
-        srch_tokens = [t for t in strip_punct_spaces(srch).split() if t]
-        if (len(srch) < 3) or (len(srch_tokens) == 1 and len(srch_tokens[0]) < 3) or (srch.strip() == '☆'):
-            return False
-        # Exact match
-        if dbn == srch:
-            return True
-        # Substring match ignoring punctuation (handles names like "Acupuncture (Just an Acupuncturist, No Worries! ☆)")
-        dbn_np = strip_punct_spaces(dbn).replace("  ", " ").strip()
-        srch_np = strip_punct_spaces(srch).replace("  ", " ").strip()
-        if srch_np and (srch_np in dbn_np or dbn_np in srch_np):
-            return True
-        # Substring match ignoring all spaces/punct
-        dbn_ns = nospace(dbn)
-        srch_ns = nospace(srch)
-        if srch_ns and (srch_ns in dbn_ns or dbn_ns in srch_ns):
-            return True
-        # Token containment (all search tokens in db tokens)
-        db_tokens = set([t for t in dbn_np.split() if t])
-        srch_tokens = set([t for t in srch_np.split() if t])
-        if srch_tokens and srch_tokens.issubset(db_tokens):
-            return True
+def _nospace(name: str) -> str:
+    # Remove all spaces and punctuation entirely
+    return _RE_REMOVE_SPACES_PUNCT.sub("", name)
+
+def _is_match(db_name_raw: str, search_raw: str) -> bool:
+    dbn = _normalize_for_match(db_name_raw)
+    srch = _normalize_for_match(search_raw)
+    if not dbn or not srch:
         return False
-    
-    # Load support card events
-    support_events = []
-    if os.path.exists("assets/events/support_card.json"):
-        with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-            support_events = json.load(f)
-    
-    # Load uma data events
-    uma_events = []
-    if os.path.exists("assets/events/uma_data.json"):
-        with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-            uma_data = json.load(f)
-            # Extract all UmaEvents from all characters
-            for character in uma_data:
-                if "UmaEvents" in character:
-                    uma_events.extend(character["UmaEvents"])
-    
-    # Load ura finale events
-    ura_events = []
-    if os.path.exists("assets/events/ura_finale.json"):
-        with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-            ura_events = json.load(f)
-    
-    # Search in support card events
-    for event in support_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Support Card", "options": {}}
-                
+
+    # Guard: ignore trivial variations
+    srch_tokens = [t for t in _strip_punct_spaces(srch).split() if t]
+    if (len(srch) < 3) or (len(srch_tokens) == 1 and len(srch_tokens[0]) < 3) or (srch.strip() == "☆"):
+        return False
+
+    # Exact
+    if dbn == srch:
+        return True
+
+    # Substring match ignoring punctuation/spaces
+    dbn_np = _strip_punct_spaces(dbn).replace("  ", " ").strip()
+    srch_np = _strip_punct_spaces(srch).replace("  ", " ").strip()
+    if srch_np and (srch_np in dbn_np or dbn_np in srch_np):
+        return True
+
+    # Substring match ignoring all spaces/punct
+    dbn_ns = _nospace(dbn)
+    srch_ns = _nospace(srch)
+    if srch_ns and (srch_ns in dbn_ns or dbn_ns in srch_ns):
+        return True
+
+    # Token containment (all search tokens in db tokens)
+    db_tokens = set([t for t in dbn_np.split() if t])
+    srch_tokens_set = set([t for t in srch_np.split() if t])
+    if srch_tokens_set and srch_tokens_set.issubset(db_tokens):
+        return True
+
+    return False
+
+def _merge_source_label_fallback(existing: str, new_src: str) -> str:
+    # Use your global _merge_source_label if defined; otherwise a simple dedup combiner:
+    if ' _merge_source_label' in globals() and callable(globals()['_merge_source_label']):  # noqa: E712
+        return globals()['_merge_source_label'](existing, new_src)  # type: ignore
+    if not existing:
+        return new_src
+    if existing == new_src:
+        return existing
+    parts = {p.strip() for p in existing.replace("+", ",").split(",")} | {new_src}
+    ordered = ["Support Card", "Uma Data", "Ura Finale"]
+    final = [p for p in ordered if p in parts] + [p for p in sorted(parts) if p not in ordered]
+    return "All Sources" if len(final) == 3 else " + ".join(final)
+
+def search_events(event_variations):
+    """
+    Fuzzy search over preloaded EVENT_DB with debug logging.
+    Returns { EventName: { "source": str, "options": {...}} }
+    """
+    found_events = {}
+    debug_print("[DEBUG] Starting search_events...")
+    if not event_variations:
+        debug_print("[DEBUG] No variations provided; returning empty result.")
+        return found_events
+
+    debug_print(f"[DEBUG] Variations to search: {event_variations}")
+
+    # Pre-normalize variations once
+    variations_norm = [_normalize_for_match(v) for v in event_variations if v]
+    debug_print(f"[DEBUG] Normalized variations: {variations_norm}")
+
+    # Iterate in-memory DB
+    total_db_events = len(EVENT_DB)
+    debug_print(f"[DEBUG] Searching across {total_db_events} preloaded events in memory...")
+
+    match_count = 0
+    for db_event_name, db_entry in EVENT_DB.items():
+        for v in variations_norm:
+            if _is_match(db_event_name, v):
+                debug_print(f"[DEBUG] Matched '{v}' → '{db_event_name}'")
+                match_count += 1
+                # Create or update entry
+                event_name_key = db_event_name
+                dst = found_events.setdefault(event_name_key, {"source": "", "options": {}})
+                dst["source"] = _merge_source_label_fallback(dst["source"], db_entry.get("source", ""))
                 # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in uma events
-    for event in uma_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Uma Data", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Both"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
-    # Search in ura finale events
-    for event in ura_events:
-        db_event_name = event.get("EventName", "")
-        # Try matching with all variations (robust matching)
-        for variation in event_variations:
-            if is_match(db_event_name, variation):
-                event_name_key = event['EventName']
-                if event_name_key not in found_events:
-                    found_events[event_name_key] = {"source": "Ura Finale", "options": {}}
-                elif found_events[event_name_key]["source"] == "Support Card":
-                    found_events[event_name_key]["source"] = "Support Card + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Uma Data":
-                    found_events[event_name_key]["source"] = "Uma Data + Ura Finale"
-                elif found_events[event_name_key]["source"] == "Both":
-                    found_events[event_name_key]["source"] = "All Sources"
-                
-                # Filter and add valid options
-                event_options = event.get("EventOptions", {})
-                for option_name, option_reward in event_options.items():
-                    # Only include standard option names
-                    if option_name and any(keyword in option_name.lower() for keyword in 
-                                         ["top option", "bottom option", "middle option", "option1", "option2", "option3"]):
-                        found_events[event_name_key]["options"][option_name] = option_reward
-                break  # Found a match, no need to try other variations
-    
+                src_opts = db_entry.get("options", {}) or {}
+                for option_name, option_reward in src_opts.items():
+                    if not option_name:
+                        continue
+                    ln = option_name.lower()
+                    if any(k in ln for k in _VALID_OPTION_KEYWORDS):
+                        dst["options"][option_name] = option_reward
+                break  # no need to test other variations once matched
+
+    debug_print(f"[DEBUG] Total matched events: {match_count}")
+
+    if not found_events:
+        print("[INFO] No events matched from variations.")
+    else:
+        print(f"[INFO] Found {len(found_events)} matching event(s).")
+        for k, v in found_events.items():
+            print(f"  - {k} ({v['source']}), {len(v['options'])} options")
+
     return found_events
 
-def handle_event_choice():
+def handle_event_choice(screenshot):
     """
     Main function to handle event detection and choice selection.
     This function should be called when an event is detected.
@@ -500,11 +563,8 @@ def handle_event_choice():
     print("Event detected, scan event")
     
     try:
-        # Wait for event to stabilize (1.5 seconds)
-        time.sleep(1.5)
-
         # Re-validate that this is a choices event before OCR (avoid scanning non-choice dialogs)
-        recheck_count, recheck_locations = count_event_choices()
+        recheck_count, recheck_locations = count_event_choices(screenshot)
         debug_print(f"[DEBUG] Recheck choices after delay: {recheck_count}")
         if recheck_count == 0:
             print("[INFO] Event choices not visible after delay, skipping analysis")
@@ -522,45 +582,6 @@ def handle_event_choice():
         
         print(f"Event found: {event_name}")
 
-        # Prefer exact name lookup to ensure options align with the specific event instance
-        def search_events_exact(name):
-            results = {}
-            # Support Card
-            if os.path.exists("assets/events/support_card.json"):
-                with open("assets/events/support_card.json", "r", encoding="utf-8-sig") as f:
-                    for ev in json.load(f):
-                        if ev.get("EventName") == name:
-                            entry = results.setdefault(name, {"source": "Support Card", "options": {}})
-                            # Merge options across duplicate entries of the same event
-                            entry["options"].update(ev.get("EventOptions", {}))
-            # Uma Data
-            if os.path.exists("assets/events/uma_data.json"):
-                with open("assets/events/uma_data.json", "r", encoding="utf-8-sig") as f:
-                    for character in json.load(f):
-                        for ev in character.get("UmaEvents", []):
-                            if ev.get("EventName") == name:
-                                entry = results.setdefault(name, {"source": "Uma Data", "options": {}})
-                                # Merge source labels
-                                if entry["source"] == "Support Card":
-                                    entry["source"] = "Both"
-                                elif entry["source"].startswith("Support Card +"):
-                                    entry["source"] = entry["source"].replace("Support Card +", "Both +")
-                                entry["options"].update(ev.get("EventOptions", {}))
-            # Ura Finale
-            if os.path.exists("assets/events/ura_finale.json"):
-                with open("assets/events/ura_finale.json", "r", encoding="utf-8-sig") as f:
-                    for ev in json.load(f):
-                        if ev.get("EventName") == name:
-                            entry = results.setdefault(name, {"source": "Ura Finale", "options": {}})
-                            if entry["source"] == "Support Card":
-                                entry["source"] = "Support Card + Ura Finale"
-                            elif entry["source"]["source"] == "Uma Data":
-                                entry["source"] = "Uma Data + Ura Finale"
-                            elif entry["source"] == "Both":
-                                entry["source"] = "All Sources"
-                            entry["options"].update(ev.get("EventOptions", {}))
-            return results
-
         found_events = search_events_exact(event_name)
         if not found_events:
             # Fallback variations-based search
@@ -568,7 +589,7 @@ def handle_event_choice():
             found_events = search_events(event_variations)
         
         # Count event choices on screen
-        choices_found, choice_locations = count_event_choices()
+        choices_found, choice_locations = count_event_choices(screenshot)
         
         # Load event priorities
         priorities = load_event_priorities()
@@ -656,7 +677,7 @@ def handle_event_choice():
         print(f"Error during event handling: {e}")
         # If choices are visible, return their locations to allow fallback top-choice click
         try:
-            _, fallback_locations = count_event_choices()
+            _, fallback_locations = count_event_choices(screenshot)
         except Exception:
             fallback_locations = []
         return 1, False, fallback_locations  # Default to first choice on error
@@ -727,7 +748,7 @@ def click_event_choice(choice_number, choice_locations=None):
         print(f"Error clicking event choice: {e}")
         return False
 
-def click(template, confidence=0.8, minSearch=1, click=1, text="", region=None):
+def click(template, confidence=0.8, minSearch=1, text="", region=None):
     """Click on image with retry logic"""
     debug_print(f"[DEBUG] Looking for: {template}")
     for attempt in range(int(minSearch)):

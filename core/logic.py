@@ -1,7 +1,5 @@
 import json
 
-from core.state_adb import check_current_year, stat_state
-
 with open("config.json", "r", encoding="utf-8") as file:
   config = json.load(file)
 
@@ -23,6 +21,14 @@ def all_training_unsafe(results, maximum_failure=None):
   for stat, data in results.items():
     if int(data["failure"]) <= maximum_failure:
       return False
+  return True
+
+def is_at_stat_cap_limits(current_stats):
+  for stat, stat_value in current_stats.items():
+    stat_cap = STAT_CAPS.get(stat, 1200)
+    if stat_value < stat_cap:
+      return False
+  
   return True
 
 def filter_by_stat_caps(results, current_stats):

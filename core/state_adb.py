@@ -1,20 +1,26 @@
-import re
 import time
 import json
 import os
+from core.logic import filter_by_stat_caps
 import cv2
+import pytesseract
+import re
+import numpy as np
+import tkinter as tk
+from tkinter import messagebox
 
+from utils.skill_auto_purchase import cache_skill_points
 from PIL import Image, ImageEnhance
 from core.templates_adb import BACK_BUTTON_TEMPLATE, HINT_TEMPLATE, SKILLS_BUTTON_TEMPLATE
-from utils.adb_screenshot import capture_region, enhanced_screenshot, enhanced_screenshot_for_failure, enhanced_screenshot_for_year, take_screenshot
-from core.ocr import extract_text, extract_number, extract_turn_number, extract_mood_text, extract_failure_text, extract_failure_text_with_confidence
+from utils.adb_screenshot import capture_region, enhanced_screenshot, take_screenshot
+from core.ocr import extract_text, extract_number, extract_mood_text
 from utils.adb_recognizer import match_template
 from utils.skill_auto_purchase import execute_skill_purchases, click_image_button, extract_skill_points
 from utils.skill_recognizer import scan_all_skills_with_scroll
 from utils.skill_purchase_optimizer import load_skill_config, create_purchase_plan, filter_affordable_skills
 
 from utils.constants_phone import (
-    SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, YEAR_REGION, 
+    FAILURE_REGION_GUTS, FAILURE_REGION_PWR, FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_WIT, SUPPORT_CARD_ICON_REGION, MOOD_REGION, TURN_REGION, YEAR_REGION, 
     MOOD_LIST, CRITERIA_REGION, SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION,
     SKILL_PTS_REGION
 )
@@ -45,7 +51,7 @@ SUPPORT_ICON_TMPLS = {
 }
 
 # Get Stat
-def stat_state():
+def stat_state(screenshot):
     stat_regions = {
         "spd": SPD_REGION,
         "sta": STA_REGION,
@@ -56,19 +62,16 @@ def stat_state():
 
     result = {}
     for stat, region in stat_regions.items():
-        img = enhanced_screenshot(region)
+        img = enhanced_screenshot(screenshot, region)
         val = extract_number(img)
         digits = ''.join(filter(str.isdigit, val))
         result[stat] = int(digits) if digits.isdigit() else 0
     return result
 
 # Check support card in each training
-def check_support_card(threshold=0.85):
+def check_support_card(screenshot, threshold=0.85):
     count_result = {}
 
-    # Take a screenshot for template matching
-    screenshot = take_screenshot()
-    
     # Save full screenshot for debugging only in debug mode
     if DEBUG_MODE:
         screenshot.save("debug_support_cards_screenshot.png")
@@ -131,7 +134,7 @@ def check_support_card(threshold=0.85):
 
     return count_result
 
-def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
+def check_hint(screenshot, template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
     """Detect presence of a hint icon within the support card search region.
 
     Args:
@@ -142,8 +145,6 @@ def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
         True if at least one hint icon is found in `SUPPORT_CARD_ICON_REGION`, otherwise False.
     """
     try:
-        screenshot = take_screenshot()
-
         # Convert PIL (left, top, right, bottom) to OpenCV (x, y, width, height)
         left, top, right, bottom = SUPPORT_CARD_ICON_REGION
         region_cv = (left, top, right - left, bottom - top)
@@ -165,7 +166,7 @@ def check_hint(template = HINT_TEMPLATE, confidence: float = 0.6) -> bool:
         debug_print(f"[DEBUG] check_hint failed: {e}")
         return False
 
-def check_failure(train_type):
+def check_failure(screenshot, train_type):
     """
     Check failure rate for a specific training type using direct region OCR.
     Args:
@@ -174,12 +175,6 @@ def check_failure(train_type):
         (rate, confidence)
     """
     debug_print(f"[DEBUG] ===== STARTING FAILURE DETECTION for {train_type.upper()} =====")
-    from utils.constants_phone import FAILURE_REGION_SPD, FAILURE_REGION_STA, FAILURE_REGION_PWR, FAILURE_REGION_GUTS, FAILURE_REGION_WIT
-    from utils.adb_screenshot import enhanced_screenshot, take_screenshot
-    import numpy as np
-    import pytesseract
-    import re
-    from PIL import ImageEnhance
 
     region_map = {
         'spd': FAILURE_REGION_SPD,
@@ -197,7 +192,7 @@ def check_failure(train_type):
     # Step 1: Try white-specialized OCR 3 times
     for attempt in range(3):
         debug_print(f"[DEBUG] White OCR attempt {attempt+1}/3 for {train_type.upper()}")
-        img = enhanced_screenshot(region)
+        img = enhanced_screenshot(screenshot, region)
         if DEBUG_MODE:
             img.save(f"debug_failure_{train_type}_white_attempt_{attempt+1}.png")
         
@@ -321,12 +316,12 @@ def fuzzy_match_mood(text):
     debug_print(f"[DEBUG] No fuzzy match found for: '{text}'")
     return "UNKNOWN"
 
-def check_mood():
+def check_mood(screenshot):
     # Try up to 3 times to detect mood
     max_attempts = 3
     
     for attempt in range(1, max_attempts + 1):
-        mood_img = enhanced_screenshot(MOOD_REGION)
+        mood_img = enhanced_screenshot(screenshot, MOOD_REGION)
         mood_text = extract_mood_text(mood_img)
         
         # Apply fuzzy matching for mood detection
@@ -347,12 +342,12 @@ def check_mood():
     print(f"[WARNING] Mood not recognized after {max_attempts} attempts: {mood_text}")
     return "UNKNOWN"
 
-def check_turn():
+def check_turn(screenshot):
     """Fast turn detection with minimal OCR"""
     debug_print("[DEBUG] Starting turn detection...")
     
     try:
-        turn_img = enhanced_screenshot(TURN_REGION)
+        turn_img = enhanced_screenshot(screenshot, TURN_REGION)
         debug_print(f"[DEBUG] Turn region screenshot taken: {TURN_REGION}")
         
         # Save the turn region image for debugging
@@ -360,8 +355,6 @@ def check_turn():
         debug_print("[DEBUG] Saved turn region image to debug_turn_region.png")
         
         # Apply additional enhancement for better digit recognition
-        from PIL import ImageEnhance
-        
         # Increase contrast more aggressively for turn detection
         contrast_enhancer = ImageEnhance.Contrast(turn_img)
         turn_img = contrast_enhancer.enhance(2.0)  # More aggressive contrast
@@ -373,10 +366,6 @@ def check_turn():
         # Save the enhanced version
         turn_img.save("debug_turn_enhanced.png")
         debug_print("[DEBUG] Saved enhanced turn image to debug_turn_enhanced.png")
-        
-        # Use the best method found in testing: basic processing + PSM 7
-        import pytesseract
-        import re
         
         # Apply basic grayscale processing (like test_turn_basic_grayscale)
         turn_img = turn_img.convert("L")
@@ -414,12 +403,11 @@ def is_pre_debut_year(year):
     return ("Pre-Debut" in year or "PreDebut" in year or 
             "PreeDebut" in year or "Pre" in year)
 
-def check_current_year():
+def check_current_year(screenshot):
     """Fast year detection using regular screenshot"""
-    year_img = enhanced_screenshot(YEAR_REGION)
+    year_img = enhanced_screenshot(screenshot, YEAR_REGION)
     
     # Simple OCR with PSM 7 (single line text)
-    import pytesseract
     text = pytesseract.image_to_string(year_img, config='--oem 3 --psm 7').strip()
     
     if text:
@@ -428,12 +416,11 @@ def check_current_year():
     
     return "Unknown Year"
 
-def check_criteria():
+def check_criteria(screenshot):
     """Enhanced criteria detection"""
-    criteria_img = enhanced_screenshot(CRITERIA_REGION)
+    criteria_img = enhanced_screenshot(screenshot, CRITERIA_REGION)
     
     # Use single, fast OCR configuration
-    import pytesseract
     text = pytesseract.image_to_string(criteria_img, config='--oem 3 --psm 7').strip()
     
     if text:
@@ -455,7 +442,7 @@ def check_criteria():
     
     return text
 
-def check_goal_name():
+def check_goal_name(screenshot):
     """Detect the current goal name using simple Tesseract OCR.
 
     Captures the region (372, 113, 912, 152) and returns the recognized
@@ -466,7 +453,7 @@ def check_goal_name():
     GOAL_REGION = (372, 113, 912, 152)
 
     # Capture enhanced image of the goal name region for better OCR
-    goal_img = enhanced_screenshot(GOAL_REGION)
+    goal_img = enhanced_screenshot(screenshot, GOAL_REGION)
 
     # Save debug images if enabled
     if DEBUG_MODE:
@@ -481,7 +468,6 @@ def check_goal_name():
             pass
 
     # Primary OCR path: single line recognition
-    import pytesseract
     text = pytesseract.image_to_string(goal_img, config='--oem 3 --psm 7').strip()
 
     if not text:
@@ -496,13 +482,13 @@ def check_goal_name():
 
     return text
 
-def check_goal_name_with_g1_requirement():
+def check_goal_name_with_g1_requirement(screenshot):
     """Detect the current goal name and check if it requires G1 races.
     
     Returns:
         dict: Dictionary with goal name text and G1 race requirement flag
     """
-    goal_name = check_goal_name()
+    goal_name = check_goal_name(screenshot)
     
     # Check if goal name contains G1 race requirements
     requires_g1_races = False
@@ -515,8 +501,8 @@ def check_goal_name_with_g1_requirement():
         "requires_g1_races": requires_g1_races
     }
 
-def check_skill_points():
-    skill_img = enhanced_screenshot(SKILL_PTS_REGION)
+def check_skill_points(screenshot):
+    skill_img = enhanced_screenshot(screenshot, SKILL_PTS_REGION)
     
     # Apply sharpening for better OCR accuracy
     sharpener = ImageEnhance.Sharpness(skill_img)
@@ -541,7 +527,6 @@ def check_skill_points():
     
     # Cache the skill points for reuse in skill auto-purchase
     if result > 0:
-        from utils.skill_auto_purchase import cache_skill_points
         cache_skill_points(result)
     
     return result
@@ -560,16 +545,10 @@ def check_skills_are_available(bought_skills):
     print("[INFO] All skills are bought, skipping buying skills")
     return False
 
-def check_skill_points_cap(bought_skills):
+def check_skill_points_cap(screenshot, bought_skills):
     """Check skill points and handle cap logic (same as PC version)"""
-    import tkinter as tk
-    from tkinter import messagebox
-    
-    # Load config
-    config = Config.load()
-    
     skill_point_cap = config.get("skill_point_cap", 9999)
-    current_skill_points = check_skill_points()
+    current_skill_points = check_skill_points(screenshot)
     
     print(f"[INFO] Current skill points: {current_skill_points}, Cap: {skill_point_cap}")
     
@@ -671,18 +650,13 @@ def check_skill_points_cap(bought_skills):
     
     return True
 
-def check_current_stats():
+def check_current_stats(screenshot):
     """
     Check current character stats using OCR on the stat regions.
     
     Returns:
         dict: Dictionary of current stats with keys: spd, sta, pwr, guts, wit
     """
-    from utils.constants_phone import SPD_REGION, STA_REGION, PWR_REGION, GUTS_REGION, WIT_REGION
-    from utils.adb_screenshot import take_screenshot
-    import pytesseract
-    from PIL import Image, ImageEnhance
-    
     stats = {}
     stat_regions = {
         'spd': SPD_REGION,
@@ -695,7 +669,6 @@ def check_current_stats():
     for stat_name, region in stat_regions.items():
         try:
             # Take screenshot and crop to stat region
-            screenshot = take_screenshot()
             stat_img = screenshot.crop(region)
             
             # Enhance image for better OCR
@@ -709,7 +682,6 @@ def check_current_stats():
             # Try to extract the number
             if stat_text:
                 # Remove any non-digit characters and take the first number
-                import re
                 numbers = re.findall(r'\d+', stat_text)
                 if numbers:
                     stats[stat_name] = int(numbers[0])
@@ -741,22 +713,7 @@ def calculate_training_score(support_detail, hint_found, training_type):
         float: Calculated score for the training
     """
     # Load scoring rules from training_score.json
-    scoring_rules = {}
-    try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'training_score.json')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            scoring_rules = config.get('scoring_rules', {})
-    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"Warning: Could not load training_score.json: {e}")
-        # Fallback to default values if config file is not available
-        scoring_rules = {
-            "rainbow_support": {"points": 1.0},
-            "not_rainbow_support_low": {"points": 0.7},
-            "not_rainbow_support_high": {"points": 0.0},
-            "hint": {"points": 0.3}
-        }
-    
+    scoring_rules = config.get('scoring_rules', {})
     score = 0.0
     
     # Score support cards based on bond levels
@@ -778,7 +735,7 @@ def calculate_training_score(support_detail, hint_found, training_type):
     
     return round(score, 2)
 
-def check_energy_bar():
+def check_energy_bar(screenshot):
     """
     Check the energy bar fill percentage using the same logic as energy_detector.py.
     
@@ -786,11 +743,7 @@ def check_energy_bar():
         float: Energy percentage (0.0 to 100.0)
     """
     try:
-        import cv2
-        import numpy as np
-        
         # Take screenshot and crop to energy bar region (updated coordinates from user)
-        screenshot = take_screenshot()
         x, y, width, height = 294, 203, 648, 102
         cropped = screenshot.crop((x, y, x + width, y + height))
         
@@ -879,7 +832,7 @@ def check_energy_bar():
         debug_print(f"[DEBUG] Energy bar check failed: {e}")
         return 0.0
 
-def choose_best_training(training_results, config):
+def choose_best_training(screenshot, training_results, config):
     """
     Choose the best training based on scoring algorithm and stat caps.
     
@@ -896,12 +849,11 @@ def choose_best_training(training_results, config):
     priority_order = config.get("priority_stat", ["spd", "sta", "wit", "pwr", "guts"])
     
     # Get current stats for stat cap filtering
-    current_stats = check_current_stats()
+    current_stats = check_current_stats(screenshot)
     print(f"[INFO] Current stats: {current_stats}")
     debug_print(f"[DEBUG] Current stats for stat cap filtering: {current_stats}")
     
     # Filter by stat caps first
-    from core.logic import filter_by_stat_caps
     filtered_results = filter_by_stat_caps(training_results, current_stats)
     print(f"[INFO] Training options after stat cap filtering: {list(filtered_results.keys())}")
     debug_print(f"[DEBUG] Training results after stat cap filtering: {list(filtered_results.keys())}")
