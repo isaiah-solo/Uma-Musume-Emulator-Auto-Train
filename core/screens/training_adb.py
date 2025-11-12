@@ -79,7 +79,7 @@ def go_to_training():
     """Go to training screen"""
     debug_print("[DEBUG] Going to training screen...")
     time.sleep(1)
-    return click(TRAINING_BUTTON_TEMPLATE, minSearch=10)
+    return click(TRAINING_BUTTON_TEMPLATE, minSearch=10, confidence=0.6)
 
 def check_training():
     """Check training results using fixed coordinates, collecting support counts,

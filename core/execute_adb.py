@@ -1,7 +1,7 @@
 import time
 
 from core.logic import all_training_unsafe, is_at_stat_cap_limits
-from core.screens.career_adb import do_infirmary, do_recreation, do_rest, needs_infirmary
+from core.screens.career_adb import do_infirmary, do_recreation, do_rest, is_button_active, needs_infirmary
 from core.screens.claw_machine_adb import do_claw_machine
 from core.screens.race_adb import RETRY_RACE, check_strategy_before_race, do_race, is_g1_racing_available, is_racing_available, race_day
 from core.screens.training_adb import check_training, do_train, go_to_training
@@ -12,7 +12,7 @@ from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
+from core.templates_adb import AUTO_FILL_BUTTON_TEMPLATE, BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CAREER_1_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, CLOSE_BUTTON_TEMPLATE, CONFIRM_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, MAX_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, RESTORE_BUTTON_TEMPLATE, SKIP_BUTTON_TEMPLATE, SKIP_OFF_BUTTON_TEMPLATE, SKIP_X1_BUTTON_TEMPLATE, START_CAREER_BUTTON_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, USE_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
 
 # Import ADB state and logic modules
 from core.state_adb import check_current_stats, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
@@ -27,6 +27,7 @@ def career_lobby():
     # Load configuration
     MINIMUM_MOOD = config["minimum_mood"]
     PRIORITIZE_G1_RACE = config["prioritize_g1_race"]
+    RESTART_CAREER_AUTOMATICALLY = config["restart_career_automatically"] if "restart_career_automatically" in config else False
 
     # Global state
     bought_skills = {}
@@ -41,15 +42,53 @@ def career_lobby():
         
         # Check claw machine first (highest priority)
         debug_print("[DEBUG] Checking for claw machine...")
-        if (match := img_matches(screenshot, CLAW_BUTTON_TEMPLATE, confidence=0.8)):
+        if (match := img_matches(screenshot, CLAW_BUTTON_TEMPLATE)):
             do_claw_machine(screenshot)
             continue
         
         # Check OK button
         debug_print("[DEBUG] Checking for OK button...")
-        if (match := img_matches(screenshot, OK_BUTTON_TEMPLATE, confidence=0.7)):
-            print("[INFO] Selecting OK.")
+        if (match := img_matches(screenshot, OK_BUTTON_TEMPLATE, confidence=0.65)):
+            if is_button_active(screenshot, match, "OK"):
+                print("[INFO] Selecting OK.")
+                tap_button(match)
+                continue
+            else:
+                debug_print("[DEBUG] OK button is inactive")
+
+        # Check confirm button
+        debug_print("[DEBUG] Checking for confirm button...")
+        if (match := img_matches(screenshot, CONFIRM_BUTTON_TEMPLATE)):
+            print("[INFO] Selecting confirm.")
             tap_button(match)
+            continue
+
+        if RESTART_CAREER_AUTOMATICALLY:
+            # Check career 1 button
+            debug_print("[DEBUG] Checking for career 1 button...")
+            if (match := img_matches(screenshot, CAREER_1_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting career 1.")
+                tap_button(match)
+                continue
+            
+            # Check start career button
+            debug_print("[DEBUG] Checking for start career button...")
+            if (match := img_matches(screenshot, START_CAREER_BUTTON_TEMPLATE)):
+                if is_button_active(screenshot, match, "Start Career"):
+                    print("[INFO] Selecting start career.")
+                    tap_button(match)
+                    time.sleep(0.5)
+                    continue
+                else:
+                    debug_print("[DEBUG] Start career button is inactive")
+            
+            # Check auto fill button
+            debug_print("[DEBUG] Checking for auto fill button...")
+            if (match := img_matches(screenshot, AUTO_FILL_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting auto fill.")
+                tap_button(match)
+                time.sleep(0.5)
+                continue
 
         # Check view results button
         debug_print("[DEBUG] Checking for view results button...")
@@ -65,15 +104,17 @@ def career_lobby():
                 tap_button(match)
                 time.sleep(0.01)
             debug_print("[DEBUG] Race preparation complete")
+            continue
 
         # Check try again button
         debug_print("[DEBUG] Checking for try again button...")
-        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.6)):
+        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE)):
             if not RETRY_RACE:
                 print("[INFO] retry_race is disabled. Stopping automation.")
                 raise SystemExit(0)
             print("[INFO] Selecting try again.")
             tap_button(match)
+            continue
         
         # Check for events
         debug_print("[DEBUG] Checking for events...")
@@ -118,28 +159,84 @@ def career_lobby():
         if (match := img_matches(screenshot, INSPIRATION_BUTTON_TEMPLATE, confidence=0.5)):
             print("[INFO] Inspiration found.")
             tap_button(match)
+            continue
 
         # Check next button
         debug_print("[DEBUG] Checking for next button...")
-        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE, confidence=0.8)):
+        if (match := img_matches(screenshot, NEXT_BUTTON_TEMPLATE)):
             print("[INFO] Selecting next.")
             tap_button(match)
+            continue
 
         # Check next button 2
         debug_print("[DEBUG] Checking for next button 2...")
         if (match := img_matches(screenshot, NEXT_2_BUTTON_TEMPLATE, confidence=0.9)):
             print("[INFO] Selecting next 2.")
             tap_button(match)
+            continue
+
+        if RESTART_CAREER_AUTOMATICALLY:
+            # Check restore button
+            debug_print("[DEBUG] Checking for restore button...")
+            if (match := img_matches(screenshot, RESTORE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting restore.")
+                tap_button(match)
+                continue
+
+            # Check use button
+            debug_print("[DEBUG] Checking for use button...")
+            if (match := img_matches(screenshot, USE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting use.")
+                tap_button(match)
+                continue
+
+            # Check max button
+            debug_print("[DEBUG] Checking for max button...")
+            if (match := img_matches(screenshot, MAX_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting max.")
+                tap_button(match)
+                continue
+
+            # Check close button
+            debug_print("[DEBUG] Checking for close button...")
+            if (match := img_matches(screenshot, CLOSE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting close.")
+                tap_button(match)
+                continue
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
-        if (match := img_matches(screenshot, CANCEL_BUTTON_TEMPLATE, confidence=0.6)):
+        if (match := img_matches(screenshot, CANCEL_BUTTON_TEMPLATE)):
             print("[INFO] Selecting cancel.")
             tap_button(match)
+            continue
+
+        # Check skip button
+        debug_print("[DEBUG] Checking for skip button...")
+        if (match := img_matches(screenshot, SKIP_BUTTON_TEMPLATE)):
+            print("[INFO] Selecting skip button.")
+            tap_button(match)
+            continue
+
+        # Check skip off button
+        debug_print("[DEBUG] Checking for skip off button...")
+        if (match := img_matches(screenshot, SKIP_OFF_BUTTON_TEMPLATE)):
+            print("[INFO] Selecting skip off.")
+            tap_button(match)
+            time.sleep(0.1)
+            tap_button(match)
+            continue
+
+        # Check skip x1 button
+        debug_print("[DEBUG] Checking for skip x1 button...")
+        if (match := img_matches(screenshot, SKIP_X1_BUTTON_TEMPLATE, confidence=0.9)):
+            print("[INFO] Selecting skip x1.")
+            tap_button(match)
+            continue
 
         # Check if current menu is in career lobby
         debug_print("[DEBUG] Checking if in career lobby...")
-        if not img_matches(screenshot, TAZUNA_HINT_TEMPLATE, confidence=0.8):
+        if not img_matches(screenshot, TAZUNA_HINT_TEMPLATE):
             print("[INFO] Should be in career lobby.")
             continue
 
@@ -212,7 +309,7 @@ def career_lobby():
 
         # URA SCENARIO
         debug_print("[DEBUG] Checking for URA scenario...")
-        if year == "Finale Season" and turn == "Race Day":
+        if (year == "Finale Season" or year == "Finale Underway") and turn == "Race Day":
             print("[INFO] URA Finale")
             
             # Check skill points cap before URA race day (if enabled)
@@ -239,7 +336,7 @@ def career_lobby():
 
         # If calendar is race day, do race
         debug_print("[DEBUG] Checking for race day...")
-        if turn == "Race Day" and year != "Finale Season":
+        if turn == "Race Day" and year != "Finale Season" and year != "Finale Underway":
             print("[INFO] Race Day.")
             race_day(screenshot, bought_skills)
             continue
@@ -361,7 +458,7 @@ def career_lobby():
         debug_print("[DEBUG] Waiting before next iteration...")
         time.sleep(0.1)
         
-def img_matches(screenshot, template, confidence):
+def img_matches(screenshot, template, confidence=0.8):
     matches = match_template(screenshot, template, confidence=confidence)
     return matches[0] if matches else None
         
@@ -370,6 +467,7 @@ def tap_button(match):
     center = (x + w//2, y + h//2)
     debug_print(f"[DEBUG] Clicking next_btn.png at position {center}")
     tap(center[0], center[1])
+    time.sleep(0.3)
 
 def check_goal_criteria(criteria_data, year, turn):
     """

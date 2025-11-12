@@ -22,7 +22,7 @@ def needs_infirmary(screenshot):
         debuffed_box = infirmary_matches[0]  # Get first match (x, y, w, h)
 
         # Check if the button is actually active (bright) or just disabled (dark)
-        if _is_infirmary_active(screenshot, debuffed_box):
+        if is_button_active(screenshot, debuffed_box, 'Infirmary'):
             print("[INFO] Character has debuff, go to infirmary instead.")
             return True
         else:
@@ -40,7 +40,7 @@ def do_infirmary(screenshot):
     center_x, center_y = x + w//2, y + h//2
     tap(center_x, center_y)
 
-def _is_infirmary_active(screenshot, button_location):
+def is_button_active(screenshot, button_location, button_name="Generic"):
     """
     Check if the infirmary button is active (bright) or disabled (dark).
     Args:
@@ -61,11 +61,11 @@ def _is_infirmary_active(screenshot, button_location):
         
         # Threshold for active button (same as PC version)
         is_active = avg_brightness > 150
-        debug_print(f"[DEBUG] Infirmary brightness: {avg_brightness:.1f} ({'active' if is_active else 'disabled'})")
+        debug_print(f"[DEBUG] {button_name} brightness: {avg_brightness:.1f} ({'active' if is_active else 'disabled'})")
         
         return is_active
     except Exception as e:
-        print(f"[ERROR] Failed to check infirmary button brightness: {e}")
+        print(f"[ERROR] Failed to check {button_name} button brightness: {e}")
         return False
 
 def do_rest(main_screenshot):
