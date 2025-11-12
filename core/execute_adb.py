@@ -12,7 +12,7 @@ from utils.constants_phone import (
     MOOD_LIST
 )
 from core.config import Config
-from core.templates_adb import AUTO_FILL_BUTTON_TEMPLATE, BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CAREER_1_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, CLOSE_BUTTON_TEMPLATE, CONFIRM_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, MAX_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, RESTORE_BUTTON_TEMPLATE, SKIP_BUTTON_TEMPLATE, SKIP_OFF_BUTTON_TEMPLATE, SKIP_X1_BUTTON_TEMPLATE, START_CAREER_BUTTON_TEMPLATE, TAZUNA_HINT_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, USE_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
+from core.templates_adb import AUTO_FILL_BUTTON_TEMPLATE, BACK_BUTTON_TEMPLATE, CANCEL_BUTTON_TEMPLATE, CAREER_1_BUTTON_TEMPLATE, CLAW_BUTTON_TEMPLATE, CLOSE_BUTTON_TEMPLATE, COMPLETE_CAREER_BUTTON_TEMPLATE, CONFIRM_BUTTON_TEMPLATE, EVENT_CHOICE_1_TEMPLATE, FINISH_BUTTON_TEMPLATE, INSPIRATION_BUTTON_TEMPLATE, MAX_BUTTON_TEMPLATE, NEXT_2_BUTTON_TEMPLATE, NEXT_BUTTON_TEMPLATE, OK_BUTTON_TEMPLATE, RACE_BUTTON_TEMPLATE, RACE_URA_TEMPLATE, RESTORE_BUTTON_TEMPLATE, SKIP_BUTTON_TEMPLATE, SKIP_OFF_BUTTON_TEMPLATE, SKIP_X1_BUTTON_TEMPLATE, START_CAREER_BUTTON_TEMPLATE, TAZUNA_HINT_TEMPLATE, TO_HOME_BUTTON_TEMPLATE, TRY_AGAIN_BUTTON_TEMPLATE, USE_BUTTON_TEMPLATE, VIEW_RESULTS_BUTTON_TEMPLATE
 
 # Import ADB state and logic modules
 from core.state_adb import check_current_stats, check_turn, check_mood, check_current_year, check_criteria, check_skill_points_cap, check_goal_name_with_g1_requirement, check_energy_bar, choose_best_training, is_pre_debut_year
@@ -56,14 +56,28 @@ def career_lobby():
             else:
                 debug_print("[DEBUG] OK button is inactive")
 
-        # Check confirm button
-        debug_print("[DEBUG] Checking for confirm button...")
-        if (match := img_matches(screenshot, CONFIRM_BUTTON_TEMPLATE)):
-            print("[INFO] Selecting confirm.")
-            tap_button(match)
-            continue
-
         if RESTART_CAREER_AUTOMATICALLY:
+            # Check to home button
+            debug_print("[DEBUG] Checking for to home button...")
+            if (match := img_matches(screenshot, TO_HOME_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting to home.")
+                tap_button(match)
+                continue
+
+            # Check finish button
+            debug_print("[DEBUG] Checking for finish button...")
+            if (match := img_matches(screenshot, FINISH_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting finish.")
+                tap_button(match)
+                continue
+
+            # Check complete career button
+            debug_print("[DEBUG] Checking for complete career button...")
+            if (match := img_matches(screenshot, COMPLETE_CAREER_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting complete career.")
+                tap_button(match)
+                continue
+
             # Check career 1 button
             debug_print("[DEBUG] Checking for career 1 button...")
             if (match := img_matches(screenshot, CAREER_1_BUTTON_TEMPLATE)):
@@ -90,6 +104,41 @@ def career_lobby():
                 time.sleep(0.5)
                 continue
 
+            # Check restore button
+            debug_print("[DEBUG] Checking for restore button...")
+            if (match := img_matches(screenshot, RESTORE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting restore.")
+                tap_button(match)
+                continue
+
+            # Check use button
+            debug_print("[DEBUG] Checking for use button...")
+            if (match := img_matches(screenshot, USE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting use.")
+                tap_button(match)
+                continue
+
+            # Check max button
+            debug_print("[DEBUG] Checking for max button...")
+            if (match := img_matches(screenshot, MAX_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting max.")
+                tap_button(match)
+                continue
+
+            # Check close button
+            debug_print("[DEBUG] Checking for close button...")
+            if (match := img_matches(screenshot, CLOSE_BUTTON_TEMPLATE)):
+                print("[INFO] Selecting close.")
+                tap_button(match)
+                continue
+
+        # Check confirm button
+        debug_print("[DEBUG] Checking for confirm button...")
+        if (match := img_matches(screenshot, CONFIRM_BUTTON_TEMPLATE)):
+            print("[INFO] Selecting confirm.")
+            tap_button(match)
+            continue
+
         # Check view results button
         debug_print("[DEBUG] Checking for view results button...")
         if (match := img_matches(screenshot, VIEW_RESULTS_BUTTON_TEMPLATE, confidence=0.6)):
@@ -108,7 +157,7 @@ def career_lobby():
 
         # Check try again button
         debug_print("[DEBUG] Checking for try again button...")
-        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE)):
+        if (match := img_matches(screenshot, TRY_AGAIN_BUTTON_TEMPLATE, confidence=0.95)):
             if not RETRY_RACE:
                 print("[INFO] retry_race is disabled. Stopping automation.")
                 raise SystemExit(0)
@@ -174,35 +223,6 @@ def career_lobby():
             print("[INFO] Selecting next 2.")
             tap_button(match)
             continue
-
-        if RESTART_CAREER_AUTOMATICALLY:
-            # Check restore button
-            debug_print("[DEBUG] Checking for restore button...")
-            if (match := img_matches(screenshot, RESTORE_BUTTON_TEMPLATE)):
-                print("[INFO] Selecting restore.")
-                tap_button(match)
-                continue
-
-            # Check use button
-            debug_print("[DEBUG] Checking for use button...")
-            if (match := img_matches(screenshot, USE_BUTTON_TEMPLATE)):
-                print("[INFO] Selecting use.")
-                tap_button(match)
-                continue
-
-            # Check max button
-            debug_print("[DEBUG] Checking for max button...")
-            if (match := img_matches(screenshot, MAX_BUTTON_TEMPLATE)):
-                print("[INFO] Selecting max.")
-                tap_button(match)
-                continue
-
-            # Check close button
-            debug_print("[DEBUG] Checking for close button...")
-            if (match := img_matches(screenshot, CLOSE_BUTTON_TEMPLATE)):
-                print("[INFO] Selecting close.")
-                tap_button(match)
-                continue
 
         # Check cancel button
         debug_print("[DEBUG] Checking for cancel button...")
